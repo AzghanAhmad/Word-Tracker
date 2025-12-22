@@ -1,0 +1,100 @@
+$primary-blue: #007bff;
+$text-primary: #1c2e4a;
+$text-secondary: #64748b;
+$bg-card: #ffffff;
+$border-color: #e2e8f0;
+
+.legal-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+
+    .header {
+        text-align: center;
+        margin-bottom: 3rem;
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: $text-primary;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: $text-secondary;
+            font-size: 1rem;
+        }
+    }
+
+    .content {
+        background: $bg-card;
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        border: 1px solid $border-color;
+
+        section {
+            margin-bottom: 2.5rem;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+                font-weight: 600;
+                color: $text-primary;
+                margin-bottom: 1rem;
+            }
+
+            p {
+                color: $text-secondary;
+                line-height: 1.7;
+                margin-bottom: 1rem;
+            }
+
+            ul {
+                list-style-type: disc;
+                padding-left: 1.5rem;
+                color: $text-secondary;
+
+                li {
+                    margin-bottom: 0.5rem;
+                    line-height: 1.6;
+
+                    strong {
+                        color: $text-primary;
+                        font-weight: 600;
+                    }
+                }
+            }
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .legal-container {
+        padding: 2rem 1rem;
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .content {
+            padding: 1.5rem;
+        }
+    }
+}

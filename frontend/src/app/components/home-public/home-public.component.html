@@ -1,0 +1,209 @@
+<div class="home-container">
+    <!-- 1. Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1>Plan Your Writing Journey with Confidence</h1>
+            <p class="subheading">Create flexible writing plans, track your progress, and achieve your goals with the
+                world's most adaptable word count tracker.</p>
+            <div class="hero-actions">
+                <a routerLink="/register" class="btn-cta">Start Planning Now</a>
+                <button (click)="continueAsGuest()" class="btn-guest">Continue as Guest</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Powerful Features Section -->
+    <section class="features-section">
+        <div class="section-header">
+            <h2>Powerful Features for Every Writer</h2>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="icon-circle"><i class="fas fa-bullseye"></i></div>
+                <h3>Set Your Goals</h3>
+                <p>Define your target word count and deadline. We handle the math.</p>
+                <div class="feature-preview goal-preview">
+                    <!-- CSS representation of a goal card -->
+                    <div class="mini-card">
+                        <span class="label">Total Goal</span>
+                        <span class="value">50,000 words</span>
+                        <div class="mini-progress">
+                            <div class="bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="icon-circle"><i class="fas fa-chart-line"></i></div>
+                <h3>Choose Your Strategy</h3>
+                <p>Pick from multiple pacing strategies like "Rising to the Challenge" or "Steadily".</p>
+                <div class="feature-preview strategy-preview">
+                    <!-- CSS representation of strategy graph -->
+                    <svg viewBox="0 0 100 40" class="mini-graph">
+                        <path d="M0,40 Q25,35 50,20 T100,0" fill="none" stroke="#3b82f6" stroke-width="3" />
+                    </svg>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="icon-circle"><i class="fas fa-chart-bar"></i></div>
+                <h3>Track Progress & Stats</h3>
+                <p>Visualize your daily output and stay motivated with detailed analytics.</p>
+                <div class="feature-preview stats-preview">
+                    <div class="stat-bar" style="height: 40%"></div>
+                    <div class="stat-bar" style="height: 60%"></div>
+                    <div class="stat-bar" style="height: 30%"></div>
+                    <div class="stat-bar" style="height: 80%"></div>
+                    <div class="stat-bar" style="height: 50%"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Next Row (Flexible Scheduling, etc) -->
+    <section class="details-section">
+        <div class="details-grid">
+            <div class="detail-card">
+                <h3>Flexible Scheduling</h3>
+                <p>Life happens. Automatically adjust your plan when you miss a day or get ahead.</p>
+                <div class="detail-image-placeholder">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+            </div>
+            <div class="detail-card">
+                <h3>Tasks, Notes & Time</h3>
+                <p>More than just words. Track tasks, add notes, and log your writing time.</p>
+                <div class="detail-image-placeholder">
+                    <i class="fas fa-tasks"></i>
+                </div>
+            </div>
+            <div class="detail-card">
+                <h3>Group Challenges</h3>
+                <p>Write with friends. Create community challenges and compete on the leaderboard.</p>
+                <div class="detail-image-placeholder">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Simple, Motivating Visualizations -->
+    <section class="visuals-section">
+        <div class="visuals-container">
+            <div class="visual-left">
+                <div class="calendar-mockup">
+                    <div class="cal-header">November</div>
+                    <div class="cal-grid">
+                        <div class="cal-day done">1</div>
+                        <div class="cal-day done">2</div>
+                        <div class="cal-day done">3</div>
+                        <div class="cal-day done">4</div>
+                        <div class="cal-day done">5</div>
+                        <div class="cal-day done">6</div>
+                        <div class="cal-day done">7</div>
+                        <div class="cal-day">8</div>
+                        <div class="cal-day">9</div>
+                        <div class="cal-day">10</div>
+                        <div class="cal-day">11</div>
+                        <div class="cal-day">12</div>
+                    </div>
+                </div>
+            </div>
+            <div class="visual-right">
+                <h2>Simple, Motivating Visualizations</h2>
+                <ul class="check-list">
+                    <li><i class="fas fa-check-circle"></i> See your streak grow daily</li>
+                    <li><i class="fas fa-check-circle"></i> Visualize your path to the finish line</li>
+                    <li><i class="fas fa-check-circle"></i> Celebrate every milestone</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Perfect for Every Kind of Project -->
+    <section class="categories-section">
+        <h2>Perfect for Every Kind of Project</h2>
+        <div class="categories-grid">
+            <div class="category-col">
+                <h3>Novels</h3>
+                <div class="project-card">
+                    <div class="card-header">NaNoWriMo 2024</div>
+                    <div class="card-body">
+                        <div class="mini-graph-line"></div>
+                        <p class="author">by NovelistJane</p>
+                    </div>
+                </div>
+            </div>
+            <div class="category-col">
+                <h3>Dissertations</h3>
+                <div class="project-card">
+                    <div class="card-header">PhD Thesis</div>
+                    <div class="card-body">
+                        <div class="mini-graph-line"></div>
+                        <p class="author">by GradStudentMark</p>
+                    </div>
+                </div>
+            </div>
+            <div class="category-col">
+                <h3>Blog Posts</h3>
+                <div class="project-card">
+                    <div class="card-header">Weekly Tech Blog</div>
+                    <div class="card-body">
+                        <div class="mini-graph-line"></div>
+                        <p class="author">by TechWriter</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Testimonials -->
+    <section class="testimonials-section">
+        <h2>What Writers Are Saying</h2>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <p class="quote">"Word Tracker is the single most useful tool I've found for planning my novels. It
+                    keeps
+                    me on track without the stress."</p>
+                <p class="author">- Sarah J., Fantasy Author</p>
+            </div>
+            <div class="testimonial-card">
+                <p class="quote">"I finished my dissertation two weeks early thanks to the adaptive scheduling. A
+                    lifesaver!"</p>
+                <p class="author">- Michael R., PhD Candidate</p>
+            </div>
+            <div class="testimonial-card">
+                <p class="quote">"The best way to visualize your progress. Seeing the graph go up is incredibly
+                    motivating."</p>
+                <p class="author">- Emily T., Blogger</p>
+            </div>
+            <div class="testimonial-card">
+                <p class="quote">"Simple, effective, and beautiful. I use it for every writing project I start."</p>
+                <p class="author">- David K., Screenwriter</p>
+            </div>
+            <div class="testimonial-card">
+                <p class="quote">"Finally, a tool that understands that writing isn't always linear. The flexible plans
+                    are a game changer."</p>
+                <p class="author">- Jessica L., Freelance Writer</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Newsletter -->
+    <section class="newsletter-section">
+        <div class="newsletter-content">
+            <h2>Join The Word Tracker Newsletter</h2>
+            <p>Get writing tips, challenge updates, and product news.</p>
+            <div class="subscribe-form">
+                <input type="email" placeholder="Enter your email address">
+                <button>Subscribe</button>
+            </div>
+            <div class="social-icons">
+                <i class="fab fa-twitter"></i>
+                <i class="fab fa-facebook"></i>
+                <i class="fab fa-instagram"></i>
+            </div>
+        </div>
+    </section>
+
+
+</div>

@@ -1,0 +1,23 @@
+<nav class="navbar">
+    <div class="navbar-left">
+        <button class="mobile-menu-btn" (click)="toggleSidebar()">
+            ☰
+        </button>
+
+        <a routerLink="/" class="navbar-brand">
+            <img src="/assets/ScribeCount-logo---promo-tile-large-white.png" alt="ScribeCount" class="logo-img">
+        </a>
+
+        <div class="nav-links">
+            <a routerLink="/challenges" class="nav-link" routerLinkActive="active">Community</a>
+            <a routerLink="/my-checklists" class="nav-link" routerLinkActive="active">Checklists</a>
+        </div>
+    </div>
+
+    <div class="navbar-right">
+        <span class="welcome-text">Welcome, <span class="username">{{ username }}</span></span>
+        <div class="avatar">
+            {{ username.charAt(0).toUpperCase() }}
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,121 @@
+@use 'sass:color';
+
+$primary-blue: #007bff;
+$text-primary: #1c2e4a;
+$text-secondary: #64748b;
+$bg-card: #ffffff;
+$border-color: #e2e8f0;
+
+.legal-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+
+    .header {
+        text-align: center;
+        margin-bottom: 3rem;
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: $text-primary;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: $text-secondary;
+            font-size: 1rem;
+        }
+    }
+
+    .content {
+        background: $bg-card;
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+        border: 1px solid $border-color;
+
+        section {
+            margin-bottom: 2.5rem;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+                font-weight: 600;
+                color: $text-primary;
+                margin-bottom: 1.5rem;
+                padding-bottom: 0.5rem;
+                border-bottom: 1px solid color.adjust($border-color, $lightness: 5%);
+            }
+
+            p {
+                color: $text-secondary;
+                line-height: 1.7;
+                margin-bottom: 1rem;
+            }
+
+            .link {
+                color: $primary-blue;
+                text-decoration: none;
+                font-weight: 500;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+
+            .tech-list {
+                list-style: none;
+                padding: 0;
+
+                li {
+                    margin-bottom: 1rem;
+                    padding: 1rem;
+                    background: color.adjust($border-color, $lightness: 8%);
+                    border-radius: 8px;
+                    border: 1px solid $border-color;
+
+                    strong {
+                        display: block;
+                        color: $text-primary;
+                        font-weight: 600;
+                        margin-bottom: 0.25rem;
+                    }
+
+                    color: $text-secondary;
+                    font-size: 0.938rem;
+                }
+            }
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .legal-container {
+        padding: 2rem 1rem;
+
+        .header h1 {
+            font-size: 2rem;
+        }
+
+        .content {
+            padding: 1.5rem;
+        }
+    }
+}

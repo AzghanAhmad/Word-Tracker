@@ -1,0 +1,65 @@
+<div class="calendar-page-container">
+    <!-- Top Brand Header -->
+    <header class="top-header">
+        <div class="brand">
+            <span class="brand-text">{{ username }}</span>
+            <span class="brand-star">★</span>
+        </div>
+        <div class="header-actions">
+            <button class="action-btn cyan">Account Settings</button>
+            <button class="action-btn cyan">Your Stats</button>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="main-tabs redesign">
+        <a routerLink="/calendar" routerLinkActive="active" class="tab-link">
+            <i class="fas fa-calendar-alt"></i> <span>Calendar</span>
+        </a>
+        <a routerLink="/plans" routerLinkActive="active" class="tab-link">
+            <i class="fas fa-tasks"></i> <span>Plans</span>
+        </a>
+        <a routerLink="/organize" routerLinkActive="active" class="tab-link">
+            <i class="fas fa-folder"></i> <span>Projects</span>
+        </a>
+        <a routerLink="/stats" routerLinkActive="active" class="tab-link">
+            <i class="fas fa-chart-line"></i> <span>Stats</span>
+        </a>
+        <a routerLink="/community" routerLinkActive="active" class="tab-link">
+            <i class="fas fa-users"></i> <span>Challenges</span>
+        </a>
+        <a routerLink="/plans" [queryParams]="{filter: 'archived'}" routerLinkActive="active" class="tab-link">
+            <i class="fas fa-archive"></i> <span>Archives</span>
+        </a>
+    </nav>
+
+    <div class="view-controls-bar">
+        <div class="btn-group">
+            <button class="control-btn" [class.active]="viewMode === 'daily-total'"
+                (click)="setViewMode('daily-total')">
+                Show Daily Total Planned Work Across All Plans
+            </button>
+            <button class="control-btn" [class.active]="viewMode === 'progress-vs-plan'"
+                (click)="setViewMode('progress-vs-plan')">
+                Show Progress and Planned Work for Each Plan
+            </button>
+        </div>
+
+        <div class="btn-group">
+            <button class="control-btn" [class.active]="timeFilter === 'future'" (click)="setTimeFilter('future')">
+                Show Only Future Planned Work
+            </button>
+            <button class="control-btn" [class.active]="timeFilter === 'all'" (click)="setTimeFilter('all')">
+                Show All Work (Past and Future)
+            </button>
+        </div>
+    </div>
+
+    <div class="calendar-wrapper">
+        <app-calendar-header [monthName]="monthName" (next)="nextMonth()" (prev)="prevMonth()" (today)="goToday()"
+            (viewChange)="setViewType($event)"></app-calendar-header>
+
+        <app-calendar-grid [currentDate]="currentDate" [targets]="targets" [viewMode]="viewMode"
+            [timeFilter]="timeFilter"></app-calendar-grid>
+    </div>
+</div>

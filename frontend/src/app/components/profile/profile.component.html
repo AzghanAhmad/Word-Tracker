@@ -1,0 +1,98 @@
+<div class="profile-container" *ngIf="!isLoading">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="profile-avatar-section">
+            <div class="profile-avatar">
+                {{ user.initials }}
+            </div>
+            <div class="profile-info">
+                <h1>{{ user.username }}</h1>
+                <p class="email">{{ user.email }}</p>
+                <p class="member-since">Member since {{ memberSince }}</p>
+            </div>
+        </div>
+        <div class="profile-actions">
+            <button class="btn-edit" *ngIf="!isEditing" (click)="startEditing()">
+                <i class="fas fa-edit"></i> Edit Profile
+            </button>
+            <button class="btn-settings" (click)="goToSettings()">
+                <i class="fas fa-cog"></i> Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div class="alert alert-success" *ngIf="successMessage">
+        <i class="fas fa-check-circle"></i> {{ successMessage }}
+    </div>
+    <div class="alert alert-error" *ngIf="errorMessage">
+        <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
+    </div>
+
+    <!-- View Mode -->
+    <div class="profile-content" *ngIf="!isEditing">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-file-alt stat-icon"></i>
+                <div class="stat-value">{{ totalPlans }}</div>
+                <div class="stat-label">Total Plans</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-pen-fancy stat-icon"></i>
+                <div class="stat-value">{{ totalWords | number }}</div>
+                <div class="stat-label">Total Words</div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-calendar-check stat-icon"></i>
+                <div class="stat-value">{{ memberSince }}</div>
+                <div class="stat-label">Joined</div>
+            </div>
+        </div>
+
+        <!-- Bio Section -->
+        <div class="profile-section">
+            <h2>About Me</h2>
+            <div class="bio-content" *ngIf="user.bio">
+                <p>{{ user.bio }}</p>
+            </div>
+            <div class="bio-empty" *ngIf="!user.bio">
+                <p>No bio added yet. Click "Edit Profile" to add one!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Mode -->
+    <div class="profile-edit" *ngIf="isEditing">
+        <h2>Edit Profile</h2>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" [(ngModel)]="editForm.username" class="form-input" placeholder="Enter your username">
+        </div>
+
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" [(ngModel)]="editForm.email" class="form-input" placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+            <label>Bio</label>
+            <textarea [(ngModel)]="editForm.bio" class="form-textarea" placeholder="Tell us about yourself..."
+                rows="5"></textarea>
+            <span class="helper-text">{{ editForm.bio.length }}/500 characters</span>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn-cancel" (click)="cancelEditing()" [disabled]="isSaving">
+                Cancel
+            </button>
+            <button class="btn-save" (click)="saveProfile()" [disabled]="isSaving">
+                <i class="fas fa-spinner fa-spin" *ngIf="isSaving"></i>
+                {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<app-content-loader *ngIf="isLoading"></app-content-loader>

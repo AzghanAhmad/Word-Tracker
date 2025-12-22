@@ -1,0 +1,140 @@
+<div class="checklist-container">
+    <!-- 1. Top Header -->
+    <header class="checklist-header">
+        <div class="header-left">
+            <h1>My Checklist</h1>
+            <p class="subtitle">{{ plan.activity_type || 'Work' }} • {{ plan.content_type || 'Admin' }}</p>
+        </div>
+        <div class="header-center">
+            <nav class="header-tabs">
+                <a [class.active]="activeTab === 'schedule'" (click)="activeTab = 'schedule'">Schedule</a>
+                <a [class.active]="activeTab === 'progress'" (click)="activeTab = 'progress'">Progress</a>
+                <a [class.active]="activeTab === 'stats'" (click)="activeTab = 'stats'">Stats</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <button class="btn-secondary" (click)="savePlan()">Done Editing</button>
+            <button class="btn-primary" (click)="savePlan()">Save</button>
+            <button class="btn-icon"><i class="fas fa-share-alt"></i></button>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <!-- 2. Left Side Sections -->
+        <aside class="sidebar-config">
+            <!-- Plan Info -->
+            <section class="config-section">
+                <h3>Plan Info</h3>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" [(ngModel)]="plan.plan_name" placeholder="Plan Name">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Activity</label>
+                        <select [(ngModel)]="plan.activity_type">
+                            <option *ngFor="let act of activities" [value]="act">{{ act }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Content</label>
+                        <select [(ngModel)]="plan.content_type">
+                            <option *ngFor="let type of contentTypes" [value]="type">{{ type }}</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="info-text">Organize your project efficiently.</p>
+            </section>
+
+            <!-- Plan Description -->
+            <section class="config-section">
+                <h3>Plan Description</h3>
+                <textarea [(ngModel)]="plan.description" rows="4" placeholder="Describe your plan..."></textarea>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="private" [(ngModel)]="plan.is_private">
+                    <label for="private">Make this plan private</label>
+                </div>
+            </section>
+
+            <!-- Goals -->
+            <section class="config-section">
+                <h3>Goals</h3>
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" [(ngModel)]="plan.start_date">
+                </div>
+                <div class="form-group">
+                    <label>Target Finish Date</label>
+                    <input type="date" [(ngModel)]="plan.end_date">
+                </div>
+            </section>
+
+            <!-- Strategy -->
+            <section class="config-section">
+                <h3>Strategy</h3>
+                <div class="radio-group">
+                    <div class="radio-item" *ngFor="let strat of strategies">
+                        <input type="radio" [id]="strat.id" [value]="strat.id" [(ngModel)]="plan.algorithm_type">
+                        <label [for]="strat.id">{{ strat.label }}</label>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- 3. Right Side Checklist Editor -->
+        <main class="checklist-editor">
+            <!-- Task List Editor (Left Column of Main) -->
+            <div class="task-list-column">
+                <div class="task-list-header">
+                    <h2>Tasks</h2>
+                </div>
+                <div class="tasks-container">
+                    <div class="task-item" *ngFor="let task of tasks" draggable="true"
+                        (dragstart)="onDragStart($event, task)" (dragover)="onDragOver($event)"
+                        (drop)="onDrop($event, task)">
+
+                        <div class="drag-handle"><i class="fas fa-grip-vertical"></i></div>
+                        <input type="checkbox" [(ngModel)]="task.is_completed" (change)="updateTask(task)">
+                        <input type="text" [(ngModel)]="task.text" (blur)="updateTask(task)" class="task-input">
+                        <input type="date" [(ngModel)]="task.date" (change)="updateTask(task)" class="date-input">
+                        <button class="delete-btn" (click)="deleteTask(task)"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="add-task-row">
+                    <input type="text" placeholder="+ Add a new task" [(ngModel)]="newTaskText"
+                        (keyup.enter)="addTask()">
+                    <button (click)="addTask()">Add</button>
+                </div>
+            </div>
+
+            <!-- Scheduled Tasks View (Right Column of Main) -->
+            <div class="schedule-view-column">
+                <div class="schedule-header">
+                    <div class="nav-controls">
+                        <button (click)="prevWeek()"><i class="fas fa-chevron-left"></i></button>
+                        <button (click)="today()">Today</button>
+                        <button (click)="nextWeek()"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="view-toggles">
+                        <button [class.active]="viewMode === 'daily'" (click)="viewMode = 'daily'">Daily</button>
+                        <button [class.active]="viewMode === 'weekly'" (click)="viewMode = 'weekly'">Weekly</button>
+                    </div>
+                </div>
+
+                <div class="week-grid">
+                    <div class="day-column" *ngFor="let day of weekDays">
+                        <div class="day-header" [class.today]="day.toDateString() === (currentWeekStart | date)">
+                            <span class="day-name">{{ day | date:'EEE' }}</span>
+                            <span class="day-date">{{ day | date:'d' }}</span>
+                        </div>
+                        <div class="day-tasks">
+                            <div class="mini-task" *ngFor="let t of getTasksForDate(day)">
+                                {{ t.text }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
