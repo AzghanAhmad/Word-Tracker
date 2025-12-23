@@ -54,6 +54,33 @@ public class DbInitService
 
     private async Task CreateTablesAsync(MySqlConnection conn)
     {
+        // Check if we should reset the database (set RESET_DB=true in Railway to force schema reset)
+        var resetDb = Environment.GetEnvironmentVariable("RESET_DB")?.ToLower() == "true";
+        
+        if (resetDb)
+        {
+            // Drop existing tables to ensure clean schema
+            var dropTables = new[]
+            {
+                "DROP TABLE IF EXISTS checklist_items",
+                "DROP TABLE IF EXISTS checklists",
+                "DROP TABLE IF EXISTS challenges",
+                "DROP TABLE IF EXISTS workload_rules",
+                "DROP TABLE IF EXISTS plan_days",
+                "DROP TABLE IF EXISTS plans",
+                "DROP TABLE IF EXISTS users"
+            };
+            
+            Console.WriteLine("🗑️ RESET_DB=true - Dropping existing tables for clean schema...");
+            foreach (var dropSql in dropTables)
+            {
+                using var dropCmd = conn.CreateCommand();
+                dropCmd.CommandText = dropSql;
+                await dropCmd.ExecuteNonQueryAsync();
+            }
+            Console.WriteLine("✓ Tables dropped - will be recreated with new schema");
+        }
+        
         var tables = new[]
         {
             @"CREATE TABLE IF NOT EXISTS users (
