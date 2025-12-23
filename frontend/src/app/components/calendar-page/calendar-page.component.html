@@ -59,7 +59,7 @@
         <app-calendar-header [monthName]="monthName" (next)="nextMonth()" (prev)="prevMonth()" (today)="goToday()"
             (viewChange)="setViewType($event)"></app-calendar-header>
 
-        <app-calendar-grid [currentDate]="currentDate" [targets]="targets" [viewMode]="viewMode"
-            [timeFilter]="timeFilter"></app-calendar-grid>
+        <app-calendar-grid [currentDate]="currentDate" [targets]="targets" [deadlines]="deadlines" 
+            [plansByDate]="plansByDate" [viewMode]="viewMode" [timeFilter]="timeFilter"></app-calendar-grid>
     </div>
 </div>

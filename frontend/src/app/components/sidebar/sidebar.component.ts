@@ -116,6 +116,23 @@ export class SidebarComponent implements OnInit {
         }
     }
 
+    // Force reload dashboard data when clicking Full Plan List
+    onDashboardClick() {
+        // Close sidebar on mobile
+        this.onNavItemClick();
+        
+        // If already on dashboard, force reload by navigating away and back
+        if (this.router.url === '/dashboard') {
+            this.router.navigate(['/dashboard'], { 
+                queryParams: { refresh: Date.now() },
+                skipLocationChange: false 
+            }).then(() => {
+                // Trigger a reload event
+                window.dispatchEvent(new Event('dashboard-reload'));
+            });
+        }
+    }
+
     logout() {
         localStorage.removeItem('user_id');
         localStorage.removeItem('username');

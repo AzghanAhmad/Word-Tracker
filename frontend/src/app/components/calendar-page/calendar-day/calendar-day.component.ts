@@ -20,8 +20,23 @@ import { CommonModule } from '@angular/common';
           {{ event.title }}: {{ event.value }}
         </div>
 
-        <div class="target-badge" *ngIf="target > 0">
-          {{ target | number }} words
+        <!-- Progress vs Plan Mode: Show individual plan boxes -->
+        <div *ngIf="viewMode === 'progress-vs-plan'" class="plans-container">
+          <div *ngFor="let plan of plans" class="plan-box-black">
+            <div class="plan-name">{{ plan.title || plan.plan_name }}</div>
+            <div class="plan-words">{{ plan.dailyTarget | number }} words</div>
+          </div>
+        </div>
+
+        <!-- Daily Total Mode: Show total word count -->
+        <div *ngIf="viewMode === 'daily-total'">
+          <div class="deadline-box" *ngIf="isDeadline">
+            Deadline: FINAL
+          </div>
+
+          <div class="word-count-box" *ngIf="target > 0 && !isDeadline">
+            {{ target | number }} words
+          </div>
         </div>
       </div>
     </div>
@@ -80,6 +95,7 @@ import { CommonModule } from '@angular/common';
       flex-direction: column;
       gap: 2px;
       padding-top: 4px;
+      justify-content: space-between;
     }
 
     .event-bar {
@@ -100,11 +116,76 @@ import { CommonModule } from '@angular/common';
       }
     }
 
-    .target-badge {
+    .word-count-box {
+      background-color: #000;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 6px 8px;
+      border-radius: 4px;
+      text-align: center;
+      margin-top: auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .deadline-box {
+      background-color: #000;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 6px 8px;
+      border-radius: 4px;
+      text-align: center;
+      margin-top: auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      box-sizing: border-box;
+      text-transform: uppercase;
+    }
+
+    .plans-container {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-top: auto;
+    }
+
+    .plan-box-black {
+      background-color: #000;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 6px 8px;
+      border-radius: 4px;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .plan-name {
+      font-weight: 600;
       font-size: 0.7rem;
-      color: #555;
-      text-align: right;
-      padding: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .plan-words {
+      font-weight: 500;
+      font-size: 0.65rem;
+      opacity: 0.9;
     }
 
     @media (max-width: 768px) {
@@ -121,4 +202,7 @@ export class CalendarDayComponent {
   @Input() isSelected: boolean = false;
   @Input() target: number = 0;
   @Input() events: any[] = [];
+  @Input() isDeadline: boolean = false;
+  @Input() plans: any[] = [];
+  @Input() viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
 }

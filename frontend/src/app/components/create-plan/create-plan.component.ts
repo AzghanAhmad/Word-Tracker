@@ -388,7 +388,7 @@ export class CreatePlanComponent implements OnInit {
             measurement_unit: this.measurementUnit,
             is_daily_target: this.isDailyTarget,
             fixed_deadline: this.fixedDeadline,
-            target_finish_date: this.targetFinishDate,
+            target_finish_date: this.targetFinishDate || null,
             strategy_intensity: this.strategyIntensity,
             weekend_approach: this.weekendApproach,
             reserve_days: this.reserveDays,
@@ -404,12 +404,19 @@ export class CreatePlanComponent implements OnInit {
 
         this.apiService.createPlan(payload).subscribe({
             next: (response) => {
+                console.log('Plan creation response:', response);
                 if (response.success) {
+                    this.notificationService.showSuccess('Plan created successfully!');
                     this.router.navigate(['/dashboard']);
+                } else {
+                    this.notificationService.showError(response.message || 'Failed to create plan');
                 }
             },
             error: (error) => {
                 console.error('Error creating plan:', error);
+                console.error('Error details:', error.error);
+                const errorMsg = error.error?.message || error.message || 'Failed to create plan. Please try again.';
+                this.notificationService.showError(errorMsg);
             }
         });
     }

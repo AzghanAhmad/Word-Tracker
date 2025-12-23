@@ -15,4 +15,5 @@ public interface IDbService
     int CreateChallenge(int userId, string title, string description, string type, int goalCount, int durationDays, string startDate);
     string GetChallengesJson(int userId);
     string GetDashboardStatsJson(int userId);
+    string GetLastError();
 }

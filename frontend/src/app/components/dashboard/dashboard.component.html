@@ -87,7 +87,8 @@
             </div>
 
             <div class="plan-footer">
-                <a class="btn-view-plan" [style.background-color]="plan.color_code + '1A'"
+                <a [routerLink]="['/calendar']" [queryParams]="{planId: plan.id}" class="btn-view-plan" 
+                    [style.background-color]="plan.color_code + '1A'"
                     [style.color]="plan.color_code">View Details</a>
             </div>
         </div>

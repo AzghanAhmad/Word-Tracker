@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS plans (
     display_view_type VARCHAR(20) DEFAULT 'Table',
     week_start_day VARCHAR(20) DEFAULT 'Mondays',
     grouping_type VARCHAR(20) DEFAULT 'Day',
-    dashboard_color VARCHAR(10) DEFAULT '#000000',
+    dashboard_color VARCHAR(20) DEFAULT '#000000',
     show_historical_data BOOLEAN DEFAULT TRUE,
     progress_tracking_type VARCHAR(50) DEFAULT 'Daily Goals',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

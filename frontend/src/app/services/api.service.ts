@@ -67,6 +67,10 @@ export class ApiService {
         return this.http.get(`${this.apiUrl}/plans`);
     }
 
+    getPlan(id: number): Observable<any> {
+        return this.http.get(`${this.apiUrl}/plans?id=${id}`);
+    }
+
     createPlan(plan: any): Observable<any> {
         return this.http.post(`${this.apiUrl}/plans`, plan);
     }

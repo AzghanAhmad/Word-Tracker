@@ -10,6 +10,8 @@ export interface CalendarCell {
   isSelected: boolean;
   target: number;
   events: any[];
+  isDeadline: boolean;
+  plans: any[]; // Plans for this date (for progress-vs-plan mode)
 }
 
 @Component({
@@ -33,6 +35,9 @@ export interface CalendarCell {
           [isSelected]="cell.isSelected"
           [target]="cell.target"
           [events]="cell.events"
+          [isDeadline]="cell.isDeadline"
+          [plans]="cell.plans"
+          [viewMode]="viewMode"
           [class.past-date]="timeFilter === 'future' && isPastDate(cell.date)"
           (click)="selectDate(cell.date)"
         ></app-calendar-day>
@@ -75,6 +80,8 @@ export interface CalendarCell {
 export class CalendarGridComponent implements OnChanges {
   @Input() currentDate: Date = new Date();
   @Input() targets: { [key: string]: number } = {};
+  @Input() deadlines: { [key: string]: boolean } = {};
+  @Input() plansByDate: { [key: string]: any[] } = {};
   @Input() viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
   @Input() timeFilter: 'future' | 'all' = 'all';
 
@@ -83,7 +90,7 @@ export class CalendarGridComponent implements OnChanges {
   selectedDate: Date | null = null;
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['currentDate'] || changes['targets'] || changes['viewMode'] || changes['timeFilter']) {
+    if (changes['currentDate'] || changes['targets'] || changes['deadlines'] || changes['plansByDate'] || changes['viewMode'] || changes['timeFilter']) {
       this.generateGrid();
     }
   }
@@ -139,8 +146,19 @@ export class CalendarGridComponent implements OnChanges {
       isToday,
       isSelected,
       target: this.getTargetForDate(date),
-      events: this.getEventsForDate(date)
+      events: this.getEventsForDate(date),
+      isDeadline: this.isDeadlineDate(date),
+      plans: this.getPlansForDate(date)
     };
+  }
+
+  getPlansForDate(date: Date): any[] {
+    // Format YYYY-MM-DD manually to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    return this.plansByDate[dateStr] || [];
   }
 
   getTargetForDate(date: Date): number {
@@ -158,26 +176,18 @@ export class CalendarGridComponent implements OnChanges {
   }
 
   getEventsForDate(date: Date): any[] {
-    // Placeholder logic for real events
-    // In a real app, this would check a list of plans/sessions
-    const events: any[] = [];
+    // Return empty array - no hardcoded events
+    // Events will come from backend data in the future
+    return [];
+  }
 
+  isDeadlineDate(date: Date): boolean {
+    // Format YYYY-MM-DD manually to avoid timezone issues
     const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
-
-    // Re-implementing the mock logic but in a way that's ready for real data
-    // Only show for current month for demo purposes
-    if (date.getMonth() === this.currentDate.getMonth()) {
-      if (day % 7 === 0 || day % 8 === 0) {
-        events.push({ title: 'Plan Update', value: day + ' words' });
-      }
-      if (day === 21) {
-        events.push({ title: 'Deadline', value: 'FINAL', isDeadline: true });
-      }
-    }
-
-    return events;
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    return this.deadlines[dateStr] || false;
   }
 
   isPastDate(date: Date): boolean {

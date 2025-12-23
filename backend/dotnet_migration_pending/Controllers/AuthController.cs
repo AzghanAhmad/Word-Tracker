@@ -23,7 +23,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(req.username) || string.IsNullOrWhiteSpace(req.email) || string.IsNullOrWhiteSpace(req.password))
+        if (string.IsNullOrWhiteSpace(req.username) || string.IsNullOrWhiteSpace(req.email) || string.IsNullOrWhiteSpace(req.password))
                 return BadRequest(new { success = false, message = "Missing required fields" });
             
             if (req.password.Length < 6)
@@ -32,8 +32,8 @@ public class AuthController : ControllerBase
             if (!System.Text.RegularExpressions.Regex.IsMatch(req.email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                 return BadRequest(new { success = false, message = "Invalid email format" });
             
-            var hash = _auth.HashPassword(req.password);
-            var ok = _db.CreateUser(req.username, req.email, hash);
+        var hash = _auth.HashPassword(req.password);
+        var ok = _db.CreateUser(req.username, req.email, hash);
             if (!ok) 
                 return Conflict(new { success = false, message = "Registration failed. Email or username already exists." });
             
@@ -49,18 +49,18 @@ public class AuthController : ControllerBase
     public IActionResult Login([FromBody] LoginRequest req)
     {
         try
-        {
-            if (string.IsNullOrWhiteSpace(req.email) || string.IsNullOrWhiteSpace(req.password))
+    {
+        if (string.IsNullOrWhiteSpace(req.email) || string.IsNullOrWhiteSpace(req.password))
                 return BadRequest(new { success = false, message = "Missing email or password" });
             
-            var user = _db.GetUserByEmail(req.email);
+        var user = _db.GetUserByEmail(req.email);
             if (user is null) 
                 return Unauthorized(new { success = false, message = "Invalid email or password" });
             
-            if (!_auth.VerifyPassword(req.password, user.Value.passwordHash))
+        if (!_auth.VerifyPassword(req.password, user.Value.passwordHash))
                 return Unauthorized(new { success = false, message = "Invalid email or password" });
             
-            var token = _auth.GenerateToken(user.Value.id);
+        var token = _auth.GenerateToken(user.Value.id);
             return Ok(new { 
                 success = true, 
                 token, 
