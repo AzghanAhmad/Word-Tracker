@@ -30,6 +30,7 @@ if (connectionString.Contains("Database="))
         dbName = dbMatch.Groups[1].Value;
 }
 
+
 // Initialize database on startup
 try
 {
