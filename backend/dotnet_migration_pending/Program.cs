@@ -9,17 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Get configuration with environment variable PRIORITY (for Railway deployment)
-// Environment variables take precedence over appsettings.json
+// Get configuration - environment variables take precedence over appsettings.json
 var secret = Environment.GetEnvironmentVariable("JWT_SECRET") 
     ?? builder.Configuration["Jwt:Secret"] 
     ?? "dev_secret";
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION") 
     ?? builder.Configuration.GetConnectionString("Default") 
     ?? "";
-
-Console.WriteLine($"🔍 DB_CONNECTION env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DB_CONNECTION"))}");
-Console.WriteLine($"🔍 JWT_SECRET env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET"))}");
 
 // Extract database name from connection string for initialization
 var dbName = "word_tracker";

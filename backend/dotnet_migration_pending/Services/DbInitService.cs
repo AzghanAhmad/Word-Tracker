@@ -54,50 +54,7 @@ public class DbInitService
 
     private async Task CreateTablesAsync(MySqlConnection conn)
     {
-        // Check if we should reset the database (set RESET_DB=true in Railway to force schema reset)
-        var resetDb = Environment.GetEnvironmentVariable("RESET_DB")?.ToLower() == "true";
-        
-        if (resetDb)
-        {
-            // Disable foreign key checks to allow dropping tables in any order
-            Console.WriteLine("🗑️ RESET_DB=true - Dropping ALL existing tables...");
-            
-            using (var fkOffCmd = conn.CreateCommand())
-            {
-                fkOffCmd.CommandText = "SET FOREIGN_KEY_CHECKS = 0";
-                await fkOffCmd.ExecuteNonQueryAsync();
-            }
-            
-            // Get all tables in the database and drop them
-            var tablesToDrop = new List<string>();
-            using (var listCmd = conn.CreateCommand())
-            {
-                listCmd.CommandText = "SHOW TABLES";
-                using var reader = await listCmd.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    tablesToDrop.Add(reader.GetString(0));
-                }
-            }
-            
-            foreach (var table in tablesToDrop)
-            {
-                Console.WriteLine($"  Dropping table: {table}");
-                using var dropCmd = conn.CreateCommand();
-                dropCmd.CommandText = $"DROP TABLE IF EXISTS `{table}`";
-                await dropCmd.ExecuteNonQueryAsync();
-            }
-            
-            // Re-enable foreign key checks
-            using (var fkOnCmd = conn.CreateCommand())
-            {
-                fkOnCmd.CommandText = "SET FOREIGN_KEY_CHECKS = 1";
-                await fkOnCmd.ExecuteNonQueryAsync();
-            }
-            
-            Console.WriteLine("✓ All tables dropped - will be recreated with new schema");
-        }
-        
+        // Create tables if they don't exist
         var tables = new[]
         {
             @"CREATE TABLE IF NOT EXISTS users (
@@ -196,94 +153,6 @@ public class DbInitService
             using var cmd = conn.CreateCommand();
             cmd.CommandText = tableSql;
             await cmd.ExecuteNonQueryAsync();
-        }
-        
-        // Run schema migrations for existing databases
-        await MigrateSchemaAsync(conn);
-    }
-    
-    /// <summary>
-    /// Migrate existing database schema to current version
-    /// Handles column renames and additions for backwards compatibility
-    /// </summary>
-    private async Task MigrateSchemaAsync(MySqlConnection conn)
-    {
-        try
-        {
-            // Check if 'plans' table has 'plan_name' column (old schema) instead of 'title' (new schema)
-            using var checkCmd = conn.CreateCommand();
-            checkCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
-                                     WHERE TABLE_SCHEMA = DATABASE() 
-                                     AND TABLE_NAME = 'plans' 
-                                     AND COLUMN_NAME = 'plan_name'";
-            var hasPlanName = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
-            
-            if (hasPlanName)
-            {
-                Console.WriteLine("📦 Migrating schema: Renaming 'plan_name' to 'title'...");
-                using var alterCmd = conn.CreateCommand();
-                alterCmd.CommandText = "ALTER TABLE plans CHANGE COLUMN plan_name title VARCHAR(255) NOT NULL";
-                await alterCmd.ExecuteNonQueryAsync();
-                Console.WriteLine("✓ Schema migration completed");
-            }
-            
-            // Check if 'plans' table has 'dashboard_color' with correct size
-            using var checkColorCmd = conn.CreateCommand();
-            checkColorCmd.CommandText = @"SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS 
-                                          WHERE TABLE_SCHEMA = DATABASE() 
-                                          AND TABLE_NAME = 'plans' 
-                                          AND COLUMN_NAME = 'dashboard_color'";
-            var colorLength = await checkColorCmd.ExecuteScalarAsync();
-            if (colorLength != null && Convert.ToInt32(colorLength) < 20)
-            {
-                Console.WriteLine("📦 Migrating schema: Expanding 'dashboard_color' column...");
-                using var alterColorCmd = conn.CreateCommand();
-                alterColorCmd.CommandText = "ALTER TABLE plans MODIFY COLUMN dashboard_color VARCHAR(20) DEFAULT '#000000'";
-                await alterColorCmd.ExecuteNonQueryAsync();
-                Console.WriteLine("✓ Schema migration completed");
-            }
-            
-            // Add missing columns if they don't exist
-            var columnsToAdd = new Dictionary<string, string>
-            {
-                { "starting_point", "INT DEFAULT 0" },
-                { "measurement_unit", "VARCHAR(50) DEFAULT 'words'" },
-                { "is_daily_target", "BOOLEAN DEFAULT FALSE" },
-                { "fixed_deadline", "BOOLEAN DEFAULT TRUE" },
-                { "target_finish_date", "DATE" },
-                { "strategy_intensity", "VARCHAR(20) DEFAULT 'Average'" },
-                { "weekend_approach", "VARCHAR(20) DEFAULT 'The Usual'" },
-                { "reserve_days", "INT DEFAULT 0" },
-                { "display_view_type", "VARCHAR(20) DEFAULT 'Table'" },
-                { "week_start_day", "VARCHAR(20) DEFAULT 'Mondays'" },
-                { "grouping_type", "VARCHAR(20) DEFAULT 'Day'" },
-                { "show_historical_data", "BOOLEAN DEFAULT TRUE" },
-                { "progress_tracking_type", "VARCHAR(50) DEFAULT 'Daily Goals'" }
-            };
-            
-            foreach (var (column, definition) in columnsToAdd)
-            {
-                using var checkColCmd = conn.CreateCommand();
-                checkColCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
-                                            WHERE TABLE_SCHEMA = DATABASE() 
-                                            AND TABLE_NAME = 'plans' 
-                                            AND COLUMN_NAME = @col";
-                checkColCmd.Parameters.AddWithValue("@col", column);
-                var exists = Convert.ToInt32(await checkColCmd.ExecuteScalarAsync()) > 0;
-                
-                if (!exists)
-                {
-                    Console.WriteLine($"📦 Adding missing column: {column}");
-                    using var addColCmd = conn.CreateCommand();
-                    addColCmd.CommandText = $"ALTER TABLE plans ADD COLUMN {column} {definition}";
-                    await addColCmd.ExecuteNonQueryAsync();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"⚠️ Schema migration warning: {ex.Message}");
-            // Don't throw - allow app to continue even if migration fails
         }
     }
 }
