@@ -1,8 +1,5 @@
-[providers]
-node = "22"
-
 [phases.setup]
-nixPkgs = ["nodejs_22", "dotnet-sdk_8"]
+nixPkgs = ["nodejs", "dotnet-sdk_8"]
 
 [phases.install]
 cmds = [
