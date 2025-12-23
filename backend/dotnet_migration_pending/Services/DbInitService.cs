@@ -59,26 +59,43 @@ public class DbInitService
         
         if (resetDb)
         {
-            // Drop existing tables to ensure clean schema
-            var dropTables = new[]
-            {
-                "DROP TABLE IF EXISTS checklist_items",
-                "DROP TABLE IF EXISTS checklists",
-                "DROP TABLE IF EXISTS challenges",
-                "DROP TABLE IF EXISTS workload_rules",
-                "DROP TABLE IF EXISTS plan_days",
-                "DROP TABLE IF EXISTS plans",
-                "DROP TABLE IF EXISTS users"
-            };
+            // Disable foreign key checks to allow dropping tables in any order
+            Console.WriteLine("🗑️ RESET_DB=true - Dropping ALL existing tables...");
             
-            Console.WriteLine("🗑️ RESET_DB=true - Dropping existing tables for clean schema...");
-            foreach (var dropSql in dropTables)
+            using (var fkOffCmd = conn.CreateCommand())
             {
+                fkOffCmd.CommandText = "SET FOREIGN_KEY_CHECKS = 0";
+                await fkOffCmd.ExecuteNonQueryAsync();
+            }
+            
+            // Get all tables in the database and drop them
+            var tablesToDrop = new List<string>();
+            using (var listCmd = conn.CreateCommand())
+            {
+                listCmd.CommandText = "SHOW TABLES";
+                using var reader = await listCmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    tablesToDrop.Add(reader.GetString(0));
+                }
+            }
+            
+            foreach (var table in tablesToDrop)
+            {
+                Console.WriteLine($"  Dropping table: {table}");
                 using var dropCmd = conn.CreateCommand();
-                dropCmd.CommandText = dropSql;
+                dropCmd.CommandText = $"DROP TABLE IF EXISTS `{table}`";
                 await dropCmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("✓ Tables dropped - will be recreated with new schema");
+            
+            // Re-enable foreign key checks
+            using (var fkOnCmd = conn.CreateCommand())
+            {
+                fkOnCmd.CommandText = "SET FOREIGN_KEY_CHECKS = 1";
+                await fkOnCmd.ExecuteNonQueryAsync();
+            }
+            
+            Console.WriteLine("✓ All tables dropped - will be recreated with new schema");
         }
         
         var tables = new[]
