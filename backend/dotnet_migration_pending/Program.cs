@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WordTracker.Api.Services;
@@ -67,14 +69,63 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
+// Serve static files from frontend dist folder (for production deployment)
+// Check multiple possible paths for frontend files
+var possiblePaths = new[]
+{
+    Path.Combine(Directory.GetCurrentDirectory(), "frontend", "dist", "word-tracker-frontend", "browser"),
+    Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "frontend", "dist", "word-tracker-frontend", "browser"),
+    Path.Combine(AppContext.BaseDirectory, "frontend", "dist", "word-tracker-frontend", "browser")
+};
+
+string? frontendPath = null;
+foreach (var path in possiblePaths)
+{
+    if (Directory.Exists(path))
+    {
+        frontendPath = path;
+        break;
+    }
+}
+
+if (frontendPath != null)
+{
+    var fileProvider = new PhysicalFileProvider(frontendPath);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = fileProvider,
+        RequestPath = ""
+    });
+    
+    // Fallback to index.html for Angular routing
+    app.MapFallbackToFile("index.html", new StaticFileOptions
+    {
+        FileProvider = fileProvider
+    });
+    Console.WriteLine($"📁 Serving static files from: {frontendPath}");
+}
+else
+{
+    Console.WriteLine("⚠️  Frontend static files not found. API-only mode.");
+}
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
 
-// Get port from configuration
-var port = builder.Configuration["Kestrel:Endpoints:Http:Url"]?.Split(':').LastOrDefault()?.Split('/').FirstOrDefault() ?? "8080";
-Console.WriteLine($"🚀 Word Tracker API starting on http://localhost:{port}");
+// Map API controllers with /api prefix using route group
+app.MapGroup("api").MapControllers();
+
+// Also map root route for health check
+app.MapGet("/", () => Results.Ok(new { message = "Word Tracker API", status = "running" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
+// Use Railway's PORT environment variable or default to 8080
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var url = $"http://0.0.0.0:{port}";
+app.Urls.Add(url);
+
+Console.WriteLine($"🚀 Word Tracker API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
 Console.WriteLine($"🔐 JWT Secret: {(secret.Length > 20 ? secret.Substring(0, 20) + "..." : secret)}");
 

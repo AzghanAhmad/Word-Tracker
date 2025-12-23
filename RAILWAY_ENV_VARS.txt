@@ -1,0 +1,21 @@
+RAILWAY ENVIRONMENT VARIABLES
+==============================
+
+Set these environment variables in your Railway project dashboard:
+
+1. DB_CONNECTION
+   Value: Server=shuttle.proxy.rlwy.net;Port=36666;Database=railway;User=root;Password=WiGhctjnxmSBDWukfTiCLzvLGrXRmQdt;SslMode=Required;
+
+2. JWT_SECRET
+   Value: (Generate a secure random string, at least 32 characters)
+   Example: You can generate one using: openssl rand -base64 32
+   Or use an online generator for a secure random string
+
+HOW TO SET IN RAILWAY:
+1. Go to your Railway project dashboard
+2. Click on your service
+3. Go to the "Variables" tab
+4. Click "New Variable"
+5. Add each variable name and value above
+6. Redeploy your service
+
