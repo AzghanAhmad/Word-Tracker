@@ -74,16 +74,20 @@ if (app.Environment.IsDevelopment())
 var possiblePaths = new[]
 {
     Path.Combine(Directory.GetCurrentDirectory(), "frontend", "dist", "word-tracker-frontend", "browser"),
-    Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "frontend", "dist", "word-tracker-frontend", "browser"),
-    Path.Combine(AppContext.BaseDirectory, "frontend", "dist", "word-tracker-frontend", "browser")
+    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+    Path.Combine(AppContext.BaseDirectory, "frontend", "dist", "word-tracker-frontend", "browser"),
+    Path.Combine(AppContext.BaseDirectory, "wwwroot"),
+    "/app/frontend/dist/word-tracker-frontend/browser"
 };
 
 string? frontendPath = null;
 foreach (var path in possiblePaths)
 {
+    Console.WriteLine($"Checking frontend path: {path}");
     if (Directory.Exists(path))
     {
         frontendPath = path;
+        Console.WriteLine($"✅ Found frontend at: {path}");
         break;
     }
 }
@@ -91,22 +95,26 @@ foreach (var path in possiblePaths)
 if (frontendPath != null)
 {
     var fileProvider = new PhysicalFileProvider(frontendPath);
+    
+    // Use default files (index.html) for root path
+    app.UseDefaultFiles(new DefaultFilesOptions
+    {
+        FileProvider = fileProvider
+    });
+    
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = fileProvider,
         RequestPath = ""
     });
     
-    // Fallback to index.html for Angular routing
-    app.MapFallbackToFile("index.html", new StaticFileOptions
-    {
-        FileProvider = fileProvider
-    });
     Console.WriteLine($"📁 Serving static files from: {frontendPath}");
 }
 else
 {
     Console.WriteLine("⚠️  Frontend static files not found. API-only mode.");
+    Console.WriteLine($"Current directory: {Directory.GetCurrentDirectory()}");
+    Console.WriteLine($"Base directory: {AppContext.BaseDirectory}");
 }
 
 app.UseCors();
@@ -116,9 +124,36 @@ app.UseAuthorization();
 // Map API controllers with /api prefix using route group
 app.MapGroup("api").MapControllers();
 
-// Also map root route for health check
-app.MapGet("/", () => Results.Ok(new { message = "Word Tracker API", status = "running" }));
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+// Health check endpoint (doesn't conflict with frontend)
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
+// Fallback to index.html for Angular routing (SPA)
+if (frontendPath != null)
+{
+    app.MapFallback(async context =>
+    {
+        // Don't fallback for API routes
+        if (context.Request.Path.StartsWithSegments("/api"))
+        {
+            context.Response.StatusCode = 404;
+            await context.Response.WriteAsJsonAsync(new { error = "API endpoint not found" });
+            return;
+        }
+        
+        // Serve index.html for all other routes (Angular routing)
+        var indexPath = Path.Combine(frontendPath, "index.html");
+        if (File.Exists(indexPath))
+        {
+            context.Response.ContentType = "text/html";
+            await context.Response.SendFileAsync(indexPath);
+        }
+        else
+        {
+            context.Response.StatusCode = 404;
+            await context.Response.WriteAsync("Frontend not found");
+        }
+    });
+}
 
 // Use Railway's PORT environment variable or default to 8080
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
