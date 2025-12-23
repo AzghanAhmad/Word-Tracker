@@ -1,5 +1,9 @@
+[variables]
+NODE_VERSION = "22"
+NIXPACKS_NODE_VERSION = "22"
+
 [phases.setup]
-nixPkgs = ["nodejs", "dotnet-sdk_8"]
+nixPkgs = ["nodejs-22_x", "dotnet-sdk_8"]
 
 [phases.install]
 cmds = [
