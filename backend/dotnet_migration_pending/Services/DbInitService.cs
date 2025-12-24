@@ -164,13 +164,27 @@ public class DbInitService
                 user_id INT NOT NULL,
                 title VARCHAR(255) NOT NULL,
                 description TEXT,
-                type VARCHAR(50) NOT NULL,
+                type VARCHAR(50) NOT NULL DEFAULT 'word_count',
                 goal_count INT NOT NULL,
-                duration_days INT NOT NULL,
+                duration_days INT NOT NULL DEFAULT 30,
                 start_date DATE NOT NULL,
+                end_date DATE,
+                is_public BOOLEAN DEFAULT TRUE,
+                invite_code VARCHAR(10),
                 status ENUM('Active', 'Completed', 'Failed') DEFAULT 'Active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )",
+            
+            @"CREATE TABLE IF NOT EXISTS challenge_participants (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                challenge_id INT NOT NULL,
+                user_id INT NOT NULL,
+                current_progress INT DEFAULT 0,
+                joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_participant (challenge_id, user_id)
             )"
         };
 
@@ -226,8 +240,8 @@ public class DbInitService
                 Console.WriteLine("✓ Schema migration completed");
             }
             
-            // Add missing columns if they don't exist
-            var columnsToAdd = new Dictionary<string, string>
+            // Add missing columns to plans table if they don't exist
+            var plansColumnsToAdd = new Dictionary<string, string>
             {
                 { "starting_point", "INT DEFAULT 0" },
                 { "measurement_unit", "VARCHAR(50) DEFAULT 'words'" },
@@ -244,29 +258,100 @@ public class DbInitService
                 { "progress_tracking_type", "VARCHAR(50) DEFAULT 'Daily Goals'" }
             };
             
-            foreach (var (column, definition) in columnsToAdd)
+            foreach (var (column, definition) in plansColumnsToAdd)
             {
-                using var checkColCmd = conn.CreateCommand();
-                checkColCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
-                                            WHERE TABLE_SCHEMA = DATABASE() 
-                                            AND TABLE_NAME = 'plans' 
-                                            AND COLUMN_NAME = @col";
-                checkColCmd.Parameters.AddWithValue("@col", column);
-                var exists = Convert.ToInt32(await checkColCmd.ExecuteScalarAsync()) > 0;
-                
-                if (!exists)
-                {
-                    Console.WriteLine($"📦 Adding missing column: {column}");
-                    using var addColCmd = conn.CreateCommand();
-                    addColCmd.CommandText = $"ALTER TABLE plans ADD COLUMN {column} {definition}";
-                    await addColCmd.ExecuteNonQueryAsync();
-                }
+                await AddColumnIfNotExistsAsync(conn, "plans", column, definition);
             }
+            
+            // Add missing columns to challenges table if they don't exist
+            var challengesColumnsToAdd = new Dictionary<string, string>
+            {
+                { "end_date", "DATE" },
+                { "is_public", "BOOLEAN DEFAULT TRUE" },
+                { "invite_code", "VARCHAR(10)" }
+            };
+            
+            foreach (var (column, definition) in challengesColumnsToAdd)
+            {
+                await AddColumnIfNotExistsAsync(conn, "challenges", column, definition);
+            }
+            
+            // Create challenge_participants table if it doesn't exist
+            await CreateChallengeParticipantsTableAsync(conn);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"⚠️ Schema migration warning: {ex.Message}");
             // Don't throw - allow app to continue even if migration fails
+        }
+    }
+    
+    /// <summary>
+    /// Add a column to a table if it doesn't already exist
+    /// </summary>
+    private async Task AddColumnIfNotExistsAsync(MySqlConnection conn, string table, string column, string definition)
+    {
+        try
+        {
+            using var checkColCmd = conn.CreateCommand();
+            checkColCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
+                                        WHERE TABLE_SCHEMA = DATABASE() 
+                                        AND TABLE_NAME = @table 
+                                        AND COLUMN_NAME = @col";
+            checkColCmd.Parameters.AddWithValue("@table", table);
+            checkColCmd.Parameters.AddWithValue("@col", column);
+            var exists = Convert.ToInt32(await checkColCmd.ExecuteScalarAsync()) > 0;
+            
+            if (!exists)
+            {
+                Console.WriteLine($"📦 Adding missing column: {table}.{column}");
+                using var addColCmd = conn.CreateCommand();
+                addColCmd.CommandText = $"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}";
+                await addColCmd.ExecuteNonQueryAsync();
+                Console.WriteLine($"✓ Added column {table}.{column}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Could not add column {table}.{column}: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Create challenge_participants table if it doesn't exist
+    /// </summary>
+    private async Task CreateChallengeParticipantsTableAsync(MySqlConnection conn)
+    {
+        try
+        {
+            // Check if table exists
+            using var checkCmd = conn.CreateCommand();
+            checkCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.TABLES 
+                                     WHERE TABLE_SCHEMA = DATABASE() 
+                                     AND TABLE_NAME = 'challenge_participants'";
+            var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+            
+            if (!exists)
+            {
+                Console.WriteLine("📦 Creating challenge_participants table...");
+                using var createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"CREATE TABLE challenge_participants (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    challenge_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    current_progress INT DEFAULT 0,
+                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE KEY unique_participant (challenge_id, user_id)
+                )";
+                await createCmd.ExecuteNonQueryAsync();
+                Console.WriteLine("✓ Created challenge_participants table");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Could not create challenge_participants table: {ex.Message}");
         }
     }
 }
