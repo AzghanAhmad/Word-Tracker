@@ -2,18 +2,28 @@
     <!-- Header Section -->
     <div class="challenge-header">
         <div class="header-content">
-            <span class="status-badge" [ngClass]="challenge.status | lowercase">{{ challenge.status }}</span>
-            <h1>{{ challenge.name }}</h1>
-            <p class="description">{{ challenge.description }}</p>
+            <span class="status-badge" [ngClass]="challenge.status?.toLowerCase() || 'active'">
+                {{ challenge.status || 'Active' }}
+            </span>
+            <h1>{{ challenge.name || challenge.title }}</h1>
+            <p class="description">{{ challenge.description || 'No description provided' }}</p>
 
             <div class="meta-grid">
                 <div class="meta-item">
                     <i class="fas fa-bullseye"></i>
-                    <span>Goal: {{ challenge.goal_amount | number }} words ({{ challenge.goal_type }})</span>
+                    <span>Goal: {{ challenge.goal_amount | number }} words</span>
                 </div>
                 <div class="meta-item">
                     <i class="fas fa-calendar-alt"></i>
-                    <span>{{ challenge.start_date | date }} - {{ challenge.end_date | date }}</span>
+                    <span>{{ challenge.start_date | date:'mediumDate' }} - {{ challenge.end_date | date:'mediumDate' }}</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ challenge.days_remaining }} days remaining</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fas fa-users"></i>
+                    <span>{{ participants.length }} participants</span>
                 </div>
                 <div class="meta-item">
                     <i class="fas" [ngClass]="challenge.is_public ? 'fa-globe' : 'fa-lock'"></i>
@@ -21,8 +31,8 @@
                 </div>
             </div>
 
-            <!-- Invite Code (Only for Private or Creator) -->
-            <div class="invite-section" *ngIf="!challenge.is_public || challenge.invite_code">
+            <!-- Invite Code -->
+            <div class="invite-section" *ngIf="challenge.invite_code">
                 <p>Invite Code: <span class="code">{{ challenge.invite_code }}</span></p>
                 <button class="btn-icon" (click)="copyCode()" title="Copy Code">
                     <i class="fas fa-copy"></i>
@@ -47,12 +57,17 @@
             </div>
             <p class="progress-text">{{ userProgress | number }} / {{ challenge.goal_amount | number }} words</p>
 
-            <!-- Log Words -->
-            <div class="log-words-form" *ngIf="challenge.status === 'Ongoing'">
-                <input type="number" [(ngModel)]="todayWords" placeholder="Add Today's Words" min="1">
-                <button class="btn-primary" (click)="addProgress()" [disabled]="!todayWords || todayWords <= 0">
-                    <i class="fas fa-plus"></i> Add
-                </button>
+            <!-- Update Progress Form -->
+            <div class="log-words-form">
+                <label>Update your total word count:</label>
+                <div class="input-group">
+                    <input type="number" [(ngModel)]="newProgress" [placeholder]="'Current: ' + userProgress" min="0">
+                    <button class="btn-primary" (click)="updateProgress()" 
+                        [disabled]="newProgress === null || newProgress < 0 || isUpdatingProgress">
+                        <i class="fas" [ngClass]="isUpdatingProgress ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                        {{ isUpdatingProgress ? 'Saving...' : 'Update' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -61,39 +76,66 @@
         <!-- Leaderboard -->
         <div class="section leaderboard">
             <h3><i class="fas fa-trophy"></i> Leaderboard</h3>
-            <div class="leaderboard-list">
+            <div class="leaderboard-list" *ngIf="participants.length > 0; else noParticipants">
                 <div class="participant-row" *ngFor="let p of participants; let i = index"
-                    [class.current-user]="p.user_id == currentUserId">
-                    <div class="rank">{{ i + 1 }}</div>
+                    [class.current-user]="isCurrentUser(p)"
+                    [class.top-three]="i < 3">
+                    <div class="rank" [class.gold]="i === 0" [class.silver]="i === 1" [class.bronze]="i === 2">
+                        <span *ngIf="i === 0">🥇</span>
+                        <span *ngIf="i === 1">🥈</span>
+                        <span *ngIf="i === 2">🥉</span>
+                        <span *ngIf="i > 2">{{ i + 1 }}</span>
+                    </div>
                     <div class="info">
                         <span class="name">{{ p.username }}</span>
-                        <!-- <span class="joined-date">Joined {{ p.joined_at | date }}</span> -->
+                        <span class="you-badge" *ngIf="isCurrentUser(p)">(You)</span>
                     </div>
                     <div class="score">
-                        {{ p.current_progress | number }} words
+                        <span class="word-count">{{ p.current_progress | number }}</span>
+                        <span class="unit">words</span>
+                    </div>
+                    <div class="progress-mini">
+                        <div class="progress-bar" [style.width.%]="getPercent(p.current_progress, challenge.goal_amount)"></div>
                     </div>
                 </div>
             </div>
+            <ng-template #noParticipants>
+                <div class="empty-state">No participants yet. Be the first!</div>
+            </ng-template>
         </div>
 
-        <!-- Recent Logs / History -->
-        <div class="section history">
-            <h3><i class="fas fa-history"></i> Your Daily Log</h3>
-            <div class="log-list" *ngIf="userLogs && userLogs.length > 0; else noLogs">
-                <div class="log-item" *ngFor="let log of userLogs">
-                    <span class="date">{{ log.log_date | date:'mediumDate' }}</span>
-                    <span class="count">+{{ log.word_count | number }} words</span>
+        <!-- Challenge Info -->
+        <div class="section info-panel">
+            <h3><i class="fas fa-info-circle"></i> Challenge Info</h3>
+            <div class="info-list">
+                <div class="info-item">
+                    <span class="label">Type</span>
+                    <span class="value">{{ challenge.type || 'Word Count' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Duration</span>
+                    <span class="value">{{ challenge.duration_days || 30 }} days</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Created</span>
+                    <span class="value">{{ challenge.created_at | date:'mediumDate' }}</span>
+                </div>
+                <div class="info-item" *ngIf="challenge.is_joined">
+                    <span class="label">Status</span>
+                    <span class="value joined">✓ Joined</span>
                 </div>
             </div>
-            <ng-template #noLogs>
-                <div class="empty-logs">No activity yet. Start writing!</div>
-            </ng-template>
         </div>
     </div>
 
     <!-- Actions -->
     <div class="actions-footer">
-        <a routerLink="/challenges" class="btn-secondary">Back to Challenges</a>
+        <a routerLink="/challenges" class="btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Challenges
+        </a>
+        <button class="btn-danger" (click)="leaveChallenge()" *ngIf="challenge.is_joined">
+            <i class="fas fa-sign-out-alt"></i> Leave Challenge
+        </button>
     </div>
 
 </div>

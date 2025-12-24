@@ -1,0 +1,176 @@
+$hero-bg: #eef4ff;
+$primary-blue: #007bff;
+$dark-blue: #0056d2;
+$text-color: #333;
+
+.dashboard-home {
+    padding: 1rem;
+    /* Mobile first */
+    margin: 0 auto;
+    animation: fadeIn 0.4s ease-out;
+
+    .hero-section {
+        background: linear-gradient(135deg, $hero-bg 0%, #e0ecff 100%);
+        border-radius: 12px;
+        padding: 2.5rem 1.5rem;
+        /* Mobile first */
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        position: relative;
+        overflow: hidden;
+
+        /* Decorative element */
+        &::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 123, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+
+            h1 {
+                font-size: clamp(1.75rem, 5vw, 2.5rem);
+                /* Fluid typography */
+                font-weight: 700;
+                color: #1c2e4a;
+                margin-bottom: 1rem;
+                line-height: 1.2;
+                max-width: 700px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .subheading {
+                font-size: clamp(0.938rem, 2.5vw, 1.125rem);
+                color: #555;
+                margin-bottom: 2rem;
+                line-height: 1.6;
+                max-width: 600px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .cta-button {
+                background: linear-gradient(135deg, $primary-blue, $dark-blue);
+                color: white;
+                border: none;
+                padding: 1rem 2rem;
+                /* Mobile friendly */
+                font-size: 1rem;
+                font-weight: 600;
+                border-radius: 50px;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
+                display: inline-block;
+                min-height: 48px;
+                /* Touch target */
+                width: auto;
+                max-width: 100%;
+
+                &:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 8px 20px rgba(0, 123, 255, 0.4);
+                }
+
+                &:active {
+                    transform: translateY(-1px);
+                }
+            }
+        }
+    }
+}
+
+/* Small phones landscape (480px+) */
+@media (min-width: 480px) {
+    .dashboard-home {
+        padding: 1.5rem;
+
+        .hero-section {
+            padding: 3rem 2rem;
+        }
+    }
+}
+
+/* Tablets (600px+) */
+@media (min-width: 600px) {
+    .dashboard-home {
+        padding: 2rem;
+
+        .hero-section {
+            padding: 3.5rem 2.5rem;
+            margin-bottom: 2.5rem;
+            border-radius: 16px;
+
+            .hero-content {
+                .cta-button {
+                    padding: 1.125rem 2.5rem;
+                    font-size: 1.0625rem;
+                }
+            }
+        }
+    }
+}
+
+/* Tablets landscape (768px+) */
+@media (min-width: 768px) {
+    .dashboard-home {
+        padding: 2rem;
+
+        .hero-section {
+            padding: 4rem 3rem;
+            margin-bottom: 3rem;
+
+            .hero-content {
+                .cta-button {
+                    padding: 1.125rem 3rem;
+                    font-size: 1.125rem;
+                }
+            }
+        }
+    }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+    .dashboard-home {
+        padding: 2.5rem;
+
+        .hero-section {
+            padding: 4.5rem 3rem;
+        }
+    }
+}
+
+/* Large desktop (1440px+) */
+@media (min-width: 1440px) {
+    .dashboard-home {
+        width: 100%;
+        padding: 3rem;
+
+        .hero-section {
+            padding: 5rem 4rem;
+        }
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

@@ -1,0 +1,107 @@
+<div class="help-page">
+    <div class="header-section">
+        <h1>How can we help you today?</h1>
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search for answers, articles, or topics...">
+        </div>
+    </div>
+
+    <div class="content-container">
+        <!-- Quick Links Grid -->
+        <div class="topics-grid">
+            <div class="topic-card" (click)="scrollTo('getting-started')">
+                <div class="icon-box blue">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3>Getting Started</h3>
+                <p>Learn the basics of setting up your first plan.</p>
+            </div>
+
+            <div class="topic-card" (click)="scrollTo('tracking')">
+                <div class="icon-box purple">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Tracking Progress</h3>
+                <p>How to log words, edit history, and view stats.</p>
+            </div>
+
+            <div class="topic-card" (click)="scrollTo('account')">
+                <div class="icon-box green">
+                    <i class="fas fa-user-cog"></i>
+                </div>
+                <h3>Account Settings</h3>
+                <p>Manage your profile, password, and preferences.</p>
+            </div>
+
+            <div class="topic-card" (click)="scrollTo('community')">
+                <div class="icon-box orange">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>Community</h3>
+                <p>Join challenges and connect with other writers.</p>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="faq-section" id="getting-started">
+            <h2>Frequently Asked Questions</h2>
+
+            <div class="faq-category">
+                <h3>🚀 Getting Started</h3>
+                <div class="faq-item">
+                    <div class="question" (click)="toggleFaq(0)">
+                        <span>How do I create a new writing plan?</span>
+                        <i class="fas" [class.fa-chevron-down]="!faqs[0]" [class.fa-chevron-up]="faqs[0]"></i>
+                    </div>
+                    <div class="answer" *ngIf="faqs[0]">
+                        <p>To create a plan, navigate to the "Create A Plan" page from the sidebar. Enter your project
+                            name, target word count (or time goal), and select your start and end dates. You can also
+                            choose a logging strategy (Steady, Rising, etc.) to customize your daily targets.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="question" (click)="toggleFaq(1)">
+                        <span>What is the difference between specific strategies?</span>
+                        <i class="fas" [class.fa-chevron-down]="!faqs[1]" [class.fa-chevron-up]="faqs[1]"></i>
+                    </div>
+                    <div class="answer" *ngIf="faqs[1]">
+                        <p><strong>Steady:</strong> Distributes your goal evenly across all days.<br>
+                            <strong>Rising:</strong> Starts with a lower daily goal and increases gradually.<br>
+                            <strong>Random:</strong> Varies the daily goal to keep things unpredictable.<br>
+                            <strong>Whichever:</strong> Allows you to write however much you want, recalculating daily.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-category" id="tracking">
+                <h3>📊 Tracking & Logs</h3>
+                <div class="faq-item">
+                    <div class="question" (click)="toggleFaq(2)">
+                        <span>How do I edit a previous day's log?</span>
+                        <i class="fas" [class.fa-chevron-down]="!faqs[2]" [class.fa-chevron-up]="faqs[2]"></i>
+                    </div>
+                    <div class="answer" *ngIf="faqs[2]">
+                        <p>Go to your Plan Detail page (click on a plan name). In the Calendar view below the chart,
+                            click on any past date. A popup will appear allowing you to edit the word count for that
+                            specific day.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Support -->
+        <div class="contact-banner">
+            <div class="contact-content">
+                <h2>Still need help?</h2>
+                <p>Our support team is available to assist you with any technical issues or questions.</p>
+                <button class="btn-contact">Contact Support</button>
+            </div>
+            <div class="contact-image">
+                <i class="fas fa-headset"></i>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,162 @@
+<div class="settings-container">
+    <!-- Page Title -->
+    <div class="page-header">
+        <h1>Your Account Details</h1>
+        <p class="subtitle">Site-wide account information and settings</p>
+    </div>
+
+    <!-- Section 1: USERNAME -->
+    <div class="settings-card">
+        <div class="card-header">
+            <h2>USERNAME</h2>
+        </div>
+        <div class="card-content">
+            <div class="setting-row">
+                <div class="setting-label">USERNAME</div>
+                <div class="setting-value">
+                    <p class="value-text">Your username is <strong>{{ username }}</strong>.</p>
+                    <p class="note-text">Note that usernames are case sensitive.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: EMAIL ADDRESS -->
+    <div class="settings-card">
+        <div class="card-header">
+            <h2>EMAIL ADDRESS</h2>
+        </div>
+        <div class="card-content">
+            <div class="setting-row">
+                <div class="setting-label">EMAIL ADDRESS</div>
+                <div class="setting-value">
+                    <p class="value-text">Your email is <strong>{{ email }}</strong>.</p>
+                    <p class="note-text">Password reset requests and website announcements will be sent here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: PASSWORD -->
+    <div class="settings-card">
+        <div class="card-header">
+            <h2>PASSWORD</h2>
+        </div>
+        <div class="card-content">
+            <div class="setting-row">
+                <div class="setting-label">PASSWORD</div>
+                <div class="setting-value">
+                    <a href="javascript:void(0)" class="reset-link" (click)="resetPassword()">Reset your password</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Section 5: PLANS & CHALLENGES -->
+    <div class="settings-card">
+        <div class="card-header">
+            <h2>PLANS & CHALLENGES</h2>
+        </div>
+        <div class="card-content">
+            <div class="setting-row">
+                <div class="setting-label">PLANS & CHALLENGES</div>
+                <div class="setting-value">
+                    <p class="value-text">You're tracking <strong>{{ activePlansCount }}</strong> plan{{
+                        activePlansCount !== 1 ? 's' : '' }} on Word Tracker. <a href="javascript:void(0)"
+                            class="inline-link" (click)="viewDashboard()">See Your Dashboard</a>.</p>
+                    <p class="note-text">You can track unlimited plans and projects on Word Tracker.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 6: TEMPLATES -->
+    <div class="settings-card">
+        <div class="card-header">
+            <h2>TEMPLATES</h2>
+        </div>
+        <div class="card-content">
+            <div class="setting-row">
+                <div class="setting-label">TEMPLATES</div>
+                <div class="setting-value">
+                    <p class="value-text">You're tracking <strong>{{ templatesCount }}</strong> templates on Word
+                        Tracker.</p>
+                    <p class="note-text">You can track up to 5 templates on Word Tracker. Need more? Checkout <a
+                            href="#" class="inline-link">Word Tracker Premium</a> or <a href="#"
+                            class="inline-link">contact us</a>.</p>
+                    <div class="button-group">
+                        <button class="btn-primary" (click)="createPlanTemplate()">Create a Plan Template</button>
+                        <button class="btn-primary" (click)="createChecklistTemplate()">Create a Checklist
+                            Template</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 7: ACCOUNT CLOSURE -->
+    <div class="settings-card">
+        <div class="card-header">
+            <h2>ACCOUNT CLOSURE</h2>
+        </div>
+        <div class="card-content">
+            <div class="setting-row">
+                <div class="setting-label">ACCOUNT CLOSURE</div>
+                <div class="setting-value">
+                    <p class="value-text danger-text">This action will delete your account and any associated plan data
+                        permanently.</p>
+                    <button class="btn-danger" (click)="deleteAccount()">Permanently Delete Your Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Reset Modal -->
+    <div class="modal-overlay" *ngIf="showPasswordModal" (click)="closePasswordModal()">
+        <div class="modal-dialog" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Change Password</h2>
+                <button class="close-btn" (click)="closePasswordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert-error" *ngIf="passwordError">
+                    <i class="fas fa-exclamation-circle"></i> {{ passwordError }}
+                </div>
+
+                <div class="form-group">
+                    <label>Current Password</label>
+                    <input type="password" [(ngModel)]="currentPassword" placeholder="Enter your current password"
+                        class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" [(ngModel)]="newPassword"
+                        placeholder="Enter new password (min. 6 characters)" class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" [(ngModel)]="confirmPassword" placeholder="Re-enter new password"
+                        class="form-input">
+                </div>
+
+                <p class="helper-text">
+                    <i class="fas fa-info-circle"></i>
+                    Your password must be at least 6 characters long.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" (click)="closePasswordModal()" [disabled]="isSubmittingPassword">
+                    Cancel
+                </button>
+                <button class="btn-primary" (click)="submitPasswordChange()" [disabled]="isSubmittingPassword">
+                    <i class="fas fa-spinner fa-spin" *ngIf="isSubmittingPassword"></i>
+                    {{ isSubmittingPassword ? 'Changing...' : 'Change Password' }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,129 @@
+<div class="details-container" *ngIf="!isLoading && plan">
+    <div class="breadcrumb">
+        <a routerLink="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        <span>/</span>
+        <span class="current">{{ plan.plan_name }}</span>
+    </div>
+
+    <!-- Header Section -->
+    <div class="details-header">
+        <div class="header-info">
+            <div class="status-badge" [ngClass]="{
+                'status-active': plan.status === 'In Progress',
+                'status-completed': plan.status === 'Completed',
+                'status-paused': plan.status === 'On Hold'
+            }">{{ plan.status }}</div>
+            <h1>{{ plan.plan_name }}</h1>
+            <div class="meta-row">
+                <span><i class="fas fa-book"></i> {{ plan.content_type || 'Novel' }}</span>
+                <span><i class="fas fa-calendar-alt"></i> {{ getFormattedDate(plan.start_date) }} - {{
+                    getFormattedDate(plan.end_date) }}</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a [routerLink]="['/calendar']" [queryParams]="{planId: plan.id}" class="btn-calendar">
+                <i class="fas fa-calendar"></i> View Calendar
+            </a>
+            <button class="btn-delete" (click)="deletePlan()">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <!-- Main Progress Column -->
+        <div class="main-column">
+            <!-- Progress Card -->
+            <div class="card progress-card">
+                <h2>Progress</h2>
+                <div class="progress-circle-container">
+                    <svg class="progress-ring" width="160" height="160">
+                        <circle class="progress-ring__circle-bg" stroke="#f1f5f9" stroke-width="12" fill="transparent"
+                            r="70" cx="80" cy="80" />
+                        <circle class="progress-ring__circle" [attr.stroke-dasharray]="440"
+                            [attr.stroke-dashoffset]="440 - (440 * plan.progress) / 100"
+                            [style.stroke]="plan.color_code || '#667eea'" stroke-width="12" fill="transparent" r="70"
+                            cx="80" cy="80" />
+                    </svg>
+                    <div class="progress-text">
+                        <span class="percent">{{ plan.progress }}%</span>
+                        <span class="label">Complete</span>
+                    </div>
+                </div>
+
+                <div class="progress-stats">
+                    <div class="stat-item">
+                        <span class="value">{{ plan.completed_amount | number }}</span>
+                        <span class="label">Words Written</span>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="stat-item">
+                        <span class="value">{{ plan.target_amount | number }}</span>
+                        <span class="label">Target Goal</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card activity-card">
+                <h2>Recent Sessions</h2>
+                <div class="log-list">
+                    <div class="log-item" *ngFor="let log of mockLogs">
+                        <div class="log-icon">
+                            <i class="fas fa-pen"></i>
+                        </div>
+                        <div class="log-info">
+                            <span class="log-date">{{ log.date }}</span>
+                            <span class="log-duration">{{ log.duration }} mins</span>
+                        </div>
+                        <div class="log-amount">
+                            +{{ log.words }} words
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Column (Stats & Info) -->
+        <div class="sidebar-column">
+            <div class="card stat-summary-card">
+                <div class="summary-item">
+                    <div class="icon-box" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <span class="label">Days Remaining</span>
+                        <span class="value">{{ stats.daysRemaining }}</span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="icon-box" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <div>
+                        <span class="label">Daily Target</span>
+                        <span class="value">{{ stats.wordsPerDay | number }} words</span>
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="icon-box" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div>
+                        <span class="label">Projected Finish</span>
+                        <span class="value">{{ getFormattedDate(plan.end_date) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card quote-card">
+                <i class="fas fa-quote-left quote-icon"></i>
+                <p>"The scariest moment is always just before you start."</p>
+                <span class="author">- Stephen King</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<app-content-loader *ngIf="isLoading"></app-content-loader>

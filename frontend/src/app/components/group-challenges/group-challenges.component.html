@@ -62,18 +62,40 @@
         </div>
     </div>
 
+    <!-- View Mode Toggle -->
+    <div class="view-toggle">
+        <button class="toggle-btn" [class.active]="viewMode === 'public'" (click)="setViewMode('public')">
+            <i class="fas fa-globe"></i> Browse Public Challenges
+        </button>
+        <button class="toggle-btn" [class.active]="viewMode === 'my'" (click)="setViewMode('my')">
+            <i class="fas fa-user"></i> My Challenges
+        </button>
+    </div>
+
     <!-- Active Challenges Section -->
     <app-content-loader *ngIf="loading"></app-content-loader>
 
     <div class="challenges-list" *ngIf="!loading && activeChallenges.length > 0">
-        <h2 class="section-title">Active Challenges</h2>
+        <h2 class="section-title">{{ viewMode === 'my' ? 'My Challenges' : 'Public Challenges' }}</h2>
         <div class="challenge-grid">
             <div class="challenge-card" *ngFor="let challenge of activeChallenges">
                 <div class="challenge-header">
-                    <h3>{{ challenge.name }}</h3>
-                    <span class="challenge-badge">{{ challenge.participants }} participants</span>
+                    <h3>{{ challenge.name || challenge.title }}</h3>
+                    <span class="challenge-badge">{{ challenge.participants || 0 }} participants</span>
                 </div>
-                <p class="challenge-description">{{ challenge.description }}</p>
+                <p class="challenge-description">{{ challenge.description || 'No description' }}</p>
+                
+                <!-- Progress bar for joined challenges -->
+                <div class="progress-section" *ngIf="challenge.is_joined == 1 && challenge.my_progress !== undefined">
+                    <div class="progress-label">
+                        <span>Your Progress</span>
+                        <span>{{ challenge.my_progress | number }} / {{ challenge.goal_amount | number }} words</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" [style.width.%]="getProgressPercentage(challenge)"></div>
+                    </div>
+                </div>
+                
                 <div class="challenge-stats">
                     <div class="stat">
                         <span class="stat-label">Goal</span>
@@ -83,15 +105,22 @@
                         <span class="stat-label">Ends</span>
                         <span class="stat-value">{{ challenge.end_date | date:'MMM d' }}</span>
                     </div>
+                    <div class="stat" *ngIf="challenge.type">
+                        <span class="stat-label">Type</span>
+                        <span class="stat-value">{{ challenge.type }}</span>
+                    </div>
                 </div>
 
                 <div class="card-actions">
                     <button *ngIf="challenge.is_joined == 1" class="btn-dashboard"
                         [routerLink]="['/challenge', challenge.id]">
-                        Dashboard
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </button>
+                    <button *ngIf="challenge.is_joined == 1" class="btn-leave" (click)="leaveChallenge(challenge.id)">
+                        <i class="fas fa-sign-out-alt"></i> Leave
                     </button>
                     <button *ngIf="challenge.is_joined != 1" class="btn-join" (click)="joinChallenge(challenge.id)">
-                        Join Challenge
+                        <i class="fas fa-user-plus"></i> Join Challenge
                     </button>
                 </div>
             </div>
@@ -117,12 +146,20 @@
     <!-- Empty State -->
     <div class="empty-state" *ngIf="!loading && activeChallenges.length === 0">
         <div class="empty-icon">🌟</div>
-        <h3>No Active Challenges Yet</h3>
-        <p>Be the first to create a challenge and invite your writing community!</p>
-        <button class="btn btn-create-large" (click)="openModal()">
-            <i class="fas fa-plus"></i>
-            Create Your First Challenge
-        </button>
+        <h3 *ngIf="viewMode === 'public'">No Public Challenges Yet</h3>
+        <h3 *ngIf="viewMode === 'my'">You Haven't Joined Any Challenges</h3>
+        <p *ngIf="viewMode === 'public'">Be the first to create a challenge and invite your writing community!</p>
+        <p *ngIf="viewMode === 'my'">Browse public challenges or create your own to get started!</p>
+        <div class="empty-actions">
+            <button class="btn btn-create-large" (click)="openModal()">
+                <i class="fas fa-plus"></i>
+                Create a Challenge
+            </button>
+            <button *ngIf="viewMode === 'my'" class="btn btn-browse" (click)="setViewMode('public')">
+                <i class="fas fa-search"></i>
+                Browse Public Challenges
+            </button>
+        </div>
     </div>
 
     <!-- Modal -->

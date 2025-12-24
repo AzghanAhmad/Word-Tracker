@@ -453,9 +453,98 @@
         }
     }
 
+    // Info Panel
+    .info-panel {
+        .info-list {
+            .info-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem;
+                border-bottom: 1px solid #f1f5f9;
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                .label {
+                    color: #64748b;
+                    font-weight: 500;
+                    font-size: 0.9rem;
+                }
+
+                .value {
+                    color: #1e293b;
+                    font-weight: 700;
+
+                    &.joined {
+                        color: #10b981;
+                    }
+                }
+            }
+        }
+    }
+
+    // Empty state
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    // You badge
+    .you-badge {
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.15rem 0.5rem;
+        border-radius: 99px;
+        margin-left: 0.5rem;
+    }
+
+    // Progress mini bar
+    .progress-mini {
+        flex: 1;
+        max-width: 100px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-left: 1rem;
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+    }
+
+    // Log words form label
+    .log-words-form {
+        label {
+            display: block;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            width: 100%;
+        }
+    }
+
     // 4. Footer
     .actions-footer {
         padding-top: 1rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
 
         .btn-secondary {
             display: inline-flex;
@@ -474,6 +563,25 @@
                 background: #f1f5f9;
                 color: #1e293b;
                 border-color: #94a3b8;
+            }
+        }
+
+        .btn-danger {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.75rem 1.5rem;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            color: #dc2626;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &:hover {
+                background: #fee2e2;
+                border-color: #f87171;
             }
         }
     }

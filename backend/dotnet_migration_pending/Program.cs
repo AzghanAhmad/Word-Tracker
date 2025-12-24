@@ -9,13 +9,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Get configuration - environment variables take precedence over appsettings.json
+// Get configuration with environment variable PRIORITY (for Railway deployment)
+// Environment variables take precedence over appsettings.json
 var secret = Environment.GetEnvironmentVariable("JWT_SECRET") 
     ?? builder.Configuration["Jwt:Secret"] 
     ?? "dev_secret";
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION") 
     ?? builder.Configuration.GetConnectionString("Default") 
     ?? "";
+
+Console.WriteLine($"🔍 DB_CONNECTION env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DB_CONNECTION"))}");
+Console.WriteLine($"🔍 JWT_SECRET env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET"))}");
 
 // Extract database name from connection string for initialization
 var dbName = "word_tracker";
@@ -28,15 +32,26 @@ if (connectionString.Contains("Database="))
 
 
 // Initialize database on startup
-try
+if (string.IsNullOrEmpty(connectionString))
 {
-    var dbInit = new DbInitService(connectionString, dbName);
-    dbInit.InitializeDatabaseAsync().GetAwaiter().GetResult();
+    Console.WriteLine("⚠️ WARNING: No database connection string found!");
+    Console.WriteLine("   Set DB_CONNECTION environment variable or configure in appsettings.json");
 }
-catch (Exception ex)
+else
 {
-    Console.WriteLine($"Warning: Database initialization failed: {ex.Message}");
-    Console.WriteLine("The application will continue, but database operations may fail.");
+    try
+    {
+        Console.WriteLine($"🔌 Attempting to connect to database: {dbName}");
+        var dbInit = new DbInitService(connectionString, dbName);
+        dbInit.InitializeDatabaseAsync().GetAwaiter().GetResult();
+        Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
+        Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+        Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
+    }
 }
 
 builder.Services.AddSingleton<IAuthService>(new AuthService(secret));
@@ -160,7 +175,7 @@ if (frontendPath != null)
     });
 }
 
-// Use Railway's PORT environment variable or default to 8080
+// Use Railway's PORT environment variable or default to 8080 for local development
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 var url = $"http://0.0.0.0:{port}";
 app.Urls.Add(url);
@@ -168,5 +183,7 @@ app.Urls.Add(url);
 Console.WriteLine($"🚀 Word Tracker API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
 Console.WriteLine($"🔐 JWT Secret: {(secret.Length > 20 ? secret.Substring(0, 20) + "..." : secret)}");
+Console.WriteLine($"🔗 Connection String: {(connectionString.Contains("Password=") ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" : connectionString)}");
+Console.WriteLine($"📍 API Endpoints available at: http://localhost:{port}/api/auth/register and http://localhost:{port}/api/auth/login");
 
 app.Run();

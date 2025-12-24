@@ -85,12 +85,26 @@ CREATE TABLE IF NOT EXISTS challenges (
     user_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    type VARCHAR(50) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'word_count',
     goal_count INT NOT NULL,
-    duration_days INT NOT NULL,
+    duration_days INT NOT NULL DEFAULT 30,
     start_date DATE NOT NULL,
+    end_date DATE,
+    is_public BOOLEAN DEFAULT TRUE,
+    invite_code VARCHAR(10),
     status ENUM('Active', 'Completed', 'Failed') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS challenge_participants (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    challenge_id INT NOT NULL,
+    user_id INT NOT NULL,
+    current_progress INT DEFAULT 0,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_participant (challenge_id, user_id)
 );
 

@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { MockDataService } from '../../services/mock-data.service';
+import { NotificationService } from '../../services/notification.service';
 
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 
@@ -19,6 +20,7 @@ export class GroupChallengesComponent implements OnInit {
   isSubmitting = false;
   loading = true;
   activeChallenges: any[] = [];
+  viewMode: 'my' | 'public' = 'public'; // Show public challenges by default
 
   // Pagination
   currentPage = 1;
@@ -41,10 +43,17 @@ export class GroupChallengesComponent implements OnInit {
   constructor(
     private apiService: ApiService,
     private router: Router,
-    private mockData: MockDataService
+    private mockData: MockDataService,
+    private notificationService: NotificationService
   ) { }
 
   ngOnInit() {
+    this.loadActiveChallenges();
+  }
+
+  setViewMode(mode: 'my' | 'public') {
+    this.viewMode = mode;
+    this.currentPage = 1;
     this.loadActiveChallenges();
   }
 
@@ -62,13 +71,26 @@ export class GroupChallengesComponent implements OnInit {
       return;
     }
 
-    // Fetch challenges from C backend
-    this.apiService.getChallenges().subscribe({
+    // Fetch challenges from backend
+    const request = this.viewMode === 'my' 
+      ? this.apiService.getChallenges() 
+      : this.apiService.getPublicChallenges();
+
+    request.subscribe({
       next: (response) => {
+        console.log('Challenges response:', response);
         if (response.success && response.data) {
-          this.activeChallenges = response.data;
-          this.totalItems = response.data.length;
+          const allChallenges = Array.isArray(response.data) ? response.data : [];
+          this.totalItems = allChallenges.length;
           this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+          
+          // Apply pagination
+          const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+          this.activeChallenges = allChallenges.slice(startIndex, startIndex + this.itemsPerPage);
+        } else {
+          this.activeChallenges = [];
+          this.totalItems = 0;
+          this.totalPages = 1;
         }
         this.loading = false;
       },
@@ -114,13 +136,12 @@ export class GroupChallengesComponent implements OnInit {
     if (!this.inviteCodeInput) return;
     const userId = localStorage.getItem('user_id');
     if (!userId) {
-      alert('Please login.');
+      this.notificationService.showError('Please login first.');
       return;
     }
 
-    // Note: C backend doesn't have invite code endpoint yet
-    // This would need to be implemented in the backend
-    alert('Invite code feature not yet implemented in C backend');
+    // TODO: Implement invite code lookup in backend
+    this.notificationService.showInfo('Invite code feature coming soon!');
   }
 
   joinChallenge(challengeId: number) {
@@ -128,7 +149,7 @@ export class GroupChallengesComponent implements OnInit {
     const userType = localStorage.getItem('user_type');
 
     if (!userId) {
-      alert('Please login to join challenges.');
+      this.notificationService.showError('Please login to join challenges.');
       return;
     }
 
@@ -138,30 +159,54 @@ export class GroupChallengesComponent implements OnInit {
       return;
     }
 
-    // Join challenge via C backend API
+    console.log(`Joining challenge ${challengeId}`);
+    
     this.apiService.joinChallenge(challengeId).subscribe({
       next: (response) => {
+        console.log('Join response:', response);
         if (response.success) {
-          alert('Successfully joined the challenge!');
-          // Redirect to challenge detail page
+          this.notificationService.showSuccess('Successfully joined the challenge!');
+          this.loadActiveChallenges(); // Refresh to update is_joined status
           this.router.navigate(['/challenge', challengeId]);
         } else {
-          alert('Failed: ' + response.message);
+          this.notificationService.showError('Failed: ' + response.message);
         }
       },
       error: (error) => {
         console.error('Join error:', error);
-        alert(error.error?.message || 'Error joining challenge.');
+        this.notificationService.showError(error.error?.message || 'Error joining challenge.');
       }
     });
   }
 
+  leaveChallenge(challengeId: number) {
+    const userId = localStorage.getItem('user_id');
+    if (!userId) {
+      this.notificationService.showError('Please login first.');
+      return;
+    }
 
-  // ... (modals)
+    if (!confirm('Are you sure you want to leave this challenge?')) return;
+
+    this.apiService.leaveChallenge(challengeId).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.notificationService.showSuccess('You have left the challenge.');
+          this.loadActiveChallenges();
+        } else {
+          this.notificationService.showError('Failed: ' + response.message);
+        }
+      },
+      error: (error) => {
+        console.error('Leave error:', error);
+        this.notificationService.showError(error.error?.message || 'Error leaving challenge.');
+      }
+    });
+  }
 
   createChallenge() {
     if (!this.newChallenge.name || !this.newChallenge.goal_amount || !this.newChallenge.start_date || !this.newChallenge.end_date) {
-      alert('Please fill in all required fields.');
+      this.notificationService.showError('Please fill in all required fields.');
       return;
     }
 
@@ -169,27 +214,51 @@ export class GroupChallengesComponent implements OnInit {
     const challengeData = {
       title: this.newChallenge.name,
       description: this.newChallenge.description,
+      type: this.newChallenge.goal_type,
       target_words: this.newChallenge.goal_amount,
       start_date: this.newChallenge.start_date,
-      end_date: this.newChallenge.end_date
+      end_date: this.newChallenge.end_date,
+      is_public: this.newChallenge.is_public
     };
+
+    console.log('Creating challenge:', challengeData);
 
     this.apiService.createChallenge(challengeData).subscribe({
       next: (response) => {
+        console.log('Create response:', response);
         if (response.success) {
-          alert('Challenge created successfully!');
+          this.notificationService.showSuccess('Challenge created successfully!');
           this.closeModal();
-          this.loadActiveChallenges(); // Refresh list
+          this.resetNewChallenge();
+          this.loadActiveChallenges();
         } else {
-          alert('Failed to create challenge: ' + response.message);
+          this.notificationService.showError('Failed to create challenge: ' + response.message);
         }
         this.isSubmitting = false;
       },
       error: (error) => {
         console.error('Create challenge error:', error);
-        alert(error.error?.message || 'Error occurred while creating challenge.');
+        this.notificationService.showError(error.error?.message || 'Error occurred while creating challenge.');
         this.isSubmitting = false;
       }
     });
+  }
+
+  resetNewChallenge() {
+    this.newChallenge = {
+      name: '',
+      description: '',
+      goal_type: 'word_count',
+      goal_amount: 50000,
+      start_date: '',
+      end_date: '',
+      is_public: true
+    };
+  }
+
+  getProgressPercentage(challenge: any): number {
+    if (!challenge.goal_amount || challenge.goal_amount === 0) return 0;
+    const progress = challenge.my_progress || 0;
+    return Math.min(100, Math.round((progress / challenge.goal_amount) * 100));
   }
 }

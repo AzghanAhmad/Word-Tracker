@@ -47,16 +47,32 @@ export class ApiService {
         return this.http.get(`${this.apiUrl}/challenges`);
     }
 
+    getPublicChallenges(): Observable<any> {
+        return this.http.get(`${this.apiUrl}/challenges/public`);
+    }
+
     getChallenge(id: number): Observable<any> {
         return this.http.get(`${this.apiUrl}/challenges/${id}`);
     }
 
     joinChallenge(challengeId: number): Observable<any> {
-        return this.http.post(`${this.apiUrl}/challenges/join`, { challenge_id: challengeId });
+        return this.http.post(`${this.apiUrl}/challenges/${challengeId}/join`, {});
+    }
+
+    leaveChallenge(challengeId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/challenges/${challengeId}/leave`, {});
+    }
+
+    updateChallengeProgress(challengeId: number, progress: number): Observable<any> {
+        return this.http.patch(`${this.apiUrl}/challenges/${challengeId}/progress`, { progress });
     }
 
     createChallenge(challenge: any): Observable<any> {
         return this.http.post(`${this.apiUrl}/challenges`, challenge);
+    }
+
+    deleteChallenge(challengeId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/challenges/${challengeId}`);
     }
 
     // ============================================================================
@@ -99,8 +115,16 @@ export class ApiService {
         return this.http.get(`${this.apiUrl}/checklists`);
     }
 
+    getChecklist(id: number): Observable<any> {
+        return this.http.get(`${this.apiUrl}/checklists?id=${id}`);
+    }
+
     createChecklist(checklist: any): Observable<any> {
         return this.http.post(`${this.apiUrl}/checklists`, checklist);
+    }
+
+    updateChecklist(id: number, checklist: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/checklists/${id}`, checklist);
     }
 
     updateChecklistItem(itemId: number, isDone: boolean): Observable<any> {
@@ -108,7 +132,7 @@ export class ApiService {
     }
 
     deleteChecklist(checklistId: number): Observable<any> {
-        return this.http.delete(`${this.apiUrl}/checklists/${checklistId}`);
+        return this.http.delete(`${this.apiUrl}/checklists?id=${checklistId}`);
     }
 
 }

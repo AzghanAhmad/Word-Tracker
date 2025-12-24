@@ -34,8 +34,12 @@
 
             <div class="items-preview">
                 <div class="item" *ngFor="let item of list.items | slice:0:3" (click)="toggleItem(list.id, item)"
+                    [class.updating]="isItemUpdating(item.id)"
                     style="cursor: pointer;">
-                    <i class="fas" [ngClass]="item.is_done ? 'fa-check-square' : 'fa-square'"></i>
+                    <i class="fas" 
+                       *ngIf="!isItemUpdating(item.id)"
+                       [ngClass]="item.is_done ? 'fa-check-square' : 'fa-square'"></i>
+                    <i class="fas fa-spinner fa-spin" *ngIf="isItemUpdating(item.id)"></i>
                     <span [class.done]="item.is_done">{{ item.text }}</span>
                 </div>
                 <div class="more-items" *ngIf="(list.items?.length || 0) > 3">

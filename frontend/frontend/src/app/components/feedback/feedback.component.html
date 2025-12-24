@@ -1,0 +1,36 @@
+<div class="feedback-container">
+    <div class="header">
+        <h1>We Value Your Feedback</h1>
+        <p>Help us improve Word Tracker by sharing your thoughts or reporting issues.</p>
+    </div>
+
+    <div class="form-card">
+        <form (submit)="onSubmit($event)">
+            <div class="form-group">
+                <label for="type">Feedback Type</label>
+                <select id="type" class="form-select">
+                    <option value="general">General Feedback</option>
+                    <option value="bug">Report a Bug</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email (Optional)</label>
+                <input type="email" id="email" class="form-input" placeholder="your@email.com">
+                <span class="hint">Leave this if you'd like us to reply.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" rows="6" class="form-textarea" placeholder="Tell us what you think..."
+                    required></textarea>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="submit-btn">Send Feedback</button>
+            </div>
+        </form>
+    </div>
+</div>

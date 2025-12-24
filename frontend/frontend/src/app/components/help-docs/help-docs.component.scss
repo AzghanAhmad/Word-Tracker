@@ -1,0 +1,145 @@
+@use 'sass:color';
+
+$primary-blue: #007bff;
+$dark-blue: #0056d2;
+$text-primary: #1c2e4a;
+$text-secondary: #64748b;
+$bg-card: #ffffff;
+$bg-light: #f9fafb;
+$border-color: #e2e8f0;
+
+.help-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+
+    .header {
+        text-align: center;
+        margin-bottom: 3.5rem;
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: $text-primary;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, $text-primary, $primary-blue);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: $text-secondary;
+            font-size: 1.125rem;
+        }
+    }
+
+    .faq-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-bottom: 4rem;
+
+        .faq-card {
+            background: $bg-card;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            border: 1px solid $border-color;
+            transition: transform 0.2s ease;
+
+            &:hover {
+                transform: translateY(-5px);
+            }
+
+            h3 {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: $text-primary;
+                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+                border-bottom: 2px solid color.adjust($border-color, $lightness: 5%);
+            }
+
+            .topic {
+                margin-bottom: 1.5rem;
+
+                &:last-child {
+                    margin-bottom: 0;
+                }
+
+                h4 {
+                    font-size: 1rem;
+                    font-weight: 600;
+                    color: $text-primary;
+                    margin-bottom: 0.5rem;
+                }
+
+                p {
+                    color: $text-secondary;
+                    font-size: 0.938rem;
+                    line-height: 1.6;
+                }
+            }
+        }
+    }
+
+    .support-cta {
+        text-align: center;
+        background: $bg-card;
+        padding: 3rem;
+        border-radius: 20px;
+        background: linear-gradient(135deg, color.adjust($primary-blue, $lightness: 45%), color.adjust($dark-blue, $lightness: 45%));
+        border: 1px solid color.adjust($primary-blue, $lightness: 30%);
+
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: $dark-blue;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: $text-secondary;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-support {
+            display: inline-block;
+            background: $primary-blue;
+            color: white;
+            padding: 0.875rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+
+            &:hover {
+                background: $dark-blue;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+            }
+        }
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .help-container {
+        padding: 2rem 1rem;
+
+        .faq-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+}

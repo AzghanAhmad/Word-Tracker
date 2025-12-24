@@ -9,11 +9,21 @@ public interface IDbService
     string? GetPlanJson(int id, int userId);
     bool DeletePlan(int id, int userId);
     int CreateChecklist(int userId, int? planId, string name);
+    int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items);
     string GetChecklistsJson(int userId);
+    string? GetChecklistJson(int id, int userId);
+    bool UpdateChecklist(int id, int userId, string name, System.Text.Json.JsonElement[]? items);
     bool DeleteChecklist(int id, int userId);
     bool AddChecklistItem(int checklistId, string content);
-    int CreateChallenge(int userId, string title, string description, string type, int goalCount, int durationDays, string startDate);
+    bool UpdateChecklistItem(int itemId, bool isDone);
+    int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic);
     string GetChallengesJson(int userId);
+    string GetAllPublicChallengesJson(int userId);
+    string? GetChallengeJson(int id, int userId);
+    bool JoinChallenge(int challengeId, int userId);
+    bool LeaveChallenge(int challengeId, int userId);
+    bool UpdateChallengeProgress(int challengeId, int userId, int progress);
+    bool DeleteChallenge(int id, int userId);
     string GetDashboardStatsJson(int userId);
     string GetLastError();
 }

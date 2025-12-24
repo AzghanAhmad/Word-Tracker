@@ -1,0 +1,99 @@
+<!-- Overlay for mobile (appears when sidebar is open) -->
+<div class="sidebar-overlay" *ngIf="!isCollapsed" (click)="toggleSidebar()"></div>
+
+<aside class="sidebar" [class.collapsed]="isCollapsed">
+
+    <!-- Navigation Area (No redundant logo) -->
+    <nav class="sidebar-nav" style="margin-top: 1rem;">
+        <!-- Latest Progress Section -->
+        <div class="progress-section" *ngIf="!isCollapsed">
+            <div class="progress-header" (click)="toggleProgress()" style="cursor: pointer;">
+                <i class="fas fa-chart-line"></i>
+                <span>Latest Progress</span>
+                <span class="badge" *ngIf="activeChallengesCount > 0">{{ activeChallengesCount }}</span>
+                <i class="fas" [class.fa-chevron-down]="!isProgressExpanded" [class.fa-chevron-up]="isProgressExpanded"
+                    style="margin-left: auto; font-size: 0.8rem; opacity: 0.6;"></i>
+            </div>
+
+            <div class="progress-list" *ngIf="isProgressExpanded">
+                <div class="progress-item" *ngFor="let plan of activePlans">
+                    <div class="progress-item-header">
+                        <span class="plan-name">{{ plan.plan_name }}</span>
+                        <span class="plan-percentage">{{ plan.progress }}%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" [style.width.%]="plan.progress"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider" *ngIf="!isCollapsed"></div>
+
+        <!-- Group 1: Plans & Creation -->
+        <a routerLink="/create-plan" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-chart-bar"></i>
+            <span *ngIf="!isCollapsed">Create A Plan</span>
+        </a>
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item" (click)="onDashboardClick()">
+            <i class="fas fa-database"></i>
+            <span *ngIf="!isCollapsed">Full Plan List</span>
+        </a>
+        <a routerLink="/create-checklist" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-clipboard-list"></i>
+            <span *ngIf="!isCollapsed">Create A Checklist</span>
+        </a>
+
+        <div class="divider"></div>
+
+        <!-- Group 2: Organization -->
+        <a routerLink="/my-checklists" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-tasks"></i>
+            <span *ngIf="!isCollapsed">My Checklist</span>
+        </a>
+
+        <div class="divider"></div>
+
+        <!-- Group 3: Utility -->
+        <a routerLink="/calendar" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-calendar-alt"></i>
+            <span *ngIf="!isCollapsed">Calendar</span>
+        </a>
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-chart-area"></i>
+            <span *ngIf="!isCollapsed">Stats</span>
+        </a>
+
+        <div class="divider"></div>
+
+        <!-- Group 4: Social -->
+        <a routerLink="/challenges" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-users"></i>
+            <span *ngIf="!isCollapsed">Group Challenges</span>
+        </a>
+        <a routerLink="/community" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-clock"></i>
+            <span *ngIf="!isCollapsed">Community Plans</span>
+        </a>
+
+        <div class="divider"></div>
+
+        <!-- Group 5 - Bottom Settings -->
+        <a routerLink="/profile" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-user-circle"></i>
+            <span *ngIf="!isCollapsed">Profile</span>
+        </a>
+        <a routerLink="/settings" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-cog"></i>
+            <span *ngIf="!isCollapsed">Account Settings</span>
+        </a>
+        <a routerLink="/help" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-question"></i>
+            <span *ngIf="!isCollapsed">Help</span>
+        </a>
+        <a (click)="logout()" class="nav-item logout">
+            <i class="fas fa-sign-out-alt"></i>
+            <span *ngIf="!isCollapsed">Logout</span>
+        </a>
+    </nav>
+</aside>

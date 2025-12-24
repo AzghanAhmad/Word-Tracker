@@ -1,10 +1,14 @@
 <div class="create-checklist-container">
     <div class="header">
-        <h1>Create a Checklist</h1>
-        <p class="subtitle">Build a task list to keep your writing project organized</p>
+        <h1>{{ isEditMode ? 'Edit Checklist' : 'Create a Checklist' }}</h1>
+        <p class="subtitle">{{ isEditMode ? 'Update your checklist and tasks' : 'Build a task list to keep your writing project organized' }}</p>
     </div>
 
-    <div class="checklist-form">
+    <div *ngIf="isLoadingData" class="loading-message">
+        Loading checklist data...
+    </div>
+
+    <div class="checklist-form" *ngIf="!isLoadingData">
         <!-- Checklist Name -->
         <div class="form-group">
             <label for="checklistName">Checklist Name</label>
@@ -47,8 +51,11 @@
 
         <!-- Actions -->
         <div class="form-actions">
-            <button type="button" class="btn-secondary" routerLink="/plans">Cancel</button>
-            <button type="button" class="btn-primary" (click)="saveChecklist()">Save Checklist</button>
+            <button type="button" class="btn-secondary" routerLink="/my-checklists" [disabled]="isLoading || isLoadingData">Cancel</button>
+            <button type="button" class="btn-primary" (click)="saveChecklist()" [disabled]="isLoading || isLoadingData">
+                <span *ngIf="!isLoading">{{ isEditMode ? 'Update Checklist' : 'Save Checklist' }}</span>
+                <span *ngIf="isLoading">{{ isEditMode ? 'Updating...' : 'Saving...' }}</span>
+            </button>
         </div>
     </div>
 </div>

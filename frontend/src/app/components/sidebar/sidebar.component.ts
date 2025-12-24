@@ -121,15 +121,17 @@ export class SidebarComponent implements OnInit {
         // Close sidebar on mobile
         this.onNavItemClick();
         
-        // If already on dashboard, force reload by navigating away and back
-        if (this.router.url === '/dashboard') {
+        // Always trigger reload, even if already on dashboard
+        if (this.router.url === '/dashboard' || this.router.url.startsWith('/dashboard')) {
+            // If already on dashboard, force reload with query params and event
+            window.dispatchEvent(new Event('dashboard-reload'));
             this.router.navigate(['/dashboard'], { 
                 queryParams: { refresh: Date.now() },
                 skipLocationChange: false 
-            }).then(() => {
-                // Trigger a reload event
-                window.dispatchEvent(new Event('dashboard-reload'));
             });
+        } else {
+            // If not on dashboard, navigate normally (will trigger ngOnInit)
+            this.router.navigate(['/dashboard']);
         }
     }
 

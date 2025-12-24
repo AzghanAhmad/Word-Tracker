@@ -1,0 +1,155 @@
+.community-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+
+    .filter-bar {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 2rem;
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+
+            label {
+                font-size: 0.85rem;
+                font-weight: 700;
+                color: #64748b;
+            }
+
+            .select-wrapper {
+                position: relative;
+
+                select {
+                    width: 100%;
+                    padding: 0.75rem 1rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    background-color: white;
+                    font-size: 0.95rem;
+                    color: #334155;
+                    cursor: pointer;
+                    appearance: none;
+                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+                    background-repeat: no-repeat;
+                    background-position: right 1rem center;
+                    background-size: 1rem;
+
+                    &:focus {
+                        outline: none;
+                        border-color: #3b82f6;
+                        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+                    }
+                }
+            }
+        }
+    }
+
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr); // 4 columns as per image
+        gap: 1.5rem;
+
+        .plan-card {
+            background: #fff;
+            border: 1px solid #eef2ff;
+            border-radius: 4px; // Sharp-ish corners
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+
+            &:hover {
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+                // Optional: Tooltip effect on graph logic? 
+            }
+
+            .card-header {
+                background-color: #e0f2fe; // Light Blue
+                padding: 0.75rem 1rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+
+                span {
+                    font-size: 0.85rem;
+                    color: #0ea5e9; // Blue 500
+                    font-weight: 500;
+                }
+            }
+
+            .card-graph {
+                height: 120px; // Taller graph area
+                padding: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                svg {
+                    width: 100%;
+                    height: 100%;
+                    overflow: visible;
+
+                    path {
+                        stroke: #7dd3fc; // Blue 300
+                    }
+                }
+            }
+
+            .card-footer {
+                padding: 1rem;
+                text-align: center;
+                border-top: 1px solid transparent; // Clean footer
+
+                .plan-name {
+                    color: #0ea5e9; // Link Blue
+                    font-size: 0.95rem;
+                    margin-bottom: 0.5rem;
+                    font-weight: 500;
+
+                    &:hover {
+                        text-decoration: underline;
+                    }
+                }
+
+                .author-info {
+                    color: #0ea5e9; // Link Blue
+                    font-size: 0.85rem;
+
+                    &:hover {
+                        text-decoration: underline;
+                    }
+                }
+            }
+        }
+    }
+}
+
+@media (max-width: 1200px) {
+    .community-container .cards-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .community-container .cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .community-container .cards-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .community-container .filter-bar {
+        flex-direction: column;
+    }
+}

@@ -16,9 +16,30 @@ public class DashboardController : ControllerBase
     [HttpGet("stats")]
     public IActionResult Stats()
     {
-        var json = _db.GetDashboardStatsJson(UserId());
-        var data = System.Text.Json.JsonSerializer.Deserialize<object>(json);
-        if (data is null) return StatusCode(500, new { success = false, message = "Failed to fetch stats" });
-        return Ok(new { success = true, data });
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📊 Dashboard stats requested for user ID: {userId}");
+            
+            var json = _db.GetDashboardStatsJson(userId);
+            Console.WriteLine($"📊 Dashboard stats JSON: {json}");
+            
+            var data = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json);
+            
+            if (data.ValueKind == System.Text.Json.JsonValueKind.Undefined || data.ValueKind == System.Text.Json.JsonValueKind.Null)
+            {
+                Console.WriteLine("✗ Dashboard stats data is null or undefined");
+                return StatusCode(500, new { success = false, message = "Failed to fetch stats" });
+            }
+            
+            Console.WriteLine($"✅ Dashboard stats returned successfully for user {userId}");
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in Dashboard Stats: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new { success = false, message = "An error occurred while fetching dashboard stats" });
+        }
     }
 }
