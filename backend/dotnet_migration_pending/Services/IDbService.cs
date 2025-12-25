@@ -6,8 +6,10 @@ public interface IDbService
     (int id, string username, string passwordHash)? GetUserByEmail(string email);
     (int id, string username, string passwordHash)? GetUserById(int userId);
     int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType);
+    bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType);
     string GetPlansJson(int userId);
     string? GetPlanJson(int id, int userId);
+    string GetPlanDaysJson(int planId, int userId);
     bool DeletePlan(int id, int userId);
     int CreateChecklist(int userId, int? planId, string name);
     int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items);
@@ -35,5 +37,6 @@ public interface IDbService
     bool UpdateUserSettings(int userId, string? dateFormat, string? weekStartDay, bool? emailRemindersEnabled, string? reminderTimezone, string? reminderFrequency, string? professionsJson);
     bool DeleteUserAccount(int userId);
     string GetStatsJson(int userId);
+    int CreateFeedback(int? userId, string type, string? email, string message);
     string GetLastError();
 }

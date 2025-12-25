@@ -2,7 +2,7 @@
     <div class="breadcrumb">
         <a routerLink="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         <span>/</span>
-        <span class="current">{{ plan.plan_name }}</span>
+        <span class="current">{{ plan.plan_name || plan.title }}</span>
     </div>
 
     <!-- Header Section -->
@@ -13,7 +13,7 @@
                 'status-completed': plan.status === 'Completed',
                 'status-paused': plan.status === 'On Hold'
             }">{{ plan.status }}</div>
-            <h1>{{ plan.plan_name }}</h1>
+            <h1>{{ plan.plan_name || plan.title }}</h1>
             <div class="meta-row">
                 <span><i class="fas fa-book"></i> {{ plan.content_type || 'Novel' }}</span>
                 <span><i class="fas fa-calendar-alt"></i> {{ getFormattedDate(plan.start_date) }} - {{
@@ -24,10 +24,10 @@
             <a [routerLink]="['/calendar']" [queryParams]="{planId: plan.id}" class="btn-calendar">
                 <i class="fas fa-calendar"></i> View Calendar
             </a>
-            <a [routerLink]="['/plans/edit', plan.id]" class="btn-calendar"
-                style="background-color: #6366f1; color: white;">
+            <button (click)="navigateToEdit()" class="btn-calendar"
+                style="background-color: #6366f1; color: white; border: none; cursor: pointer;">
                 <i class="fas fa-edit"></i> Edit / Track
-            </a>
+            </button>
             <button class="btn-delete" (click)="deletePlan()">
                 <i class="fas fa-trash"></i>
             </button>
@@ -120,19 +120,22 @@
             <!-- Recent Activity -->
             <div class="card activity-card">
                 <h2>Recent Sessions</h2>
-                <div class="log-list">
-                    <div class="log-item" *ngFor="let log of mockLogs">
+                <div class="log-list" *ngIf="activityLogs.length > 0">
+                    <div class="log-item" *ngFor="let log of activityLogs">
                         <div class="log-icon">
                             <i class="fas fa-pen"></i>
                         </div>
                         <div class="log-info">
                             <span class="log-date">{{ log.date }}</span>
-                            <span class="log-duration">{{ log.duration }} mins</span>
+                            <span class="log-duration" *ngIf="log.target > 0">Target: {{ log.target | number }} words</span>
                         </div>
-                        <div class="log-amount">
-                            +{{ log.words }} words
+                        <div class="log-amount" [class.met-target]="log.words >= log.target" [class.below-target]="log.words < log.target && log.target > 0">
+                            +{{ log.words | number }} words
                         </div>
                     </div>
+                </div>
+                <div class="empty-state" *ngIf="activityLogs.length === 0 && !isLoading">
+                    <p>No activity logs yet. Start tracking your progress!</p>
                 </div>
             </div>
         </div>

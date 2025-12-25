@@ -242,6 +242,114 @@ public class DbService : IDbService
         }
     }
 
+    public bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"🔄 Updating plan {planId} for user {userId}: Title={title}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Verify plan exists and belongs to user
+            using (var checkCmd = conn.CreateCommand())
+            {
+                checkCmd.CommandText = "SELECT COUNT(*) FROM plans WHERE id=@pid AND user_id=@uid";
+                checkCmd.Parameters.AddWithValue("@pid", planId);
+                checkCmd.Parameters.AddWithValue("@uid", userId);
+                var planExists = Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+                if (!planExists)
+                {
+                    _lastError = $"Plan with ID {planId} not found or doesn't belong to user {userId}";
+                    Console.WriteLine($"✗ Plan {planId} not found or access denied for user {userId}");
+                    return false;
+                }
+            }
+            
+            using var cmd = conn.CreateCommand();
+            
+            // Update plan with all configuration options
+            cmd.CommandText = @"UPDATE plans SET
+                title=@title,
+                total_word_count=@total,
+                start_date=@start,
+                end_date=@end,
+                algorithm_type=@algo,
+                description=@desc,
+                is_private=@priv,
+                starting_point=@startp,
+                measurement_unit=@meas,
+                is_daily_target=@daily,
+                fixed_deadline=@fixed,
+                target_finish_date=@target,
+                strategy_intensity=@strat,
+                weekend_approach=@weekend,
+                reserve_days=@reserve,
+                display_view_type=@view,
+                week_start_day=@wstart,
+                grouping_type=@group,
+                dashboard_color=@color,
+                show_historical_data=@hist,
+                progress_tracking_type=@track,
+                activity_type=@activity,
+                content_type=@content
+                WHERE id=@pid AND user_id=@uid";
+            
+            // Set parameters with proper null handling
+            cmd.Parameters.AddWithValue("@pid", planId);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            cmd.Parameters.AddWithValue("@title", title);
+            cmd.Parameters.AddWithValue("@total", totalWordCount);
+            cmd.Parameters.AddWithValue("@start", startDate);
+            cmd.Parameters.AddWithValue("@end", endDate);
+            cmd.Parameters.AddWithValue("@algo", algorithmType);
+            cmd.Parameters.AddWithValue("@desc", string.IsNullOrWhiteSpace(description) ? (object)DBNull.Value : description);
+            cmd.Parameters.AddWithValue("@priv", isPrivate);
+            cmd.Parameters.AddWithValue("@startp", startingPoint);
+            cmd.Parameters.AddWithValue("@meas", string.IsNullOrWhiteSpace(measurementUnit) ? (object)DBNull.Value : measurementUnit);
+            cmd.Parameters.AddWithValue("@daily", isDailyTarget);
+            cmd.Parameters.AddWithValue("@fixed", fixedDeadline);
+            cmd.Parameters.AddWithValue("@target", string.IsNullOrWhiteSpace(targetFinishDate) ? (object)DBNull.Value : targetFinishDate);
+            cmd.Parameters.AddWithValue("@strat", string.IsNullOrWhiteSpace(strategyIntensity) ? (object)DBNull.Value : strategyIntensity);
+            cmd.Parameters.AddWithValue("@weekend", string.IsNullOrWhiteSpace(weekendApproach) ? (object)DBNull.Value : weekendApproach);
+            cmd.Parameters.AddWithValue("@reserve", reserveDays);
+            cmd.Parameters.AddWithValue("@view", displayViewType);
+            cmd.Parameters.AddWithValue("@wstart", weekStartDay);
+            cmd.Parameters.AddWithValue("@group", groupingType);
+            cmd.Parameters.AddWithValue("@color", dashboardColor);
+            cmd.Parameters.AddWithValue("@hist", showHistoricalData);
+            cmd.Parameters.AddWithValue("@track", progressTrackingType);
+            cmd.Parameters.AddWithValue("@activity", string.IsNullOrWhiteSpace(activityType) ? "Writing" : activityType);
+            cmd.Parameters.AddWithValue("@content", string.IsNullOrWhiteSpace(contentType) ? "Novel" : contentType);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            
+            if (rowsAffected > 0)
+            {
+                Console.WriteLine($"✓ Plan {planId} updated successfully");
+                return true;
+            }
+            
+            _lastError = "Update executed but no rows were affected";
+            Console.WriteLine($"✗ Update failed: No rows affected for plan {planId}");
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error updating plan: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error updating plan: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return false;
+        }
+    }
+
     /// <summary>
     /// Retrieves all plans for a user as JSON
     /// Returns empty array if no plans found
@@ -323,6 +431,75 @@ public class DbService : IDbService
         cmd.Parameters.AddWithValue("@id", id);
         cmd.Parameters.AddWithValue("@u", userId);
         return cmd.ExecuteNonQuery() == 1;
+    }
+
+    public string GetPlanDaysJson(int planId, int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📅 Fetching plan days for plan {planId}, user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // First verify the plan belongs to the user
+            using var verifyCmd = conn.CreateCommand();
+            verifyCmd.CommandText = "SELECT id FROM plans WHERE id=@pid AND user_id=@uid LIMIT 1";
+            verifyCmd.Parameters.AddWithValue("@pid", planId);
+            verifyCmd.Parameters.AddWithValue("@uid", userId);
+            
+            if (verifyCmd.ExecuteScalar() == null)
+            {
+                Console.WriteLine($"✗ Plan {planId} not found or doesn't belong to user {userId}");
+                return "[]";
+            }
+            
+            // Get plan days
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT date, target_count, actual_count, notes
+                FROM plan_days
+                WHERE plan_id = @pid
+                ORDER BY date DESC";
+            cmd.Parameters.AddWithValue("@pid", planId);
+            
+            using var reader = cmd.ExecuteReader();
+            var days = new List<Dictionary<string, object>>();
+            
+            // Get column indices
+            var dateOrdinal = reader.GetOrdinal("date");
+            var targetCountOrdinal = reader.GetOrdinal("target_count");
+            var actualCountOrdinal = reader.GetOrdinal("actual_count");
+            var notesOrdinal = reader.GetOrdinal("notes");
+            
+            while (reader.Read())
+            {
+                var day = new Dictionary<string, object>
+                {
+                    ["date"] = reader.GetDateTime(dateOrdinal).ToString("yyyy-MM-dd"),
+                    ["target_count"] = reader.IsDBNull(targetCountOrdinal) ? 0 : reader.GetInt32(targetCountOrdinal),
+                    ["actual_count"] = reader.IsDBNull(actualCountOrdinal) ? 0 : reader.GetInt32(actualCountOrdinal),
+                    ["notes"] = reader.IsDBNull(notesOrdinal) ? null : reader.GetString(notesOrdinal)
+                };
+                days.Add(day);
+            }
+            
+            Console.WriteLine($"✓ Retrieved {days.Count} plan days for plan {planId}");
+            return JsonSerializer.Serialize(days);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching plan days: {ex.Number} - {ex.Message}");
+            return "[]";
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching plan days: {ex.Message}");
+            return "[]";
+        }
     }
 
     public int CreateChecklist(int userId, int? planId, string name)
@@ -2034,6 +2211,51 @@ public class DbService : IDbService
                 ["allDaysData"] = new List<object>()
             };
             return JsonSerializer.Serialize(defaultStats);
+        }
+    }
+
+    public int CreateFeedback(int? userId, string type, string? email, string message)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"💬 Creating feedback: Type={type}, UserId={userId?.ToString() ?? "null"}, Email={email ?? "null"}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO feedback (user_id, type, email, message) 
+                               VALUES (@uid, @type, @email, @msg); 
+                               SELECT LAST_INSERT_ID();";
+            cmd.Parameters.AddWithValue("@uid", userId ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@type", type);
+            cmd.Parameters.AddWithValue("@email", string.IsNullOrWhiteSpace(email) ? (object)DBNull.Value : email);
+            cmd.Parameters.AddWithValue("@msg", message);
+            
+            var result = cmd.ExecuteScalar();
+            var feedbackId = result is long l ? (int)l : (result is int i ? i : (result is ulong ul ? (int)ul : -1));
+            
+            if (feedbackId > 0)
+            {
+                Console.WriteLine($"✓ Feedback created with ID: {feedbackId}");
+                return feedbackId;
+            }
+            
+            Console.WriteLine($"✗ Failed to create feedback");
+            return -1;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error creating feedback: {ex.Number} - {ex.Message}");
+            return -1;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error creating feedback: {ex.Message}");
+            return -1;
         }
     }
 }

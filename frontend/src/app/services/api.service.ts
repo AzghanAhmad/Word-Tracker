@@ -153,6 +153,13 @@ export class ApiService {
         return this.http.put(`${this.apiUrl}/plans/${id}`, plan);
     }
 
+    deletePlan(id: number): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Plan deleted (Mock)' });
+        }
+        return this.http.delete(`${this.apiUrl}/plans?id=${id}`);
+    }
+
     getPlanDays(planId: number): Observable<any> {
         return this.http.get(`${this.apiUrl}/plans/${planId}/days`);
     }
@@ -274,5 +281,16 @@ export class ApiService {
             return of({ success: true, message: 'Account deleted (Mock)' });
         }
         return this.http.delete(`${this.apiUrl}/user/account`);
+    }
+
+    // ============================================================================
+    // Feedback
+    // ============================================================================
+
+    submitFeedback(type: string, email: string | null, message: string): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Feedback submitted (Mock)' });
+        }
+        return this.http.post(`${this.apiUrl}/feedback`, { type, email, message });
     }
 }

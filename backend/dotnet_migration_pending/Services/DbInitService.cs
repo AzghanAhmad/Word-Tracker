@@ -203,6 +203,16 @@ public class DbInitService
                 FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 UNIQUE KEY unique_participant (challenge_id, user_id)
+            )",
+            
+            @"CREATE TABLE IF NOT EXISTS feedback (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT DEFAULT NULL,
+                type VARCHAR(50) NOT NULL DEFAULT 'general',
+                email VARCHAR(255) DEFAULT NULL,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             )"
         };
 
@@ -225,6 +235,30 @@ public class DbInitService
     {
         try
         {
+            // Check if feedback table exists, create if not
+            using var checkFeedbackCmd = conn.CreateCommand();
+            checkFeedbackCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.TABLES 
+                                             WHERE TABLE_SCHEMA = DATABASE() 
+                                             AND TABLE_NAME = 'feedback'";
+            var feedbackTableExists = Convert.ToInt32(await checkFeedbackCmd.ExecuteScalarAsync()) > 0;
+            
+            if (!feedbackTableExists)
+            {
+                Console.WriteLine("📦 Creating feedback table...");
+                using var createFeedbackCmd = conn.CreateCommand();
+                createFeedbackCmd.CommandText = @"CREATE TABLE IF NOT EXISTS feedback (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT DEFAULT NULL,
+                    type VARCHAR(50) NOT NULL DEFAULT 'general',
+                    email VARCHAR(255) DEFAULT NULL,
+                    message TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                )";
+                await createFeedbackCmd.ExecuteNonQueryAsync();
+                Console.WriteLine("✓ Feedback table created");
+            }
+
             // Check if 'plans' table has 'plan_name' column (old schema) instead of 'title' (new schema)
             using var checkCmd = conn.CreateCommand();
             checkCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 

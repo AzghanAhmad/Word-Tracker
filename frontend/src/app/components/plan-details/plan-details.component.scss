@@ -346,6 +346,15 @@ $bg-color: #f8fafc;
         .log-amount {
             font-weight: 700;
             color: #10b981;
+
+            &.met-target {
+                color: #10b981;
+                font-weight: 600;
+            }
+
+            &.below-target {
+                color: #ef4444;
+            }
         }
     }
 }

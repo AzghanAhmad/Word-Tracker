@@ -216,21 +216,18 @@ public class ChecklistsController : ControllerBase
 
     /// <summary>
     /// Deletes a checklist for the authenticated user
-    /// DELETE /checklists?id={id}
+    /// DELETE /checklists/{id}
     /// </summary>
     [Authorize]
-    [HttpDelete]
-    public IActionResult Delete([FromQuery] int? id)
+    [HttpDelete("{id}")]
+    public IActionResult Delete(int id)
     {
         try
         {
-            if (id is null)
-            {
-                return BadRequest(new { success = false, message = "Checklist ID is required" });
-            }
-
             var userId = UserId();
-            var ok = _db.DeleteChecklist(id.Value, userId);
+            Console.WriteLine($"🗑️ Deleting checklist {id} for user {userId}");
+            
+            var ok = _db.DeleteChecklist(id, userId);
             
             if (ok)
             {
@@ -238,6 +235,7 @@ public class ChecklistsController : ControllerBase
                 return Ok(new { success = true, message = "Checklist deleted successfully" });
             }
             
+            Console.WriteLine($"✗ Checklist {id} not found or permission denied");
             return NotFound(new { success = false, message = "Checklist not found or you don't have permission to delete it" });
         }
         catch (Exception ex)

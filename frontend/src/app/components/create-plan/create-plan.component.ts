@@ -1,9 +1,10 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
+import { Subscription, filter } from 'rxjs';
 
 export interface PlanDay {
     num: number;
@@ -97,11 +98,15 @@ export class CreatePlanComponent implements OnInit {
     // Share dropdown
     showShareDropdown: boolean = false;
 
+    private routeSubscription?: Subscription;
+    private navigationSubscription?: Subscription;
+
     constructor(
         private apiService: ApiService,
         private router: Router,
         private route: ActivatedRoute,
-        private notificationService: NotificationService
+        private notificationService: NotificationService,
+        private cdr: ChangeDetectorRef
     ) { }
 
     ngOnInit() {
@@ -119,17 +124,57 @@ export class CreatePlanComponent implements OnInit {
             }
         });
 
-        // Check for edit mode
-        this.route.paramMap.subscribe(params => {
+        // Load data immediately
+        this.loadPlanData();
+
+        // Subscribe to route params
+        this.routeSubscription = this.route.paramMap.subscribe(params => {
             const id = params.get('id');
             if (id) {
                 this.isEditMode = true;
                 this.planId = +id;
                 this.loadPlan(this.planId);
             } else {
+                this.isEditMode = false;
+                this.planId = null;
                 this.initializeNewPlan();
             }
         });
+
+        // Reload on navigation back to this page
+        this.navigationSubscription = this.router.events.pipe(
+            filter(event => event instanceof NavigationEnd)
+        ).subscribe((event: any) => {
+            if (event.url.includes('/plans/edit/')) {
+                console.log('Reloading plan edit data on navigation');
+                // Use setTimeout to ensure component is ready
+                setTimeout(() => {
+                    this.loadPlanData();
+                }, 100);
+            }
+        });
+    }
+
+    ngOnDestroy() {
+        if (this.routeSubscription) {
+            this.routeSubscription.unsubscribe();
+        }
+        if (this.navigationSubscription) {
+            this.navigationSubscription.unsubscribe();
+        }
+    }
+
+    loadPlanData() {
+        const id = this.route.snapshot.paramMap.get('id');
+        if (id) {
+            this.isEditMode = true;
+            this.planId = +id;
+            this.loadPlan(this.planId);
+        } else {
+            this.isEditMode = false;
+            this.planId = null;
+            this.initializeNewPlan();
+        }
     }
 
     initializeNewPlan() {
@@ -147,15 +192,21 @@ export class CreatePlanComponent implements OnInit {
 
     loadPlan(id: number) {
         this.isLoading = true;
+        this.cdr.detectChanges(); // Force update to show loading state
+
         this.apiService.getPlan(id).subscribe({
             next: (response) => {
                 if (response.success && response.data) {
                     const plan = response.data;
-                    this.planName = plan.plan_name;
-                    this.targetWordCount = plan.target_amount;
+                    this.planName = plan.plan_name || plan.title || '';
+                    this.targetWordCount = plan.target_amount || plan.total_word_count || 0;
                     // Format dates to YYYY-MM-DD
-                    this.startDate = new Date(plan.start_date).toISOString().split('T')[0];
-                    this.endDate = new Date(plan.end_date).toISOString().split('T')[0];
+                    if (plan.start_date) {
+                        this.startDate = new Date(plan.start_date).toISOString().split('T')[0];
+                    }
+                    if (plan.end_date) {
+                        this.endDate = new Date(plan.end_date).toISOString().split('T')[0];
+                    }
                     this.contentType = plan.content_type || 'Novella';
                     this.strategyType = plan.algorithm_type ? this.capitalize(plan.algorithm_type) : 'Steady';
                     this.planDescription = plan.description || '';
@@ -179,6 +230,8 @@ export class CreatePlanComponent implements OnInit {
                     this.loadPlanProgress(id);
                 } else {
                     this.notificationService.showError('Plan not found');
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
                     this.router.navigate(['/dashboard']);
                 }
             },
@@ -186,6 +239,7 @@ export class CreatePlanComponent implements OnInit {
                 console.error('Error loading plan', err);
                 this.notificationService.showError('Error loading plan');
                 this.isLoading = false;
+                this.cdr.detectChanges();
             }
         });
     }
@@ -567,7 +621,13 @@ export class CreatePlanComponent implements OnInit {
     }
 
     cancel() {
-        this.router.navigate(['/dashboard']);
+        // If in edit mode, save the plan before navigating away
+        if (this.isEditMode && this.planId) {
+            this.savePlan();
+        } else {
+            // If creating new plan, just navigate away
+            this.router.navigate(['/dashboard']);
+        }
     }
 
     insertFormatting(type: string) {
