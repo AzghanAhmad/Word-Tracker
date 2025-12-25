@@ -1,17 +1,21 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
+import { ContentLoaderComponent } from '../content-loader/content-loader.component';
+import { filter } from 'rxjs/operators';
 
 @Component({
     selector: 'app-settings',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ContentLoaderComponent],
     templateUrl: './settings.component.html',
     styleUrls: ['./settings.component.scss']
 })
 export class SettingsComponent implements OnInit {
+    isLoading = false;
+    isSaving = false;
     username: string = '';
     email: string = '';
 
@@ -24,11 +28,9 @@ export class SettingsComponent implements OnInit {
     ];
 
     // Date & Time settings
-    dateFormat: string = '12/06/2025';
+    dateFormat: string = 'MM/DD/YYYY';
     weekStartDay: string = 'Monday';
     weekStartOptions = ['Monday', 'Sunday'];
-
-
 
     // Plans tracking
     activePlansCount: number = 0;
@@ -36,15 +38,15 @@ export class SettingsComponent implements OnInit {
 
     // Email reminders
     emailRemindersEnabled: boolean = false;
-    reminderTimezone: string = 'GMT +00:00 – Africa/Abidjan';
+    reminderTimezone: string = 'GMT +00:00';
     reminderFrequency: string = 'Daily @ 8AM';
 
     timezoneOptions = [
-        'GMT +00:00 – Africa/Abidjan',
-        'GMT +01:00 – Europe/London',
-        'GMT +05:30 – Asia/Kolkata',
-        'GMT -05:00 – America/New_York',
-        'GMT -08:00 – America/Los_Angeles'
+        'GMT +00:00',
+        'GMT +01:00',
+        'GMT +05:30',
+        'GMT -05:00',
+        'GMT -08:00'
     ];
 
     frequencyOptions = [
@@ -63,41 +65,112 @@ export class SettingsComponent implements OnInit {
     passwordError: string = '';
     isSubmittingPassword: boolean = false;
 
-    constructor(private apiService: ApiService, private router: Router) { }
+    successMessage: string = '';
+    errorMessage: string = '';
+
+    constructor(
+        private apiService: ApiService, 
+        private router: Router,
+        private cdr: ChangeDetectorRef
+    ) { }
 
     ngOnInit() {
-        this.username = localStorage.getItem('username') || 'Guest';
-        this.email = localStorage.getItem('email') || 'user@example.com';
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+            this.router.navigate(['/login']);
+            return;
+        }
+
+        this.loadUserDetails();
         this.loadSettings();
         this.loadUserStats();
-        this.loadUserDetails();
+        
+        // Reload on navigation back to this page
+        this.router.events.pipe(
+            filter(event => event instanceof NavigationEnd)
+        ).subscribe((event: any) => {
+            if (event.url === '/settings') {
+                this.loadSettings();
+                this.loadUserStats();
+            }
+        });
     }
 
     loadUserDetails() {
-        // User details from localStorage (C backend doesn't have user profile endpoint yet)
-        this.username = localStorage.getItem('username') || 'Guest';
-        this.email = localStorage.getItem('email') || 'user@example.com';
+        this.apiService.getUserProfile().subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    this.username = response.data.username || localStorage.getItem('username') || 'Guest';
+                    this.email = response.data.email || localStorage.getItem('email') || 'user@example.com';
+                } else {
+                    this.username = localStorage.getItem('username') || 'Guest';
+                    this.email = localStorage.getItem('email') || 'user@example.com';
+                }
+            },
+            error: (err) => {
+                console.error('Error loading user details:', err);
+                this.username = localStorage.getItem('username') || 'Guest';
+                this.email = localStorage.getItem('email') || 'user@example.com';
+            }
+        });
     }
 
     loadSettings() {
-        const savedProfessions = localStorage.getItem('professions');
-        if (savedProfessions) {
-            const professions = JSON.parse(savedProfessions);
-            this.professionOptions.forEach(option => {
-                option.selected = professions.includes(option.id);
-            });
-        }
+        this.isLoading = true;
+        this.cdr.detectChanges();
 
-        const savedDateFormat = localStorage.getItem('dateFormat');
-        if (savedDateFormat) this.dateFormat = savedDateFormat;
-
-        const savedWeekStart = localStorage.getItem('weekStartDay');
-        if (savedWeekStart) this.weekStartDay = savedWeekStart;
+        this.apiService.getUserSettings().subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    const data = response.data;
+                    
+                    // Date & Time
+                    this.dateFormat = data.date_format || 'MM/DD/YYYY';
+                    this.weekStartDay = data.week_start_day || 'Monday';
+                    
+                    // Email reminders
+                    this.emailRemindersEnabled = data.email_reminders_enabled || false;
+                    this.reminderTimezone = data.reminder_timezone || 'GMT +00:00';
+                    this.reminderFrequency = data.reminder_frequency || 'Daily @ 8AM';
+                    
+                    // Professions
+                    let professions: string[] = [];
+                    if (data.professions) {
+                        try {
+                            professions = typeof data.professions === 'string' 
+                                ? JSON.parse(data.professions) 
+                                : data.professions;
+                        } catch (e) {
+                            professions = [];
+                        }
+                    }
+                    
+                    this.professionOptions.forEach(option => {
+                        option.selected = professions.includes(option.id);
+                    });
+                }
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error loading settings:', err);
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     loadUserStats() {
-        // Plans feature has been removed
-        this.activePlansCount = 0;
+        this.apiService.getDashboardStats().subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    this.activePlansCount = response.data.activePlans || 0;
+                }
+            },
+            error: (err) => {
+                console.error('Error loading stats:', err);
+            }
+        });
     }
 
     saveProfessions() {
@@ -105,21 +178,90 @@ export class SettingsComponent implements OnInit {
             .filter(option => option.selected)
             .map(option => option.id);
 
-        localStorage.setItem('professions', JSON.stringify(selectedProfessions));
-        alert('Professions saved successfully!');
+        this.isSaving = true;
+        this.cdr.detectChanges();
+
+        this.apiService.updateUserSettings({
+            professions: selectedProfessions
+        }).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.successMessage = 'Professions saved successfully!';
+                    setTimeout(() => this.successMessage = '', 3000);
+                } else {
+                    this.errorMessage = response.message || 'Failed to save professions';
+                    setTimeout(() => this.errorMessage = '', 3000);
+                }
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error saving professions:', err);
+                this.errorMessage = err.error?.message || 'Failed to save professions';
+                setTimeout(() => this.errorMessage = '', 3000);
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     saveDateTimeSettings() {
-        localStorage.setItem('dateFormat', this.dateFormat);
-        localStorage.setItem('weekStartDay', this.weekStartDay);
-        alert('Date & Time settings saved successfully!');
+        this.isSaving = true;
+        this.cdr.detectChanges();
+
+        this.apiService.updateUserSettings({
+            date_format: this.dateFormat,
+            week_start_day: this.weekStartDay
+        }).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.successMessage = 'Date & Time settings saved successfully!';
+                    setTimeout(() => this.successMessage = '', 3000);
+                } else {
+                    this.errorMessage = response.message || 'Failed to save settings';
+                    setTimeout(() => this.errorMessage = '', 3000);
+                }
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error saving date/time settings:', err);
+                this.errorMessage = err.error?.message || 'Failed to save settings';
+                setTimeout(() => this.errorMessage = '', 3000);
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     saveEmailSettings() {
-        localStorage.setItem('emailRemindersEnabled', this.emailRemindersEnabled.toString());
-        localStorage.setItem('reminderTimezone', this.reminderTimezone);
-        localStorage.setItem('reminderFrequency', this.reminderFrequency);
-        alert('Email settings saved successfully!');
+        this.isSaving = true;
+        this.cdr.detectChanges();
+
+        this.apiService.updateUserSettings({
+            email_reminders_enabled: this.emailRemindersEnabled,
+            reminder_timezone: this.reminderTimezone,
+            reminder_frequency: this.reminderFrequency
+        }).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.successMessage = 'Email settings saved successfully!';
+                    setTimeout(() => this.successMessage = '', 3000);
+                } else {
+                    this.errorMessage = response.message || 'Failed to save email settings';
+                    setTimeout(() => this.errorMessage = '', 3000);
+                }
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error saving email settings:', err);
+                this.errorMessage = err.error?.message || 'Failed to save email settings';
+                setTimeout(() => this.errorMessage = '', 3000);
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     resetPassword() {
@@ -162,14 +304,28 @@ export class SettingsComponent implements OnInit {
             return;
         }
 
-        // Password change not implemented in C backend yet
         this.isSubmittingPassword = true;
+        this.cdr.detectChanges();
 
-        // Simulate delay
-        setTimeout(() => {
-            this.isSubmittingPassword = false;
-            this.passwordError = 'Password change feature coming soon!';
-        }, 500);
+        this.apiService.changePassword(this.currentPassword, this.newPassword, this.confirmPassword).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.closePasswordModal();
+                    this.successMessage = 'Password changed successfully!';
+                    setTimeout(() => this.successMessage = '', 3000);
+                } else {
+                    this.passwordError = response.message || 'Failed to change password';
+                }
+                this.isSubmittingPassword = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error changing password:', err);
+                this.passwordError = err.error?.message || 'Failed to change password. Please check your current password.';
+                this.isSubmittingPassword = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
 
@@ -188,7 +344,30 @@ export class SettingsComponent implements OnInit {
 
     deleteAccount() {
         if (confirm('Are you absolutely sure you want to permanently delete your account? This action cannot be undone!')) {
-            alert('Account deletion would be processed here.');
+            this.isSaving = true;
+            this.cdr.detectChanges();
+
+            this.apiService.deleteUserAccount().subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        // Clear localStorage and redirect to login
+                        localStorage.clear();
+                        this.router.navigate(['/login']);
+                    } else {
+                        this.errorMessage = response.message || 'Failed to delete account';
+                        setTimeout(() => this.errorMessage = '', 3000);
+                        this.isSaving = false;
+                        this.cdr.detectChanges();
+                    }
+                },
+                error: (err) => {
+                    console.error('Error deleting account:', err);
+                    this.errorMessage = err.error?.message || 'Failed to delete account';
+                    setTimeout(() => this.errorMessage = '', 3000);
+                    this.isSaving = false;
+                    this.cdr.detectChanges();
+                }
+            });
         }
     }
 }

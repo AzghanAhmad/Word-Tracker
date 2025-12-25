@@ -1,9 +1,8 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
-import { PublicNavbarComponent } from './components/public-navbar/public-navbar.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { ToastComponent } from './components/shared/toast/toast.component';
 import { filter } from 'rxjs/operators';
@@ -11,26 +10,27 @@ import { filter } from 'rxjs/operators';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SidebarComponent, NavbarComponent, PublicNavbarComponent, FooterComponent, ToastComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, NavbarComponent, FooterComponent, ToastComponent],
+  encapsulation: ViewEncapsulation.None,
   template: `
-    <div *ngIf="isPublicPage" class="public-layout">
-      <app-public-navbar></app-public-navbar>
-      <div class="content-wrapper">
-        <router-outlet></router-outlet>
-      </div>
-      <app-footer></app-footer>
-    </div>
-    <!-- Logged-in Layout (With Sidebar) -->
-    <div *ngIf="!isPublicPage" class="app-container">
-      <app-sidebar #sidebarComponent></app-sidebar>
+    <div class="app-wrapper">
+      <!-- Unified Navbar -->
+      <app-navbar 
+        [isPublic]="isPublicPage" 
+        [isMenuOpen]="isPublicPage ? isPublicMenuOpen : (sidebarComponent ? !sidebarComponent.isCollapsed : false)"
+        (toggleSidebarEvent)="toggleSidebar()">
+      </app-navbar>
       
-      <div class="main-content">
-        <app-navbar (toggleSidebarEvent)="toggleSidebar()"></app-navbar>
-        <div class="content-wrapper">
-          <router-outlet></router-outlet>
-        </div>
+      <div class="layout-body" [class.with-sidebar]="!isPublicPage">
+        <!-- Sidebar and Main Content for Authenticated Layout -->
+        <app-sidebar *ngIf="!isPublicPage" #sidebarComponent></app-sidebar>
         
-        <app-footer></app-footer>
+        <main [class.main-content]="!isPublicPage" [class.public-content]="isPublicPage">
+          <div class="content-wrapper">
+            <router-outlet></router-outlet>
+          </div>
+          <app-footer></app-footer>
+        </main>
       </div>
     </div>
 
@@ -38,29 +38,38 @@ import { filter } from 'rxjs/operators';
     <app-toast></app-toast>
   `,
   styles: [`
-    .public-layout {
+    .app-wrapper {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       background-color: #f9fafb;
     }
 
-    .app-container {
+    .layout-body {
       display: flex;
-      min-height: 100vh;
-      background-color: #f9fafb;
+      flex: 1;
+      width: 100%;
       position: relative;
-      overflow-x: hidden;
+      margin-top: 80px; /* Offset for fixed navbar */
     }
 
+    /* Public layout doesn't need flex container properties */
+    .public-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    /* Authenticated layout with sidebar */
     .main-content {
       flex: 1;
-      margin-left: 260px;
+      margin-left: 250px; /* Sidebar width */
       transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      min-height: 100vh;
+      min-height: calc(100vh - 80px); /* Adjust for header height */
       display: flex;
       flex-direction: column;
-      width: calc(100% - 260px);
+      width: calc(100% - 250px);
       position: relative;
     }
 
@@ -68,48 +77,16 @@ import { filter } from 'rxjs/operators';
       flex: 1;
       padding: 0;
       position: relative;
-      background-color: #f9fafb;
     }
 
-    /* Mobile & Small Tablets (< 768px) */
-    @media (max-width: 767px) {
-      .app-container {
-        flex-direction: column;
-      }
-
+    /* Responsiveness */
+    @media (max-width: 1023px) {
       .main-content {
-        margin-left: 0 !important;
-        width: 100% !important;
-        padding-top: 0;
-      }
-
-      .content-wrapper {
-        padding: 0;
-        overflow-x: hidden;
-      }
-    }
-
-    /* Tablets (768px - 1023px) */
-    @media (min-width: 768px) and (max-width: 1023px) {
-      .main-content {
-        margin-left: 250px;
-        width: calc(100% - 250px);
-      }
-    }
-
-    /* Desktop (1024px+) */
-    @media (min-width: 1024px) {
-      .main-content {
-        margin-left: 260px;
-        width: calc(100% - 260px);
-      }
-    }
-
-    /* Large Desktop (1440px+) */
-    @media (min-width: 1440px) {
-      .content-wrapper {
+        margin-left: 0;
         width: 100%;
-        margin: 0 auto;
+      }
+      .layout-body {
+        margin-top: 80px;
       }
     }
   `]
@@ -131,10 +108,16 @@ export class AppComponent {
     });
   }
 
+  isPublicMenuOpen = false;
+
+  closeMobileMenu() {
+    this.isPublicMenuOpen = false;
+  }
 
   toggleSidebar() {
-    // Call the sidebar's toggle method directly
-    if (this.sidebarComponent) {
+    if (this.isPublicPage) {
+      this.isPublicMenuOpen = !this.isPublicMenuOpen;
+    } else if (this.sidebarComponent) {
       this.sidebarComponent.toggleSidebar();
     }
   }

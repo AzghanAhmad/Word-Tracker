@@ -49,7 +49,9 @@ public class PlansController : ControllerBase
         string? grouping_type,
         string? dashboard_color,
         bool? show_historical_data,
-        string? progress_tracking_type
+        string? progress_tracking_type,
+        string? activity_type,
+        string? content_type
     );
 
     /// <summary>
@@ -117,7 +119,9 @@ public class PlansController : ControllerBase
                 req.grouping_type ?? "Day",
                 req.dashboard_color ?? "#000000",
                 req.show_historical_data ?? true,
-                req.progress_tracking_type ?? "Daily Goals"
+                req.progress_tracking_type ?? "Daily Goals",
+                req.activity_type ?? "Writing",
+                req.content_type ?? "Novel"
             );
 
             if (planId > 0)
@@ -255,7 +259,8 @@ public class PlansController : ControllerBase
                     ["color_code"] = dashboardColor,
                     ["show_historical_data"] = GetBool("show_historical_data", true),
                     ["progress_tracking_type"] = GetString("progress_tracking_type", "Daily Goals"),
-                    ["content_type"] = "Novella", // Default value for frontend compatibility
+                    ["activity_type"] = GetString("activity_type", "Writing"),
+                    ["content_type"] = GetString("content_type", "Novel"),
                     ["progress"] = 0 // Will be calculated in frontend
                 };
             }).ToList();

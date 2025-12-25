@@ -1,105 +1,138 @@
 <div class="dashboard-container">
-    <div class="dashboard-header">
-        <div class="header-content">
-            <h1 class="page-title">Welcome to Word Tracker</h1>
-            <p class="page-subtitle">Track your progress and stay organized</p>
-        </div>
-        <a routerLink="/create-plan" class="btn-create-plan">
-            <span class="icon">+</span>
-            <span>Create New Plan</span>
-        </a>
-    </div>
+    <app-content-loader *ngIf="isLoading"></app-content-loader>
 
-    <!-- Dashboard Stats Summary -->
-    <div class="stats-grid"
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-        <div class="stat-card"
-            style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Total Plans
+    <!-- Main Content (Hidden while loading) -->
+    <div *ngIf="!isLoading">
+        <div class="dashboard-header">
+            <div class="header-content">
+                <h1 class="page-title">Welcome to Word Tracker</h1>
+                <p class="page-subtitle">Track your progress and stay organized</p>
             </div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-top: 0.5rem;">{{ stats.totalPlans }}
-            </div>
+            <a routerLink="/create-plan" class="btn-create-plan">
+                <span class="icon">+</span>
+                <span>Create New Plan</span>
+            </a>
         </div>
-        <div class="stat-card"
-            style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Active Plans
-            </div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1; margin-top: 0.5rem;">{{ stats.activePlans
-                }}</div>
-        </div>
-        <div class="stat-card"
-            style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Total Words
-            </div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981; margin-top: 0.5rem;">{{ stats.totalWords |
-                number }}</div>
-        </div>
-        <div class="stat-card"
-            style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-            <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Completed
-            </div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b; margin-top: 0.5rem;">{{
-                stats.completedPlans }}</div>
-        </div>
-    </div>
 
-    <div class="plans-grid" *ngIf="plans.length > 0">
-        <div class="plan-card" *ngFor="let plan of plans">
-            <div class="plan-header">
-                <a class="plan-title">{{ plan.plan_name }}</a>
-                <span class="plan-status" [ngClass]="{
+        <!-- Dashboard Stats Summary -->
+        <div class="stats-grid"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+            <div class="stat-card"
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Total
+                    Plans
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-top: 0.5rem;">{{
+                    stats.totalPlans }}
+                </div>
+            </div>
+            <div class="stat-card"
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Active
+                    Plans
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1; margin-top: 0.5rem;">{{
+                    stats.activePlans
+                    }}</div>
+            </div>
+            <div class="stat-card"
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Total
+                    Words
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #10b981; margin-top: 0.5rem;">{{
+                    stats.totalWords |
+                    number }}</div>
+            </div>
+            <div class="stat-card"
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Completed
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b; margin-top: 0.5rem;">{{
+                    stats.completedPlans }}</div>
+            </div>
+        </div>
+
+        <div class="plans-grid" *ngIf="plans.length > 0">
+            <div class="plan-card" *ngFor="let plan of paginatedPlans">
+                <div class="plan-header">
+                    <a class="plan-title">{{ plan.plan_name }}</a>
+                    <span class="plan-status" [ngClass]="{
                     'status-active': plan.status === 'In Progress',
                     'status-completed': plan.status === 'Completed',
                     'status-paused': plan.status === 'On Hold'
                 }">{{ plan.status }}</span>
-            </div>
+                </div>
 
-            <div class="plan-details">
-                <div class="detail-item">
-                    <i class="fas fa-book icon" [style.color]="plan.color_code"></i>
-                    <div>
-                        <span class="detail-label">Type</span>
-                        <span class="detail-value">{{ plan.content_type }}</span>
+                <div class="plan-details">
+                    <div class="detail-item">
+                        <i class="fas fa-book icon" [style.color]="plan.color_code"></i>
+                        <div>
+                            <span class="detail-label">Type</span>
+                            <span class="detail-value">{{ plan.content_type }}</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-bullseye icon" [style.color]="plan.color_code"></i>
+                        <div>
+                            <span class="detail-label">Target</span>
+                            <span class="detail-value">{{ plan.target_amount | number }} words</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-pencil icon" [style.color]="plan.color_code"></i>
+                        <div>
+                            <span class="detail-label">Progress</span>
+                            <span class="detail-value">{{ plan.completed_amount | number }} words ({{ plan.progress
+                                }}%)</span>
+                        </div>
                     </div>
                 </div>
-                <div class="detail-item">
-                    <i class="fas fa-bullseye icon" [style.color]="plan.color_code"></i>
-                    <div>
-                        <span class="detail-label">Target</span>
-                        <span class="detail-value">{{ plan.target_amount | number }} words</span>
-                    </div>
-                </div>
-                <div class="detail-item">
-                    <i class="fas fa-pencil icon" [style.color]="plan.color_code"></i>
-                    <div>
-                        <span class="detail-label">Progress</span>
-                        <span class="detail-value">{{ plan.completed_amount | number }} words ({{ plan.progress
-                            }}%)</span>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Progress Bar -->
-            <div
-                style="height: 8px; background: #f1f5f9; border-radius: 10px; margin-bottom: 1.5rem; overflow: hidden;">
-                <div [style.width.%]="plan.progress" [style.background]="plan.color_code"
-                    style="height: 100%; border-radius: 10px; transition: width 0.5s;"></div>
-            </div>
+                <!-- Progress Bar -->
+                <div
+                    style="height: 8px; background: #f1f5f9; border-radius: 10px; margin-bottom: 1.5rem; overflow: hidden;">
+                    <div [style.width.%]="plan.progress" [style.background]="plan.color_code"
+                        style="height: 100%; border-radius: 10px; transition: width 0.5s;"></div>
+                </div>
 
-            <div class="plan-footer">
-                <a [routerLink]="['/calendar']" [queryParams]="{planId: plan.id}" class="btn-view-plan" 
-                    [style.background-color]="plan.color_code + '1A'"
-                    [style.color]="plan.color_code">View Details</a>
+                <div class="plan-footer">
+                    <a [routerLink]="['/plans', plan.id]" class="btn-view-plan"
+                        [style.background-color]="plan.color_code + '1A'" [style.color]="plan.color_code">View
+                        Details</a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Empty State -->
-    <div class="empty-state" *ngIf="plans.length === 0">
-        <div class="empty-icon">📝</div>
-        <h2 class="empty-title">No Plans Yet</h2>
-        <p class="empty-description">You haven't created any writing plans yet. Start by creating a plan to track your
-            word counts!</p>
-        <a routerLink="/create-plan" class="btn-create-first">Create Your First Plan</a>
+        <!-- Pagination Controls -->
+        <div class="pagination-container" *ngIf="totalPages > 1">
+            <button class="page-btn prev" [disabled]="currentPage === 1" (click)="setPage(currentPage - 1)">
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+
+            <div class="page-numbers">
+                <ng-container *ngFor="let page of getPages()">
+                    <button *ngIf="page !== '...'" class="page-num" [class.active]="currentPage === page"
+                        (click)="setPage(page)">
+                        {{ page }}
+                    </button>
+                    <span *ngIf="page === '...'" class="page-dots">...</span>
+                </ng-container>
+            </div>
+
+            <button class="page-btn next" [disabled]="currentPage === totalPages" (click)="setPage(currentPage + 1)">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="plans.length === 0 && !isLoading">
+            <div class="empty-icon">📝</div>
+            <h2 class="empty-title">No Plans Yet</h2>
+            <p class="empty-description">You haven't created any writing plans yet. Start by creating a plan to track
+                your
+                word counts!</p>
+            <a routerLink="/create-plan" class="btn-create-first">Create Your First Plan</a>
+        </div>
     </div>
 </div>

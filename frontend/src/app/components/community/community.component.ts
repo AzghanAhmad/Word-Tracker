@@ -1,20 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
-import { MockDataService } from '../../services/mock-data.service';
+import { filter } from 'rxjs/operators';
+import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ContentLoaderComponent],
   templateUrl: './community.component.html',
   styleUrls: ['./community.component.scss']
 })
 export class CommunityComponent implements OnInit {
   plans: any[] = [];
   filteredPlans: any[] = [];
+  isLoading = true;
 
   // Filters
   selectedActivity: string = 'Any';
@@ -26,51 +28,73 @@ export class CommunityComponent implements OnInit {
   constructor(
     private apiService: ApiService,
     private router: Router,
-    private mockData: MockDataService
+    private cdr: ChangeDetectorRef
   ) { }
 
   ngOnInit() {
     // Initial fetch from backend
     this.fetchCommunityPlans();
+    
+    // Reload on navigation back to this page
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      if (event.url === '/community') {
+        this.fetchCommunityPlans();
+      }
+    });
   }
 
   fetchCommunityPlans() {
+    this.isLoading = true;
+    this.cdr.detectChanges();
+    
     const userType = localStorage.getItem('user_type');
 
     // Use mock data for demo users
     if (userType === 'demo') {
-      this.plans = this.mockData.generateMockCommunityPlans(12);
+      this.plans = [];
       this.applyFilters();
+      this.isLoading = false;
+      this.cdr.detectChanges();
       return;
     }
 
-    // Fetch community posts from C backend
+    // Fetch public plans from backend
     this.apiService.getCommunityPosts().subscribe({
       next: (response) => {
+        console.log('Community response:', response);
         if (response.success && response.data) {
-          // Map community posts to plan format for display
-          this.plans = response.data.map((post: any) => ({
-            id: post.id,
-            plan_name: post.title,
-            author: post.author,
-            content: post.content,
-            likes: post.likes,
-            comments: post.comments,
-            created_at: post.created_at,
-            // Add mock fields for filtering
-            activity_type: 'Writing',
-            content_type: 'Blog',
-            daily_data: []
+          // Map public plans for display
+          this.plans = response.data.map((plan: any) => ({
+            id: plan.id,
+            title: plan.title,
+            goal_amount: plan.goal_amount || 0,
+            goal_unit: plan.goal_unit || 'words',
+            progress_percent: plan.progress_percent || 0,
+            total_progress: plan.total_progress || 0,
+            activity_type: plan.activity_type || 'Writing',
+            content_type: plan.content_type || 'Novel',
+            creator_username: plan.creator_username || 'Anonymous',
+            description: plan.description || '',
+            start_date: plan.start_date,
+            end_date: plan.end_date,
+            status: plan.status,
+            graph_data: plan.graph_data || [0, 0, 0, 0, 0]
           }));
         } else {
           this.plans = [];
         }
         this.applyFilters();
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('Error fetching community posts:', error);
+        console.error('Error fetching community plans:', error);
         this.plans = [];
         this.applyFilters();
+        this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }

@@ -88,8 +88,24 @@ public class DbInitService
                 username VARCHAR(255) UNIQUE NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
+                bio TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )",
+            
+            @"CREATE TABLE IF NOT EXISTS user_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                date_format VARCHAR(50) DEFAULT 'MM/DD/YYYY',
+                week_start_day VARCHAR(20) DEFAULT 'Monday',
+                email_reminders_enabled BOOLEAN DEFAULT FALSE,
+                reminder_timezone VARCHAR(100) DEFAULT 'GMT +00:00',
+                reminder_frequency VARCHAR(100) DEFAULT 'Daily @ 8AM',
+                professions JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_user_settings (user_id)
             )",
             
             @"CREATE TABLE IF NOT EXISTS plans (
@@ -117,6 +133,8 @@ public class DbInitService
                 dashboard_color VARCHAR(10) DEFAULT '#000000',
                 show_historical_data BOOLEAN DEFAULT TRUE,
                 progress_tracking_type VARCHAR(50) DEFAULT 'Daily Goals',
+                activity_type VARCHAR(50) DEFAULT 'Writing',
+                content_type VARCHAR(50) DEFAULT 'Novel',
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )",
             
@@ -255,7 +273,9 @@ public class DbInitService
                 { "week_start_day", "VARCHAR(20) DEFAULT 'Mondays'" },
                 { "grouping_type", "VARCHAR(20) DEFAULT 'Day'" },
                 { "show_historical_data", "BOOLEAN DEFAULT TRUE" },
-                { "progress_tracking_type", "VARCHAR(50) DEFAULT 'Daily Goals'" }
+                { "progress_tracking_type", "VARCHAR(50) DEFAULT 'Daily Goals'" },
+                { "activity_type", "VARCHAR(50) DEFAULT 'Writing'" },
+                { "content_type", "VARCHAR(50) DEFAULT 'Novel'" }
             };
             
             foreach (var (column, definition) in plansColumnsToAdd)
@@ -278,6 +298,12 @@ public class DbInitService
             
             // Create challenge_participants table if it doesn't exist
             await CreateChallengeParticipantsTableAsync(conn);
+            
+            // Add bio column to users table if it doesn't exist
+            await AddColumnIfNotExistsAsync(conn, "users", "bio", "TEXT");
+            
+            // Create user_settings table if it doesn't exist
+            await CreateUserSettingsTableAsync(conn);
         }
         catch (Exception ex)
         {
@@ -352,6 +378,48 @@ public class DbInitService
         catch (Exception ex)
         {
             Console.WriteLine($"⚠️ Could not create challenge_participants table: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Create user_settings table if it doesn't exist
+    /// </summary>
+    private async Task CreateUserSettingsTableAsync(MySqlConnection conn)
+    {
+        try
+        {
+            // Check if table exists
+            using var checkCmd = conn.CreateCommand();
+            checkCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.TABLES 
+                                     WHERE TABLE_SCHEMA = DATABASE() 
+                                     AND TABLE_NAME = 'user_settings'";
+            var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync()) > 0;
+            
+            if (!exists)
+            {
+                Console.WriteLine("📦 Creating user_settings table...");
+                using var createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"CREATE TABLE user_settings (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    date_format VARCHAR(50) DEFAULT 'MM/DD/YYYY',
+                    week_start_day VARCHAR(20) DEFAULT 'Monday',
+                    email_reminders_enabled BOOLEAN DEFAULT FALSE,
+                    reminder_timezone VARCHAR(100) DEFAULT 'GMT +00:00',
+                    reminder_frequency VARCHAR(100) DEFAULT 'Daily @ 8AM',
+                    professions JSON,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE KEY unique_user_settings (user_id)
+                )";
+                await createCmd.ExecuteNonQueryAsync();
+                Console.WriteLine("✓ Created user_settings table");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Could not create user_settings table: {ex.Message}");
         }
     }
 }

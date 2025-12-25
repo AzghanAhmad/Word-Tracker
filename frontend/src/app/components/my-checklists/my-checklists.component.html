@@ -1,74 +1,89 @@
-<div class="container fade-in">
-    <div class="header">
-        <h1>My Checklists</h1>
-        <a routerLink="/create-checklist" class="btn-primary">
-            <i class="fas fa-plus"></i> Create New
-        </a>
-    </div>
+<div class="checklists-page">
+    <!-- Top Nav Tabs -->
+    <nav class="main-tabs">
+        <a routerLink="/calendar" routerLinkActive="active" class="tab-link"><i class="fas fa-calendar-alt"></i>
+            Calendar</a>
+        <a routerLink="/dashboard" routerLinkActive="active" class="tab-link"><i class="fas fa-tasks"></i> Plans</a>
+        <a routerLink="/my-checklists" routerLinkActive="active" class="tab-link active"><i
+                class="fas fa-clipboard-check"></i> Checklists</a>
+        <a routerLink="/challenges" routerLinkActive="active" class="tab-link"><i class="fas fa-users"></i>
+            Challenges</a>
+        <a routerLink="/community" routerLinkActive="active" class="tab-link"><i class="fas fa-comments"></i>
+            Community</a>
+    </nav>
+    <div class="split-line"></div>
 
-    <app-content-loader *ngIf="isLoading"></app-content-loader>
+    <div class="container fade-in">
+        <div class="header">
+            <h1>My Checklists</h1>
+            <a routerLink="/create-checklist" class="btn-primary">
+                <i class="fas fa-plus"></i> Create New
+            </a>
+        </div>
 
-    <div class="empty-state" *ngIf="!isLoading && checklists.length === 0">
-        <i class="fas fa-clipboard-check"></i>
-        <h3>No checklists found</h3>
-        <p>Create your first checklist to stay organized!</p>
-    </div>
+        <app-content-loader *ngIf="isLoading"></app-content-loader>
 
-    <div class="checklist-grid" *ngIf="!isLoading && checklists.length > 0">
-        <div class="checklist-card" *ngFor="let list of checklists">
-            <div class="card-header">
-                <h3>{{ list.name }}</h3>
-                <div class="actions">
-                    <button class="icon-btn delete" (click)="deleteChecklist(list.id)">
-                        <i class="fas fa-trash"></i>
+        <div class="empty-state" *ngIf="!isLoading && checklists.length === 0">
+            <i class="fas fa-clipboard-check"></i>
+            <h3>No checklists found</h3>
+            <p>Create your first checklist to stay organized!</p>
+        </div>
+
+        <div class="checklist-grid" *ngIf="!isLoading && checklists.length > 0">
+            <div class="checklist-card" *ngFor="let list of checklists">
+                <div class="card-header">
+                    <h3>{{ list.name || list.title || 'Untitled Checklist' }}</h3>
+                    <div class="card-actions">
+                        <a [routerLink]="['/create-checklist']" [queryParams]="{edit: list.id}" class="btn-icon edit" title="Edit Checklist">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button class="btn-icon delete" (click)="deleteChecklist(list.id); $event.stopPropagation()" title="Delete Checklist">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="progress-bar-container">
+                    <div class="progress-bar" [style.width.%]="getCompletionPercentage(list)"></div>
+                </div>
+                <div class="progress-text">
+                    {{ getCompletedCount(list) }} / {{ list.items?.length || 0 }} completed
+                </div>
+
+                <div class="items-preview">
+                    <div class="item" *ngFor="let item of list.items | slice:0:3" (click)="toggleItem(list.id, item)"
+                        style="cursor: pointer;">
+                        <i class="fas" [ngClass]="item.is_done ? 'fa-check-square' : 'fa-square'"></i>
+                        <span [class.done]="item.is_done">{{ item.text }}</span>
+                    </div>
+                    <div class="more-items" *ngIf="(list.items?.length || 0) > 3">
+                        +{{ (list.items?.length || 0) - 3 }} more...
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <span class="date">{{ list.created_at | date:'mediumDate' }}</span>
+                    <button class="btn-secondary small" [routerLink]="['/create-checklist']"
+                        [queryParams]="{edit: list.id}">
+                        View / Edit
                     </button>
                 </div>
             </div>
-
-            <div class="progress-bar-container">
-                <div class="progress-bar" [style.width.%]="getCompletionPercentage(list)"></div>
-            </div>
-            <div class="progress-text">
-                {{ list.completed_count || 0 }} / {{ list.item_count || 0 }} completed
-            </div>
-
-            <div class="items-preview">
-                <div class="item" *ngFor="let item of list.items | slice:0:3" (click)="toggleItem(list.id, item)"
-                    [class.updating]="isItemUpdating(item.id)"
-                    style="cursor: pointer;">
-                    <i class="fas" 
-                       *ngIf="!isItemUpdating(item.id)"
-                       [ngClass]="item.is_done ? 'fa-check-square' : 'fa-square'"></i>
-                    <i class="fas fa-spinner fa-spin" *ngIf="isItemUpdating(item.id)"></i>
-                    <span [class.done]="item.is_done">{{ item.text }}</span>
-                </div>
-                <div class="more-items" *ngIf="(list.items?.length || 0) > 3">
-                    +{{ (list.items?.length || 0) - 3 }} more...
-                </div>
-            </div>
-
-            <div class="card-footer">
-                <span class="date">{{ list.created_at | date:'mediumDate' }}</span>
-                <button class="btn-secondary small" [routerLink]="['/create-checklist']"
-                    [queryParams]="{edit: list.id}">
-                    View / Edit
-                </button>
-            </div>
         </div>
-    </div>
-    <div class="pagination-controls" *ngIf="totalPages > 1 && !isLoading">
-        <div class="page-size">
-            <label>Show:</label>
-            <select (change)="onPageSizeChange($event)">
-                <option [value]="10" [selected]="itemsPerPage === 10">10</option>
-                <option [value]="25" [selected]="itemsPerPage === 25">25</option>
-                <option [value]="50" [selected]="itemsPerPage === 50">50</option>
-            </select>
-        </div>
-        <div class="page-nav">
-            <button (click)="prevPage()" [disabled]="currentPage === 1">Previous</button>
-            <span>Page {{ currentPage }} of {{ totalPages }}</span>
-            <button (click)="nextPage()" [disabled]="currentPage === totalPages">Next</button>
+        <div class="pagination-controls" *ngIf="totalPages > 1 && !isLoading">
+            <div class="page-size">
+                <label>Show:</label>
+                <select (change)="onPageSizeChange($event)">
+                    <option [value]="10" [selected]="itemsPerPage === 10">10</option>
+                    <option [value]="25" [selected]="itemsPerPage === 25">25</option>
+                    <option [value]="50" [selected]="itemsPerPage === 50">50</option>
+                </select>
+            </div>
+            <div class="page-nav">
+                <button (click)="prevPage()" [disabled]="currentPage === 1">Previous</button>
+                <span>Page {{ currentPage }} of {{ totalPages }}</span>
+                <button (click)="nextPage()" [disabled]="currentPage === totalPages">Next</button>
+            </div>
         </div>
     </div>
 </div>

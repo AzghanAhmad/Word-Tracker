@@ -4,7 +4,8 @@ public interface IDbService
 {
     bool CreateUser(string username, string email, string passwordHash);
     (int id, string username, string passwordHash)? GetUserByEmail(string email);
-    int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType);
+    (int id, string username, string passwordHash)? GetUserById(int userId);
+    int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType);
     string GetPlansJson(int userId);
     string? GetPlanJson(int id, int userId);
     bool DeletePlan(int id, int userId);
@@ -21,9 +22,18 @@ public interface IDbService
     string GetAllPublicChallengesJson(int userId);
     string? GetChallengeJson(int id, int userId);
     bool JoinChallenge(int challengeId, int userId);
+    int? GetChallengeIdByInviteCode(string inviteCode);
     bool LeaveChallenge(int challengeId, int userId);
     bool UpdateChallengeProgress(int challengeId, int userId, int progress);
     bool DeleteChallenge(int id, int userId);
     string GetDashboardStatsJson(int userId);
+    string GetPublicPlansJson(int userId);
+    string? GetUserProfileJson(int userId);
+    bool UpdateUserProfile(int userId, string username, string email, string? bio);
+    bool UpdateUserPassword(int userId, string currentPasswordHash, string newPasswordHash);
+    string? GetUserSettingsJson(int userId);
+    bool UpdateUserSettings(int userId, string? dateFormat, string? weekStartDay, bool? emailRemindersEnabled, string? reminderTimezone, string? reminderFrequency, string? professionsJson);
+    bool DeleteUserAccount(int userId);
+    string GetStatsJson(int userId);
     string GetLastError();
 }

@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
-import { MockDataService } from '../../services/mock-data.service';
+import { filter } from 'rxjs/operators';
 
 @Component({
     selector: 'app-profile',
@@ -43,68 +43,102 @@ export class ProfileComponent implements OnInit {
     totalWords = 0;
     memberSince = '';
 
-    constructor(private apiService: ApiService, private router: Router, private mockData: MockDataService) { }
+    constructor(
+        private apiService: ApiService, 
+        private router: Router,
+        private cdr: ChangeDetectorRef
+    ) { }
 
     ngOnInit() {
-        this.loadUserProfile();
-        this.loadUserStats();
-    }
-
-    loadUserProfile() {
-        this.isLoading = true;
         const userId = localStorage.getItem('user_id');
-        const userType = localStorage.getItem('user_type');
-
         if (!userId) {
             this.router.navigate(['/login']);
             return;
         }
 
-        // Use mock data for demo users
-        if (userType === 'demo') {
-            const mockUser = this.mockData.generateMockUser();
-            this.user = {
-                id: userId,
-                username: localStorage.getItem('username') || mockUser.username,
-                email: localStorage.getItem('email') || mockUser.email,
-                bio: mockUser.bio,
-                created_at: mockUser.created_at,
-                initials: this.getInitials(localStorage.getItem('username') || mockUser.username)
-            };
-            this.memberSince = this.formatMemberSince(mockUser.created_at);
-            this.isLoading = false;
-            return;
-        }
+        this.loadUserProfile();
+        this.loadUserStats();
+        
+        // Reload on navigation back to this page
+        this.router.events.pipe(
+            filter(event => event instanceof NavigationEnd)
+        ).subscribe((event: any) => {
+            if (event.url === '/profile') {
+                this.loadUserProfile();
+                this.loadUserStats();
+            }
+        });
+    }
 
-        // Use localStorage for user data (C backend doesn't have user profile endpoint yet)
-        this.user = {
-            id: userId,
-            username: localStorage.getItem('username') || 'User',
-            email: localStorage.getItem('email') || 'user@example.com',
-            bio: '',
-            created_at: new Date().toISOString(),
-            initials: this.getInitials(localStorage.getItem('username') || 'User')
-        };
-        this.memberSince = this.formatMemberSince(new Date().toISOString());
-        this.isLoading = false;
+    loadUserProfile() {
+        this.isLoading = true;
+        this.cdr.detectChanges();
+
+        this.apiService.getUserProfile().subscribe({
+            next: (response) => {
+                console.log('Profile response:', response);
+                if (response.success && response.data) {
+                    const data = response.data;
+                    this.user = {
+                        id: data.id?.toString() || localStorage.getItem('user_id') || '',
+                        username: data.username || 'User',
+                        email: data.email || 'user@example.com',
+                        bio: data.bio || '',
+                        created_at: data.created_at || new Date().toISOString(),
+                        initials: this.getInitials(data.username || 'User')
+                    };
+                    this.memberSince = this.formatMemberSince(data.created_at || new Date().toISOString());
+                    
+                    // Update localStorage
+                    localStorage.setItem('username', this.user.username);
+                    localStorage.setItem('email', this.user.email);
+                } else {
+                    // Fallback to localStorage if API fails
+                    const userId = localStorage.getItem('user_id');
+                    this.user = {
+                        id: userId || '',
+                        username: localStorage.getItem('username') || 'User',
+                        email: localStorage.getItem('email') || 'user@example.com',
+                        bio: '',
+                        created_at: new Date().toISOString(),
+                        initials: this.getInitials(localStorage.getItem('username') || 'User')
+                    };
+                    this.memberSince = this.formatMemberSince(new Date().toISOString());
+                }
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error loading profile:', err);
+                // Fallback to localStorage
+                const userId = localStorage.getItem('user_id');
+                this.user = {
+                    id: userId || '',
+                    username: localStorage.getItem('username') || 'User',
+                    email: localStorage.getItem('email') || 'user@example.com',
+                    bio: '',
+                    created_at: new Date().toISOString(),
+                    initials: this.getInitials(localStorage.getItem('username') || 'User')
+                };
+                this.memberSince = this.formatMemberSince(new Date().toISOString());
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     loadUserStats() {
-        const userId = localStorage.getItem('user_id');
-        const userType = localStorage.getItem('user_type');
-        if (!userId) return;
-
-        // Use mock stats for demo users
-        if (userType === 'demo') {
-            const mockStats = this.mockData.generateMockStats();
-            this.totalPlans = mockStats.totalPlans;
-            this.totalWords = mockStats.totalWords;
-            return;
-        }
-
-        // Plans feature has been removed
-        this.totalPlans = 0;
-        this.totalWords = 0;
+        this.apiService.getDashboardStats().subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    this.totalPlans = response.data.totalPlans || 0;
+                    this.totalWords = response.data.totalWords || 0;
+                }
+            },
+            error: (err) => {
+                console.error('Error loading stats:', err);
+            }
+        });
     }
 
     getInitials(name: string): string {
@@ -160,23 +194,46 @@ export class ProfileComponent implements OnInit {
             return;
         }
 
-        // Profile update not implemented in C backend yet
+        if (this.editForm.bio && this.editForm.bio.length > 500) {
+            this.errorMessage = 'Bio must be 500 characters or less';
+            return;
+        }
+
         this.isSaving = true;
+        this.cdr.detectChanges();
 
-        // Update localStorage only
-        setTimeout(() => {
-            localStorage.setItem('username', this.editForm.username);
-            localStorage.setItem('email', this.editForm.email);
-
-            this.user.username = this.editForm.username;
-            this.user.email = this.editForm.email;
-            this.user.bio = this.editForm.bio;
-            this.user.initials = this.getInitials(this.editForm.username);
-
-            this.isSaving = false;
-            this.successMessage = 'Profile updated locally (server update coming soon)!';
-            this.isEditing = false;
-        }, 500);
+        this.apiService.updateUserProfile({
+            username: this.editForm.username.trim(),
+            email: this.editForm.email.trim(),
+            bio: this.editForm.bio?.trim() || ''
+        }).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    // Update local user data
+                    this.user.username = this.editForm.username.trim();
+                    this.user.email = this.editForm.email.trim();
+                    this.user.bio = this.editForm.bio?.trim() || '';
+                    this.user.initials = this.getInitials(this.editForm.username.trim());
+                    
+                    // Update localStorage
+                    localStorage.setItem('username', this.user.username);
+                    localStorage.setItem('email', this.user.email);
+                    
+                    this.successMessage = 'Profile updated successfully!';
+                    this.isEditing = false;
+                } else {
+                    this.errorMessage = response.message || 'Failed to update profile';
+                }
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error updating profile:', err);
+                this.errorMessage = err.error?.message || 'An error occurred while updating your profile';
+                this.isSaving = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     goToSettings() {

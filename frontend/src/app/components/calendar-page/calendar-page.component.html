@@ -1,4 +1,8 @@
 <div class="calendar-page-container">
+    <!-- Loading State -->
+    <app-content-loader *ngIf="isLoading"></app-content-loader>
+
+    <ng-container *ngIf="!isLoading">
     <!-- Top Brand Header -->
     <header class="top-header">
         <div class="brand">
@@ -59,7 +63,9 @@
         <app-calendar-header [monthName]="monthName" (next)="nextMonth()" (prev)="prevMonth()" (today)="goToday()"
             (viewChange)="setViewType($event)"></app-calendar-header>
 
-        <app-calendar-grid [currentDate]="currentDate" [targets]="targets" [deadlines]="deadlines" 
-            [plansByDate]="plansByDate" [viewMode]="viewMode" [timeFilter]="timeFilter"></app-calendar-grid>
+        <app-calendar-grid [currentDate]="currentDate" [targets]="targets" [deadlines]="deadlines"
+            [plansByDate]="plansByDate" [viewMode]="viewMode" [timeFilter]="timeFilter"
+            [dailyLogs]="dailyLogs"></app-calendar-grid>
     </div>
+    </ng-container>
 </div>

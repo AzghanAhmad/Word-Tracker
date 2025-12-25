@@ -1,20 +1,34 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, ViewEncapsulation, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-import { RouterModule } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 
 @Component({
     selector: 'app-navbar',
     standalone: true,
-    imports: [CommonModule, RouterModule],
+    imports: [CommonModule, RouterLink],
     templateUrl: './navbar.component.html',
-    styleUrls: ['./navbar.component.scss']
+    styleUrls: ['./navbar.component.scss'],
+    encapsulation: ViewEncapsulation.None
 })
 export class NavbarComponent {
-    username = localStorage.getItem('username') || 'Guest';
+    @Input() isPublic = false;
+    @Input() isMenuOpen = false;
     @Output() toggleSidebarEvent = new EventEmitter<void>();
 
-    toggleSidebar() {
+    constructor(private router: Router) { }
+
+    toggleMobileMenu() {
         this.toggleSidebarEvent.emit();
+    }
+
+    closeMobileMenu() {
+        this.isMenuOpen = false;
+    }
+
+    logout() {
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('username');
+        localStorage.removeItem('email');
+        this.router.navigate(['/login']);
     }
 }

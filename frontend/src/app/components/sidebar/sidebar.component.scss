@@ -23,7 +23,7 @@ $hover-bg: rgba(255, 255, 255, 0.05);
     animation: fadeIn 0.3s ease-out;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .sidebar-overlay {
         display: block;
         /* Show on mobile when sidebar is open */
@@ -34,11 +34,14 @@ $hover-bg: rgba(255, 255, 255, 0.05);
     background-color: $sidebar-bg;
     color: $text-color;
     width: 250px;
-    height: 100vh;
+    height: calc(100vh - 80px);
+    /* Adjust for header height */
     position: fixed;
-    top: 0;
+    top: 80px;
+    /* Start below header */
     left: 0;
-    z-index: 1000;
+    z-index: 1200;
+    /* Higher than navbar/content */
     display: flex;
     flex-direction: column;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -73,66 +76,15 @@ $hover-bg: rgba(255, 255, 255, 0.05);
         }
     }
 
-    /* Close Button (Mobile & Tablet Only - Hidden on Desktop 1024px+) */
-    .sidebar-close-btn {
-        display: flex;
-        /* Show by default */
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: rgba(255, 255, 255, 0.1);
-        border: none;
-        color: white;
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        cursor: pointer;
-        z-index: 10;
-        font-size: 1.25rem;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-
-        &:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.05);
-        }
-
-        &:active {
-            transform: scale(0.95);
-        }
-
-        i {
-            color: white;
-        }
-    }
-
     /* Hide close button on desktop (1024px+) */
-    @media (min-width: 1024px) {
-        .sidebar-close-btn {
-            display: none !important;
-        }
-    }
 
-    .sidebar-logo {
-        padding: 1.5rem 1.5rem 1rem;
+    .sidebar-nav {
+        padding: 0.5rem 0;
+        flex: 1;
         display: flex;
-        align-items: center;
-        justify-content: flex-start;
-
-        .logo-img {
-            max-width: 100%;
-            height: auto;
-        }
-
-        .logo-icon-only {
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-        }
+        flex-direction: column;
     }
 
-    // Progress Section (Replaces top-widget)
     .progress-section {
         margin-bottom: 0.5rem;
         padding-top: 0.5rem;
@@ -331,14 +283,15 @@ $hover-bg: rgba(255, 255, 255, 0.05);
 }
 
 // Mobile Responsive
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
     .sidebar {
         position: fixed;
         left: 0;
-        top: 0;
-        height: 100vh;
+        top: 80px;
+        /* Below navbar */
+        height: calc(100vh - 80px);
         width: 260px; // Standard width
-        z-index: 1100;
+        z-index: 1300;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 2px 0 20px rgba(0, 0, 0, 0.5);
 

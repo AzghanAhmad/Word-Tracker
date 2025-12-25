@@ -35,18 +35,55 @@ export class MockDataService {
     };
   }
 
-  generateMockPlans(count: number = 10) {
+  private plans: any[] = [];
+
+  getPlans(count: number = 0) {
+    if (this.plans.length === 0 && count > 0) {
+      this.generateMockPlans(count);
+    }
+    return this.plans;
+  }
+
+  getPlan(id: number) {
+    if (this.plans.length === 0) {
+      this.generateMockPlans();
+    }
+    return this.plans.find(p => p.id == id) || this.plans[0];
+  }
+
+  addPlan(plan: any) {
+    const newPlan = {
+      id: this.randomInt(10000, 99999),
+      plan_name: plan.title || 'Untitled Plan',
+      content_type: plan.content_type || 'Novel',
+      target_amount: plan.total_word_count || 0,
+      completed_amount: 0,
+      progress: 0,
+      start_date: plan.start_date || new Date().toISOString().split('T')[0],
+      end_date: plan.end_date || new Date().toISOString().split('T')[0],
+      status: 'In Progress',
+      color_code: plan.dashboard_color || '#4ECDC4',
+      is_archived: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      description: plan.description || '',
+      algorithm_type: plan.algorithm_type || 'steady'
+    };
+    this.plans.unshift(newPlan); // Add to beginning
+    return newPlan;
+  }
+
+  private generateMockPlans(count: number = 10) {
     const planTypes = ['Novel', 'Short Story', 'Blog Post', 'Article', 'Essay', 'Screenplay', 'Poetry'];
     const statuses = ['In Progress', 'Completed', 'On Hold'];
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE'];
 
-    const plans = [];
     for (let i = 0; i < count; i++) {
       const targetAmount = this.randomInt(5000, 100000);
       const completedAmount = this.randomInt(0, targetAmount);
       const progress = Math.round((completedAmount / targetAmount) * 100);
 
-      plans.push({
+      this.plans.push({
         id: this.randomInt(1, 10000),
         plan_name: `${this.randomElement(planTypes)} Project ${i + 1}`,
         content_type: this.randomElement(planTypes),
@@ -63,7 +100,7 @@ export class MockDataService {
       });
     }
 
-    return plans;
+    return this.plans;
   }
 
   generateMockStats() {

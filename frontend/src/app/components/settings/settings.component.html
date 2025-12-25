@@ -5,6 +5,21 @@
         <p class="subtitle">Site-wide account information and settings</p>
     </div>
 
+    <!-- Success/Error Messages -->
+    <div class="alert-wrapper" *ngIf="successMessage || errorMessage">
+        <div class="alert alert-success" *ngIf="successMessage">
+            <i class="fas fa-check-circle"></i> {{ successMessage }}
+        </div>
+        <div class="alert alert-error" *ngIf="errorMessage">
+            <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <app-content-loader *ngIf="isLoading"></app-content-loader>
+
+    <ng-container *ngIf="!isLoading">
+
     <!-- Section 1: USERNAME -->
     <div class="settings-card">
         <div class="card-header">
@@ -159,4 +174,5 @@
             </div>
         </div>
     </div>
+    </ng-container>
 </div>

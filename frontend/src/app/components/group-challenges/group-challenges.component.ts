@@ -1,11 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
-import { MockDataService } from '../../services/mock-data.service';
 import { NotificationService } from '../../services/notification.service';
-
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 
 @Component({
@@ -20,7 +18,6 @@ export class GroupChallengesComponent implements OnInit {
   isSubmitting = false;
   loading = true;
   activeChallenges: any[] = [];
-  viewMode: 'my' | 'public' = 'public'; // Show public challenges by default
 
   // Pagination
   currentPage = 1;
@@ -43,7 +40,7 @@ export class GroupChallengesComponent implements OnInit {
   constructor(
     private apiService: ApiService,
     private router: Router,
-    private mockData: MockDataService,
+    private cdr: ChangeDetectorRef,
     private notificationService: NotificationService
   ) { }
 
@@ -51,53 +48,25 @@ export class GroupChallengesComponent implements OnInit {
     this.loadActiveChallenges();
   }
 
-  setViewMode(mode: 'my' | 'public') {
-    this.viewMode = mode;
-    this.currentPage = 1;
-    this.loadActiveChallenges();
-  }
-
   loadActiveChallenges() {
     this.loading = true;
-    const userType = localStorage.getItem('user_type');
+    this.cdr.detectChanges();
 
-    // Use mock data for demo users
-    if (userType === 'demo') {
-      const allChallenges = this.mockData.generateMockChallengesDetailed(15);
-      this.activeChallenges = allChallenges.slice(0, this.itemsPerPage);
-      this.totalItems = allChallenges.length;
-      this.totalPages = Math.ceil(allChallenges.length / this.itemsPerPage);
-      this.loading = false;
-      return;
-    }
-
-    // Fetch challenges from backend
-    const request = this.viewMode === 'my' 
-      ? this.apiService.getChallenges() 
-      : this.apiService.getPublicChallenges();
-
-    request.subscribe({
+    this.apiService.getChallenges().subscribe({
       next: (response) => {
-        console.log('Challenges response:', response);
         if (response.success && response.data) {
-          const allChallenges = Array.isArray(response.data) ? response.data : [];
-          this.totalItems = allChallenges.length;
+          this.activeChallenges = response.data;
+          this.totalItems = response.data.length;
           this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-          
-          // Apply pagination
-          const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-          this.activeChallenges = allChallenges.slice(startIndex, startIndex + this.itemsPerPage);
-        } else {
-          this.activeChallenges = [];
-          this.totalItems = 0;
-          this.totalPages = 1;
         }
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading challenges:', error);
         this.activeChallenges = [];
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -117,15 +86,13 @@ export class GroupChallengesComponent implements OnInit {
   }
 
   onPageSizeChange(event: any) {
-    this.itemsPerPage = Number(event.target.value);
+    this.itemsPerPage = parseInt(event.target.value, 10);
     this.currentPage = 1;
     this.loadActiveChallenges();
   }
 
   openModal() {
     this.showModal = true;
-    const today = new Date();
-    this.newChallenge.start_date = today.toISOString().split('T')[0];
   }
 
   closeModal() {
@@ -133,85 +100,105 @@ export class GroupChallengesComponent implements OnInit {
   }
 
   joinByCode() {
-    if (!this.inviteCodeInput) return;
-    const userId = localStorage.getItem('user_id');
-    if (!userId) {
-      this.notificationService.showError('Please login first.');
+    const code = this.inviteCodeInput.trim().toUpperCase();
+    
+    if (!code) {
+      this.notificationService.showError('Please enter an invite code');
       return;
     }
 
-    // TODO: Implement invite code lookup in backend
-    this.notificationService.showInfo('Invite code feature coming soon!');
+    if (code.length !== 6) {
+      this.notificationService.showError('Invite code must be 6 characters');
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.cdr.detectChanges();
+
+    console.log('Joining challenge with invite code:', code);
+
+    this.apiService.joinChallengeByInviteCode(code).subscribe({
+      next: (response) => {
+        console.log('Join by code response:', response);
+        if (response.success) {
+          this.notificationService.showSuccess(response.message || 'Successfully joined the challenge!');
+          this.inviteCodeInput = '';
+          
+          // Reload challenges to show the newly joined challenge
+          this.loadActiveChallenges();
+          
+          // Navigate to challenge detail page if challenge_id is provided
+          if (response.challenge_id) {
+            setTimeout(() => {
+              this.router.navigate(['/challenge', response.challenge_id]);
+            }, 1000);
+          }
+        } else {
+          this.notificationService.showError(response.message || 'Failed to join challenge');
+        }
+        this.isSubmitting = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error joining challenge by invite code:', error);
+        const errorMsg = error.error?.message || 'Invalid or expired invite code';
+        this.notificationService.showError(errorMsg);
+        this.isSubmitting = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   joinChallenge(challengeId: number) {
-    const userId = localStorage.getItem('user_id');
-    const userType = localStorage.getItem('user_type');
-
-    if (!userId) {
-      this.notificationService.showError('Please login to join challenges.');
-      return;
-    }
-
-    // For demo users, redirect directly to challenge detail page
-    if (userType === 'demo') {
-      this.router.navigate(['/challenge', challengeId]);
-      return;
-    }
-
-    console.log(`Joining challenge ${challengeId}`);
-    
     this.apiService.joinChallenge(challengeId).subscribe({
       next: (response) => {
-        console.log('Join response:', response);
         if (response.success) {
-          this.notificationService.showSuccess('Successfully joined the challenge!');
-          this.loadActiveChallenges(); // Refresh to update is_joined status
-          this.router.navigate(['/challenge', challengeId]);
+          this.notificationService.showSuccess(response.message || 'Successfully joined the challenge!');
+          const challenge = this.activeChallenges.find(c => c.id === challengeId);
+          if (challenge) {
+            challenge.is_member = true;
+            challenge.is_joined = 1;
+            challenge.member_count = (challenge.member_count || challenge.participants || 0) + 1;
+          }
+          // Reload challenges to get updated data
+          this.loadActiveChallenges();
         } else {
-          this.notificationService.showError('Failed: ' + response.message);
+          this.notificationService.showError(response.message || 'Failed to join challenge');
         }
       },
       error: (error) => {
-        console.error('Join error:', error);
-        this.notificationService.showError(error.error?.message || 'Error joining challenge.');
+        console.error('Error joining challenge:', error);
+        const errorMsg = error.error?.message || 'Failed to join challenge';
+        this.notificationService.showError(errorMsg);
       }
     });
   }
 
   leaveChallenge(challengeId: number) {
-    const userId = localStorage.getItem('user_id');
-    if (!userId) {
-      this.notificationService.showError('Please login first.');
-      return;
-    }
-
-    if (!confirm('Are you sure you want to leave this challenge?')) return;
-
     this.apiService.leaveChallenge(challengeId).subscribe({
       next: (response) => {
         if (response.success) {
-          this.notificationService.showSuccess('You have left the challenge.');
-          this.loadActiveChallenges();
-        } else {
-          this.notificationService.showError('Failed: ' + response.message);
+          const challenge = this.activeChallenges.find(c => c.id === challengeId);
+          if (challenge) {
+            challenge.is_member = false;
+            challenge.member_count = Math.max(0, (challenge.member_count || 0) - 1);
+          }
         }
       },
       error: (error) => {
-        console.error('Leave error:', error);
-        this.notificationService.showError(error.error?.message || 'Error leaving challenge.');
+        console.error('Error leaving challenge:', error);
       }
     });
   }
 
   createChallenge() {
-    if (!this.newChallenge.name || !this.newChallenge.goal_amount || !this.newChallenge.start_date || !this.newChallenge.end_date) {
-      this.notificationService.showError('Please fill in all required fields.');
+    if (!this.newChallenge.name || !this.newChallenge.description || !this.newChallenge.start_date || !this.newChallenge.end_date) {
       return;
     }
 
     this.isSubmitting = true;
-    const challengeData = {
+
+    const payload = {
       title: this.newChallenge.name,
       description: this.newChallenge.description,
       type: this.newChallenge.goal_type,
@@ -221,30 +208,24 @@ export class GroupChallengesComponent implements OnInit {
       is_public: this.newChallenge.is_public
     };
 
-    console.log('Creating challenge:', challengeData);
+    console.log('Creating challenge:', payload);
 
-    this.apiService.createChallenge(challengeData).subscribe({
+    this.apiService.createChallenge(payload).subscribe({
       next: (response) => {
-        console.log('Create response:', response);
-        if (response.success) {
-          this.notificationService.showSuccess('Challenge created successfully!');
-          this.closeModal();
-          this.resetNewChallenge();
-          this.loadActiveChallenges();
-        } else {
-          this.notificationService.showError('Failed to create challenge: ' + response.message);
-        }
+        console.log('Challenge created:', response);
         this.isSubmitting = false;
+        this.closeModal();
+        this.resetForm();
+        this.loadActiveChallenges();
       },
       error: (error) => {
-        console.error('Create challenge error:', error);
-        this.notificationService.showError(error.error?.message || 'Error occurred while creating challenge.');
+        console.error('Error creating challenge:', error);
         this.isSubmitting = false;
       }
     });
   }
 
-  resetNewChallenge() {
+  resetForm() {
     this.newChallenge = {
       name: '',
       description: '',
@@ -254,11 +235,5 @@ export class GroupChallengesComponent implements OnInit {
       end_date: '',
       is_public: true
     };
-  }
-
-  getProgressPercentage(challenge: any): number {
-    if (!challenge.goal_amount || challenge.goal_amount === 0) return 0;
-    const progress = challenge.my_progress || 0;
-    return Math.min(100, Math.round((progress / challenge.goal_amount) * 100));
   }
 }

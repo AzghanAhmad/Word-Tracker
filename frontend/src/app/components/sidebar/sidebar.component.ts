@@ -1,8 +1,7 @@
-import { Component, HostListener, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, HostListener, OnInit, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
-import { MockDataService } from '../../services/mock-data.service';
 
 
 @Component({
@@ -10,7 +9,8 @@ import { MockDataService } from '../../services/mock-data.service';
     standalone: true,
     imports: [CommonModule, RouterLink, RouterLinkActive],
     templateUrl: './sidebar.component.html',
-    styleUrls: ['./sidebar.component.scss']
+    styleUrls: ['./sidebar.component.scss'],
+    encapsulation: ViewEncapsulation.None
 })
 export class SidebarComponent implements OnInit {
     isCollapsed = false;
@@ -25,8 +25,7 @@ export class SidebarComponent implements OnInit {
 
     constructor(
         private router: Router,
-        private apiService: ApiService,
-        private mockData: MockDataService
+        private apiService: ApiService
     ) {
         this.checkScreenSize();
     }
@@ -38,8 +37,6 @@ export class SidebarComponent implements OnInit {
 
 
     loadActiveChallenges() {
-        const userType = localStorage.getItem('user_type');
-
         // Fetch dashboard stats for active plans count (used for the badge in latest progress)
         this.apiService.getDashboardStats().subscribe({
             next: (response) => {
@@ -49,40 +46,34 @@ export class SidebarComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error loading dashboard stats:', err);
-                if (userType === 'demo') {
-                    const challenges = this.mockData.generateMockChallengesDetailed(5);
-                    this.activeChallengesCount = challenges.filter(c => c.is_active).length;
-                } else {
-                    this.activeChallengesCount = 0;
-                }
+                this.activeChallengesCount = 0;
             }
         });
     }
 
     loadActivePlans() {
-        const userType = localStorage.getItem('user_type');
-
         // Fetch real plans from backend
         this.apiService.getPlans().subscribe({
             next: (response) => {
+                console.log('Sidebar - Plans API Response:', response);
                 if (response.success && response.data) {
-                    this.activePlans = response.data
-                        .filter((p: any) => p.status === 'In Progress')
+                    console.log('Sidebar - All plans:', response.data);
+                    const filteredPlans = response.data.filter((p: any) => p.status === 'In Progress');
+                    console.log('Sidebar - Filtered "In Progress" plans:', filteredPlans);
+
+                    this.activePlans = filteredPlans
                         .map((p: any) => ({
                             ...p,
                             progress: p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0
                         }))
                         .slice(0, 3); // Show top 3 active plans
+
+                    console.log('Sidebar - Active plans with progress:', this.activePlans);
                 }
             },
             error: (err) => {
                 console.error('Error loading plans for sidebar:', err);
-                if (userType === 'demo') {
-                    const allPlans = this.mockData.generateMockPlans(10);
-                    this.activePlans = allPlans
-                        .filter(p => p.status === 'In Progress')
-                        .slice(0, 2);
-                }
+                this.activePlans = [];
             }
         });
     }
@@ -96,8 +87,8 @@ export class SidebarComponent implements OnInit {
 
     checkScreenSize() {
         if (typeof window !== 'undefined') {
-            // On mobile, default to collapsed (hidden)
-            if (window.innerWidth < 768) {
+            // On mobile/tablet (<1024px), default to collapsed (hidden)
+            if (window.innerWidth < 1024) {
                 this.isCollapsed = true;
             } else {
                 this.isCollapsed = false;
@@ -111,7 +102,7 @@ export class SidebarComponent implements OnInit {
 
     // Close sidebar on mobile when nav item is clicked
     onNavItemClick() {
-        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
             this.isCollapsed = true;
         }
     }
@@ -120,18 +111,15 @@ export class SidebarComponent implements OnInit {
     onDashboardClick() {
         // Close sidebar on mobile
         this.onNavItemClick();
-        
-        // Always trigger reload, even if already on dashboard
-        if (this.router.url === '/dashboard' || this.router.url.startsWith('/dashboard')) {
-            // If already on dashboard, force reload with query params and event
-            window.dispatchEvent(new Event('dashboard-reload'));
-            this.router.navigate(['/dashboard'], { 
-                queryParams: { refresh: Date.now() },
-                skipLocationChange: false 
+
+        // If already on dashboard, force reload by navigating away and back
+        if (this.router.url === '/dashboard') {
+            this.router.navigate(['/dashboard'], {
+                skipLocationChange: false
+            }).then(() => {
+                // Trigger a reload event
+                window.dispatchEvent(new Event('dashboard-reload'));
             });
-        } else {
-            // If not on dashboard, navigate normally (will trigger ngOnInit)
-            this.router.navigate(['/dashboard']);
         }
     }
 

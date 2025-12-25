@@ -24,6 +24,9 @@ import { HelpComponent } from './components/help/help.component';
 
 import { ChallengeDetailComponent } from './components/challenge-detail/challenge-detail.component';
 import { CreatePlanComponent } from './components/create-plan/create-plan.component';
+import { PlanDetailsComponent } from './components/plan-details/plan-details.component';
+
+import { StatsComponent } from './components/stats/stats.component';
 
 export const routes: Routes = [
     { path: '', component: HomePublicComponent },
@@ -40,13 +43,18 @@ export const routes: Routes = [
     // Protected Routes
     { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
     { path: 'create-plan', component: CreatePlanComponent, canActivate: [authGuard] },
+    { path: 'plans/:id', component: PlanDetailsComponent, canActivate: [authGuard] },
+    { path: 'plans/edit/:id', component: CreatePlanComponent, canActivate: [authGuard] },
     { path: 'create-checklist', component: CreateChecklistComponent, canActivate: [authGuard] },
+    { path: 'checklist/edit/:id', component: CreateChecklistComponent, canActivate: [authGuard] }, // Edit route
     { path: 'my-checklists', component: MyChecklistsComponent, canActivate: [authGuard] },
     { path: 'community', component: CommunityComponent, canActivate: [authGuard] },
     { path: 'challenges', component: GroupChallengesComponent, canActivate: [authGuard] },
     { path: 'challenge/:id', component: ChallengeDetailComponent, canActivate: [authGuard] },
     { path: 'calendar', component: CalendarPageComponent, canActivate: [authGuard] },
     { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+
+    { path: 'stats', component: StatsComponent, canActivate: [authGuard] },
     { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
     { path: '**', redirectTo: '' }
 ];

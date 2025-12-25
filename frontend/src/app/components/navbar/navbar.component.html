@@ -1,23 +1,81 @@
 <nav class="navbar">
-    <div class="navbar-left">
-        <button class="mobile-menu-btn" (click)="toggleSidebar()">
-            ☰
-        </button>
+    <div class="navbar-container">
+        <!-- Logo Section -->
+        <div class="nav-left">
+            <a [routerLink]="isPublic ? '/' : '/dashboard'" class="logo" (click)="closeMobileMenu()">
+                <span class="logo-text">ScribeCount</span>
+            </a>
 
-        <a routerLink="/" class="navbar-brand">
-            <img src="/assets/ScribeCount-logo---promo-tile-large-white.png" alt="ScribeCount" class="logo-img">
-        </a>
+            <!-- Desktop Navigation Links -->
+            <div class="nav-links desktop-only">
+                <!-- Public Links -->
+                <ng-container *ngIf="isPublic">
+                    <a href="#features" class="nav-link">Features</a>
+                    <a href="#community" class="nav-link">Community</a>
+                </ng-container>
 
-        <div class="nav-links">
-            <a routerLink="/challenges" class="nav-link" routerLinkActive="active">Community</a>
-            <a routerLink="/my-checklists" class="nav-link" routerLinkActive="active">Checklists</a>
+                <!-- App Links -->
+                <ng-container *ngIf="!isPublic">
+                    <a routerLink="/dashboard" class="nav-link" (click)="closeMobileMenu()">Dashboard</a>
+                    <a routerLink="/my-checklists" class="nav-link" (click)="closeMobileMenu()">Checklists</a>
+                    <a routerLink="/challenges" class="nav-link" (click)="closeMobileMenu()">Challenges</a>
+                    <a routerLink="/community" class="nav-link" (click)="closeMobileMenu()">Community</a>
+                </ng-container>
+            </div>
+        </div>
+
+        <!-- Right Side: User Controls -->
+        <div class="nav-right desktop-only">
+            <!-- Public Auth -->
+            <ng-container *ngIf="isPublic">
+                <a routerLink="/login" class="btn-login">Log In</a>
+                <a routerLink="/register" class="btn-signup">Sign Up</a>
+            </ng-container>
+
+            <!-- App Controls -->
+            <ng-container *ngIf="!isPublic">
+                <a routerLink="/profile" class="btn-profile" (click)="closeMobileMenu()">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profile</span>
+                </a>
+                <button class="btn-logout" (click)="logout()">
+                    <span>Log Out</span>
+                </button>
+            </ng-container>
+        </div>
+
+        <!-- Mobile Menu Toggle -->
+        <div class="mobile-only">
+            <button class="mobile-menu-toggle" (click)="toggleMobileMenu()" [class.active]="isMenuOpen">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
         </div>
     </div>
 
-    <div class="navbar-right">
-        <span class="welcome-text">Welcome, <span class="username">{{ username }}</span></span>
-        <div class="avatar">
-            {{ username.charAt(0).toUpperCase() }}
+    <!-- Mobile Menu Overlay (Only for Public Pages) -->
+    <div class="mobile-menu" [class.active]="isMenuOpen" *ngIf="isPublic">
+        <div class="mobile-links">
+            <!-- Public Mobile Links -->
+            <ng-container *ngIf="isPublic">
+                <a href="#features" (click)="closeMobileMenu()">Features</a>
+                <a href="#community" (click)="closeMobileMenu()">Community</a>
+                <div class="mobile-auth">
+                    <a routerLink="/login" class="btn-login" (click)="closeMobileMenu()">Log In</a>
+                    <a routerLink="/register" class="btn-signup" (click)="closeMobileMenu()">Sign Up</a>
+                </div>
+            </ng-container>
+
+            <!-- App Mobile Links -->
+            <ng-container *ngIf="!isPublic">
+                <a routerLink="/dashboard" (click)="closeMobileMenu()">Dashboard</a>
+                <a routerLink="/my-checklists" (click)="closeMobileMenu()">Checklists</a>
+                <a routerLink="/challenges" (click)="closeMobileMenu()">Challenges</a>
+                <a routerLink="/community" (click)="closeMobileMenu()">Community</a>
+                <a routerLink="/profile" (click)="closeMobileMenu()">Profile</a>
+                <a (click)="logout()" class="logout-link">Log Out</a>
+            </ng-container>
         </div>
     </div>
 </nav>

@@ -2,19 +2,9 @@
 <div class="sidebar-overlay" *ngIf="!isCollapsed" (click)="toggleSidebar()"></div>
 
 <aside class="sidebar" [class.collapsed]="isCollapsed">
-    <!-- Close Button (Mobile Only) -->
-    <button class="sidebar-close-btn" *ngIf="!isCollapsed" (click)="toggleSidebar()">
-        <i class="fas fa-times"></i>
-    </button>
 
-    <!-- Logo Area -->
-    <div class="sidebar-logo">
-        <img src="/assets/ScribeCount-logo---promo-tile-large-white.png" alt="ScribeCount" class="logo-img"
-            *ngIf="!isCollapsed">
-        <img src="/assets/SC_icon_white_500x500.png" alt="SC" class="logo-icon-only" *ngIf="isCollapsed">
-    </div>
-
-    <nav class="sidebar-nav">
+    <!-- Navigation Area (No redundant logo) -->
+    <nav class="sidebar-nav" style="margin-top: 1rem;">
         <!-- Latest Progress Section -->
         <div class="progress-section" *ngIf="!isCollapsed">
             <div class="progress-header" (click)="toggleProgress()" style="cursor: pointer;">
@@ -27,7 +17,8 @@
 
             <div class="progress-list" *ngIf="isProgressExpanded">
                 <div class="progress-item" *ngFor="let plan of activePlans">
-                    <div class="progress-item-header">
+                    <div class="progress-item-header" [routerLink]="['/plans', plan.id]" style="cursor: pointer;"
+                        title="View Plan Details">
                         <span class="plan-name">{{ plan.plan_name }}</span>
                         <span class="plan-percentage">{{ plan.progress }}%</span>
                     </div>
@@ -69,7 +60,8 @@
             <i class="fas fa-calendar-alt"></i>
             <span *ngIf="!isCollapsed">Calendar</span>
         </a>
-        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+
+        <a routerLink="/stats" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
             <i class="fas fa-chart-area"></i>
             <span *ngIf="!isCollapsed">Stats</span>
         </a>

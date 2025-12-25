@@ -71,6 +71,66 @@
                     background: #f8fafc;
                 }
             }
+
+            .share-dropdown {
+                position: relative;
+
+                .share-menu {
+                    position: absolute;
+                    top: calc(100% + 8px);
+                    right: 0;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    border: 1px solid #e2e8f0;
+                    min-width: 200px;
+                    z-index: 1000;
+                    padding: 0.5rem 0;
+                    animation: slideDown 0.2s ease;
+
+                    .share-option {
+                        width: 100%;
+                        padding: 0.75rem 1rem;
+                        background: none;
+                        border: none;
+                        text-align: left;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.75rem;
+                        color: #334155;
+                        font-size: 0.9rem;
+                        transition: background 0.2s;
+
+                        i {
+                            width: 20px;
+                            color: #64748b;
+                        }
+
+                        &:hover {
+                            background: #f8fafc;
+                        }
+                    }
+
+                    .share-divider {
+                        height: 1px;
+                        background: #e2e8f0;
+                        margin: 0.5rem 0;
+                    }
+                }
+            }
+
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
         }
     }
 
@@ -395,6 +455,8 @@
             }
 
             textarea {
+                width: 100%;
+                border: 1px solid black;
                 border-radius: 0 0 4px 4px !important;
                 height: 100px;
                 resize: vertical;
@@ -1423,6 +1485,110 @@
                     }
                 }
             }
+        }
+    }
+
+
+    // ============================================================================
+    // RESPONSIVE STYLES
+    // ============================================================================
+
+    @media (max-width: 1024px) {
+        .plan-content {
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1.5rem;
+        }
+
+        .plan-sidebar {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+
+            .sidebar-card {
+                height: fit-content;
+            }
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .plan-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+
+            .title-section {
+                width: 100%;
+                text-align: center;
+                margin-bottom: 0.5rem;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+
+                button {
+                    flex: 1;
+                    justify-content: center;
+                }
+            }
+        }
+
+        .plan-tabs {
+            overflow-x: auto;
+            justify-content: flex-start;
+
+            button {
+                padding: 1rem 2rem;
+                flex: none;
+            }
+        }
+
+        .plan-sidebar {
+            display: flex; // Stack cards on mobile
+            flex-direction: column;
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .view-type-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr !important;
+        }
+
+        // Fix chart overflow
+        .view-card {
+
+            &.graph-view,
+            &.bar-view {
+                overflow-x: auto;
+
+                .chart-container {
+                    min-width: 600px; // Force scroll for charts
+                }
+            }
+        }
+
+        .calendar-grid {
+            // Make calendar scrollable or compact
+            min-width: 500px;
+        }
+
+        .view-card.calendar-view {
+            overflow-x: auto;
         }
     }
 }

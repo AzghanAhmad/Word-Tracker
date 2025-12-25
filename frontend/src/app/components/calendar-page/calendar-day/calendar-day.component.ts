@@ -35,7 +35,7 @@ import { CommonModule } from '@angular/common';
           </div>
 
           <div class="word-count-box" *ngIf="target > 0 && !isDeadline">
-            {{ target | number }} words
+            {{ actual > 0 ? (actual | number) + ' / ' : '' }}{{ target | number }} words
           </div>
         </div>
       </div>
@@ -201,6 +201,7 @@ export class CalendarDayComponent {
   @Input() isToday: boolean = false;
   @Input() isSelected: boolean = false;
   @Input() target: number = 0;
+  @Input() actual: number = 0;
   @Input() events: any[] = [];
   @Input() isDeadline: boolean = false;
   @Input() plans: any[] = [];

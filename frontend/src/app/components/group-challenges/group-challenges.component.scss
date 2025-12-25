@@ -11,44 +11,6 @@
         margin-bottom: 2rem;
     }
 
-    // View Mode Toggle
-    .view-toggle {
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        margin-bottom: 2rem;
-
-        .toggle-btn {
-            padding: 0.75rem 1.5rem;
-            border: 2px solid #e2e8f0;
-            background: white;
-            color: #64748b;
-            border-radius: 50px;
-            font-size: 0.938rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-
-            i {
-                font-size: 1rem;
-            }
-
-            &:hover {
-                border-color: #667eea;
-                color: #667eea;
-            }
-
-            &.active {
-                background: #1C2E4A;
-                border-color: #1C2E4A;
-                color: white;
-            }
-        }
-    }
-
     // Hero Section
     .hero-section {
         text-align: center;
@@ -334,17 +296,6 @@
             }
         }
 
-        .btn-leave {
-            background: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-            flex: 0 0 auto;
-
-            &:hover {
-                background: #fee2e2;
-            }
-        }
-
         .btn-join {
             background: #1C2E4A;
             color: white;
@@ -416,39 +367,7 @@
                     color: #64748b;
                     font-size: 0.938rem;
                     line-height: 1.6;
-                    margin-bottom: 1rem;
-                    min-height: 2.5rem;
-                }
-
-                .progress-section {
-                    margin-bottom: 1rem;
-                    padding: 0.75rem;
-                    background: #f0fdf4;
-                    border-radius: 8px;
-                    border: 1px solid #bbf7d0;
-
-                    .progress-label {
-                        display: flex;
-                        justify-content: space-between;
-                        font-size: 0.813rem;
-                        color: #166534;
-                        font-weight: 600;
-                        margin-bottom: 0.5rem;
-                    }
-
-                    .progress-bar-container {
-                        height: 8px;
-                        background: #dcfce7;
-                        border-radius: 4px;
-                        overflow: hidden;
-
-                        .progress-bar {
-                            height: 100%;
-                            background: linear-gradient(90deg, #22c55e, #16a34a);
-                            border-radius: 4px;
-                            transition: width 0.3s ease;
-                        }
-                    }
+                    margin-bottom: 1.5rem;
                 }
 
                 .challenge-stats {
@@ -541,46 +460,24 @@
             margin-right: auto;
         }
 
-        .empty-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn-create-large,
-        .btn-browse {
-            padding: 1rem 2rem;
+        .btn-create-large {
+            padding: 1rem 2.5rem;
+            background: #1C2E4A;
+            color: white;
             border: none;
             border-radius: 50px;
-            font-size: 1rem;
+            font-size: 1.125rem;
             font-weight: 600;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 0.75rem;
             transition: all 0.3s ease;
-        }
-
-        .btn-create-large {
-            background: #1C2E4A;
-            color: white;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 
             &:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-            }
-        }
-
-        .btn-browse {
-            background: white;
-            color: #1C2E4A;
-            border: 2px solid #e2e8f0;
-
-            &:hover {
-                border-color: #667eea;
-                color: #667eea;
             }
         }
     }

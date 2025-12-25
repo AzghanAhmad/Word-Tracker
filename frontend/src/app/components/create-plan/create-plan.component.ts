@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
 
@@ -52,7 +52,7 @@ export class CreatePlanComponent implements OnInit {
     targetFinishDate: string = '';
 
     // Strategy
-    strategyType: string = 'Oscillating';
+    strategyType: string = 'Steady';
     strategyIntensity: string = 'Average';
 
     // Customizations
@@ -89,9 +89,18 @@ export class CreatePlanComponent implements OnInit {
     // Chart Refinement
     hoveredDay: PlanDay | null = null;
 
+    // Edit Mode properties
+    planId: number | null = null;
+    isEditMode: boolean = false;
+    isLoading: boolean = false;
+
+    // Share dropdown
+    showShareDropdown: boolean = false;
+
     constructor(
         private apiService: ApiService,
         private router: Router,
+        private route: ActivatedRoute,
         private notificationService: NotificationService
     ) { }
 
@@ -102,6 +111,28 @@ export class CreatePlanComponent implements OnInit {
             this.router.navigate(['/login']);
         }
 
+        // Close share dropdown when clicking outside
+        document.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.share-dropdown')) {
+                this.showShareDropdown = false;
+            }
+        });
+
+        // Check for edit mode
+        this.route.paramMap.subscribe(params => {
+            const id = params.get('id');
+            if (id) {
+                this.isEditMode = true;
+                this.planId = +id;
+                this.loadPlan(this.planId);
+            } else {
+                this.initializeNewPlan();
+            }
+        });
+    }
+
+    initializeNewPlan() {
         // Default start date to today
         const today = new Date();
         this.startDate = today.toISOString().split('T')[0];
@@ -112,6 +143,83 @@ export class CreatePlanComponent implements OnInit {
         this.endDate = thirtyDaysLater.toISOString().split('T')[0];
 
         this.generatePlanData();
+    }
+
+    loadPlan(id: number) {
+        this.isLoading = true;
+        this.apiService.getPlan(id).subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    const plan = response.data;
+                    this.planName = plan.plan_name;
+                    this.targetWordCount = plan.target_amount;
+                    // Format dates to YYYY-MM-DD
+                    this.startDate = new Date(plan.start_date).toISOString().split('T')[0];
+                    this.endDate = new Date(plan.end_date).toISOString().split('T')[0];
+                    this.contentType = plan.content_type || 'Novella';
+                    this.strategyType = plan.algorithm_type ? this.capitalize(plan.algorithm_type) : 'Steady';
+                    this.planDescription = plan.description || '';
+                    this.isPrivate = plan.is_private || false;
+                    this.startingPoint = plan.starting_point || 0;
+                    this.measurementUnit = plan.measurement_unit || 'words';
+                    this.isDailyTarget = plan.is_daily_target || false;
+                    this.fixedDeadline = plan.fixed_deadline === undefined ? true : plan.fixed_deadline;
+                    this.targetFinishDate = plan.target_finish_date || '';
+                    this.strategyIntensity = plan.strategy_intensity || 'Average';
+                    this.weekendApproach = plan.weekend_approach || 'The Usual';
+                    this.reserveDays = plan.reserve_days || 0;
+                    this.displayViewType = plan.display_view_type || 'Table';
+                    this.weekStartDay = plan.week_start_day || 'Mondays';
+                    this.groupingType = plan.grouping_type || 'Day';
+                    this.dashboardColor = plan.dashboard_color || '#000000';
+                    this.showHistoricalData = plan.show_historical_data === undefined ? true : plan.show_historical_data;
+                    this.progressTrackingType = plan.progress_tracking_type || 'Daily Goals';
+
+                    this.generatePlanData();
+                    this.loadPlanProgress(id);
+                } else {
+                    this.notificationService.showError('Plan not found');
+                    this.router.navigate(['/dashboard']);
+                }
+            },
+            error: (err) => {
+                console.error('Error loading plan', err);
+                this.notificationService.showError('Error loading plan');
+                this.isLoading = false;
+            }
+        });
+    }
+
+    loadPlanProgress(id: number) {
+        this.apiService.getPlanDays(id).subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    this.progressEntries = response.data.map((d: any) => ({
+                        id: new Date(d.date).getTime(),
+                        date: new Date(d.date),
+                        targetWords: d.target_count,
+                        actualWords: d.actual_count,
+                        notes: d.notes || '',
+                        isToday: this.isSameDay(new Date(d.date), new Date())
+                    }));
+                }
+                this.isLoading = false;
+            },
+            error: (err) => {
+                console.error('Error loading progress', err);
+                this.isLoading = false;
+            }
+        });
+    }
+
+    capitalize(s: string) {
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    isSameDay(d1: Date, d2: Date) {
+        return d1.getFullYear() === d2.getFullYear() &&
+            d1.getMonth() === d2.getMonth() &&
+            d1.getDate() === d2.getDate();
     }
 
     generatePlanData() {
@@ -144,25 +252,20 @@ export class CreatePlanComponent implements OnInit {
 
             switch (this.strategyType) {
                 case 'Front-load':
-                    // Linear decrease from 1.5x average to 0.5x average
                     dailyTarget = (this.targetWordCount / this.totalDays) * (1.5 - t);
                     break;
                 case 'Back-load':
-                    // Linear increase from 0.5x average to 1.5x average
                     dailyTarget = (this.targetWordCount / this.totalDays) * (0.5 + t);
                     break;
                 case 'Mountain':
-                    // Peak in the middle
-                    const factor = 1 - Math.abs(0.5 - t) * 2; // 0 to 1 to 0
+                    const factor = 1 - Math.abs(0.5 - t) * 2;
                     dailyTarget = (this.targetWordCount / this.totalDays) * (0.5 + factor);
                     break;
                 case 'Valley':
-                    // High at start and end, low in middle
-                    const valleyFactor = Math.abs(0.5 - t) * 2; // 1 to 0 to 1
+                    const valleyFactor = Math.abs(0.5 - t) * 2;
                     dailyTarget = (this.targetWordCount / this.totalDays) * (0.5 + valleyFactor);
                     break;
                 case 'Oscillating':
-                    // Sine wave oscillating between 0.5x and 1.5x
                     const sineFactor = Math.sin(t * Math.PI * 4) * 0.5 + 1;
                     dailyTarget = (this.targetWordCount / this.totalDays) * sineFactor;
                     break;
@@ -175,7 +278,6 @@ export class CreatePlanComponent implements OnInit {
             dailyTarget = Math.round(dailyTarget);
             cumulativeTarget += dailyTarget;
 
-            // Adjust last day to hit exact target
             if (i === this.totalDays - 1) {
                 const diff = this.targetWordCount - cumulativeTarget;
                 dailyTarget += diff;
@@ -273,7 +375,7 @@ export class CreatePlanComponent implements OnInit {
 
     addProgressEntry() {
         const today = new Date();
-        const existing = this.progressEntries.find(e => e.isToday);
+        const existing = this.progressEntries.find(e => this.isSameDay(new Date(e.date), today));
         if (!existing) {
             this.progressEntries.push({
                 id: Date.now(),
@@ -291,9 +393,36 @@ export class CreatePlanComponent implements OnInit {
     }
 
     saveProgress() {
-        console.log('Saving progress:', this.progressEntries);
-        // Implement backend persistence if needed by user
-        this.notificationService.showSuccess('Progress saved successfully!');
+        if (!this.planId) {
+            this.notificationService.showError('Cannot save progress for unsaved plan.');
+            return;
+        }
+
+        const entries = this.progressEntries; // All entries
+        let successCount = 0;
+        let failCount = 0;
+
+        // Naive loop implementation - in production, backend should have bulk endpoint
+        entries.forEach(entry => {
+            const dateStr = new Date(entry.date).toISOString().split('T')[0];
+            this.apiService.logProgress(this.planId!, dateStr, entry.actualWords, entry.notes).subscribe({
+                next: (res) => {
+                    successCount++;
+                    if (successCount + failCount === entries.length) {
+                        this.notificationService.showSuccess('Progress saved successfully!');
+                    }
+                },
+                error: (err) => {
+                    console.error('Error saving progress for ' + dateStr, err);
+                    failCount++;
+                }
+            });
+        });
+
+        // Immediate feedback if no entries
+        if (entries.length === 0) {
+            this.notificationService.showSuccess('No progress entries to save.');
+        }
     }
 
     getLinePath(): string {
@@ -381,6 +510,7 @@ export class CreatePlanComponent implements OnInit {
             total_word_count: this.targetWordCount,
             start_date: this.startDate,
             end_date: this.endDate,
+            content_type: this.contentType,
             algorithm_type: this.strategyType.toLowerCase(),
             description: this.planDescription,
             is_private: this.isPrivate,
@@ -400,13 +530,30 @@ export class CreatePlanComponent implements OnInit {
             progress_tracking_type: this.progressTrackingType
         };
 
-        console.log('Sending plan to backend:', payload);
+        if (this.isEditMode && this.planId) {
+            this.apiService.updatePlan(this.planId, payload).subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        // Success message is shown by interceptor
+                        this.router.navigate(['/dashboard']);
+                    } else {
+                        this.notificationService.showError(response.message || 'Failed to update plan');
+                    }
+                },
+                error: (error) => {
+                    console.error('Error updating plan:', error);
+                    // Error message is shown by interceptor
+                }
+            });
+            return;
+        }
+
+        // console.log('Sending plan to backend:', payload);
 
         this.apiService.createPlan(payload).subscribe({
             next: (response) => {
-                console.log('Plan creation response:', response);
                 if (response.success) {
-                    this.notificationService.showSuccess('Plan created successfully!');
+                    // Success message is shown by interceptor
                     this.router.navigate(['/dashboard']);
                 } else {
                     this.notificationService.showError(response.message || 'Failed to create plan');
@@ -414,14 +561,72 @@ export class CreatePlanComponent implements OnInit {
             },
             error: (error) => {
                 console.error('Error creating plan:', error);
-                console.error('Error details:', error.error);
-                const errorMsg = error.error?.message || error.message || 'Failed to create plan. Please try again.';
-                this.notificationService.showError(errorMsg);
+                // Error message is shown by interceptor
             }
         });
     }
 
     cancel() {
         this.router.navigate(['/dashboard']);
+    }
+
+    insertFormatting(type: string) {
+        const textarea = document.querySelector('textarea[placeholder="Enter a description"]') as HTMLTextAreaElement;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = this.planDescription;
+        let prefix = '', suffix = '';
+
+        switch (type) {
+            case 'bold': prefix = '**'; suffix = '**'; break;
+            case 'italic': prefix = '_'; suffix = '_'; break;
+            case 'list-ul': prefix = '\n- '; break;
+            case 'list-ol': prefix = '\n1. '; break;
+        }
+
+        this.planDescription = text.substring(0, start) + prefix + text.substring(start, end) + suffix + text.substring(end);
+
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+        });
+    }
+
+    // Share functionality methods
+    toggleShareDropdown() {
+        this.showShareDropdown = !this.showShareDropdown;
+    }
+
+    copyPlanLink() {
+        const planUrl = `${window.location.origin}/plans/${this.planId || 'new'}`;
+        navigator.clipboard.writeText(planUrl).then(() => {
+            this.notificationService.showSuccess('Plan link copied to clipboard!');
+            this.showShareDropdown = false;
+        }).catch(() => {
+            this.notificationService.showError('Failed to copy link');
+        });
+    }
+
+    shareToTwitter() {
+        const planUrl = `${window.location.origin}/plans/${this.planId || 'new'}`;
+        const text = `Check out my writing plan: ${this.planName || 'My Writing Goal'}`;
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(planUrl)}`;
+        window.open(twitterUrl, '_blank');
+        this.showShareDropdown = false;
+    }
+
+    shareToFacebook() {
+        const planUrl = `${window.location.origin}/plans/${this.planId || 'new'}`;
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(planUrl)}`;
+        window.open(facebookUrl, '_blank');
+        this.showShareDropdown = false;
+    }
+
+    togglePlanVisibility() {
+        this.isPrivate = !this.isPrivate;
+        this.notificationService.showSuccess(`Plan is now ${this.isPrivate ? 'private' : 'public'}`);
+        this.showShareDropdown = false;
     }
 }

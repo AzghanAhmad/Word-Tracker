@@ -186,6 +186,54 @@ public class ChallengesController : ControllerBase
     }
 
     /// <summary>
+    /// Join a challenge by invite code
+    /// POST /challenges/join-by-code
+    /// </summary>
+    [Authorize]
+    [HttpPost("join-by-code")]
+    public IActionResult JoinByInviteCode([FromBody] JoinByCodeRequest req)
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"🔑 User {userId} attempting to join challenge with invite code: {req.invite_code}");
+            
+            if (string.IsNullOrWhiteSpace(req.invite_code))
+            {
+                return BadRequest(new { success = false, message = "Invite code is required" });
+            }
+            
+            // Find challenge by invite code
+            var challengeId = _db.GetChallengeIdByInviteCode(req.invite_code.Trim().ToUpper());
+            
+            if (!challengeId.HasValue)
+            {
+                var errorMsg = _db.GetLastError();
+                return NotFound(new { success = false, message = string.IsNullOrWhiteSpace(errorMsg) ? "Invalid or expired invite code" : errorMsg });
+            }
+            
+            // Join the challenge
+            var ok = _db.JoinChallenge(challengeId.Value, userId);
+            
+            if (ok)
+            {
+                Console.WriteLine($"✅ Successfully joined challenge {challengeId.Value} via invite code");
+                return Ok(new { success = true, message = "Successfully joined the challenge", challenge_id = challengeId.Value });
+            }
+            
+            var joinErrorMsg = _db.GetLastError();
+            return StatusCode(500, new { success = false, message = string.IsNullOrWhiteSpace(joinErrorMsg) ? "Failed to join challenge" : joinErrorMsg });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception joining challenge by invite code: {ex.Message}");
+            return StatusCode(500, new { success = false, message = $"Error: {ex.Message}" });
+        }
+    }
+
+    public record JoinByCodeRequest(string invite_code);
+
+    /// <summary>
     /// Leave a challenge
     /// POST /challenges/{id}/leave
     /// </summary>

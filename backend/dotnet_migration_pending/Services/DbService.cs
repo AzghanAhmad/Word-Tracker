@@ -93,11 +93,47 @@ public class DbService : IDbService
         }
     }
 
+    public (int id, string username, string passwordHash)? GetUserById(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for GetUserById");
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT id,username,password_hash FROM users WHERE id=@id LIMIT 1";
+            cmd.Parameters.AddWithValue("@id", userId);
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+            {
+                var user = (reader.GetInt32(0), reader.GetString(1), reader.GetString(2));
+                Console.WriteLine($"✓ User found: {user.Item2} (ID: {user.Item1})");
+                return user;
+            }
+            Console.WriteLine($"✗ User not found with ID: {userId}");
+            return null;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in GetUserById: {ex.Number} - {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in GetUserById: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return null;
+        }
+    }
+
     /// <summary>
     /// Creates a new writing plan for a user
     /// Returns the ID of the created plan, or -1 if creation failed
     /// </summary>
-    public int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType)
+    public int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType)
     {
         _lastError = string.Empty;
         try
@@ -123,8 +159,8 @@ public class DbService : IDbService
             
             // Insert plan with all configuration options
             cmd.CommandText = @"INSERT INTO plans
-                (user_id,title,total_word_count,start_date,end_date,algorithm_type,description,is_private,starting_point,measurement_unit,is_daily_target,fixed_deadline,target_finish_date,strategy_intensity,weekend_approach,reserve_days,display_view_type,week_start_day,grouping_type,dashboard_color,show_historical_data,progress_tracking_type)
-                VALUES (@user_id,@title,@total,@start,@end,@algo,@desc,@priv,@startp,@meas,@daily,@fixed,@target,@strat,@weekend,@reserve,@view,@wstart,@group,@color,@hist,@track);
+                (user_id,title,total_word_count,start_date,end_date,algorithm_type,description,is_private,starting_point,measurement_unit,is_daily_target,fixed_deadline,target_finish_date,strategy_intensity,weekend_approach,reserve_days,display_view_type,week_start_day,grouping_type,dashboard_color,show_historical_data,progress_tracking_type,activity_type,content_type)
+                VALUES (@user_id,@title,@total,@start,@end,@algo,@desc,@priv,@startp,@meas,@daily,@fixed,@target,@strat,@weekend,@reserve,@view,@wstart,@group,@color,@hist,@track,@activity,@content);
                 SELECT LAST_INSERT_ID();";
             
             // Set parameters with proper null handling
@@ -150,6 +186,8 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@color", dashboardColor);
             cmd.Parameters.AddWithValue("@hist", showHistoricalData);
             cmd.Parameters.AddWithValue("@track", progressTrackingType);
+            cmd.Parameters.AddWithValue("@activity", string.IsNullOrWhiteSpace(activityType) ? "Writing" : activityType);
+            cmd.Parameters.AddWithValue("@content", string.IsNullOrWhiteSpace(contentType) ? "Novel" : contentType);
             
             // Log the SQL for debugging
             Console.WriteLine($"Executing INSERT for plan: Title={title}, UserId={userId}, StartDate={startDate}, EndDate={endDate}");
@@ -1171,6 +1209,46 @@ public class DbService : IDbService
         }
     }
 
+    public int? GetChallengeIdByInviteCode(string inviteCode)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"🔍 Looking up challenge by invite code: {inviteCode}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT id FROM challenges WHERE invite_code = @code AND status = 'Active' LIMIT 1";
+            cmd.Parameters.AddWithValue("@code", inviteCode.Trim().ToUpper());
+            
+            var result = cmd.ExecuteScalar();
+            
+            if (result != null && result != DBNull.Value)
+            {
+                var challengeId = result is ulong ul ? (int)ul : (result is long l ? (int)l : Convert.ToInt32(result));
+                Console.WriteLine($"✓ Found challenge {challengeId} with invite code {inviteCode}");
+                return challengeId;
+            }
+            
+            Console.WriteLine($"✗ No active challenge found with invite code {inviteCode}");
+            return null;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error looking up invite code: {ex.Number} - {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error looking up invite code: {ex.Message}");
+            return null;
+        }
+    }
+
     public bool LeaveChallenge(int challengeId, int userId)
     {
         _lastError = string.Empty;
@@ -1336,6 +1414,626 @@ public class DbService : IDbService
             // Return default stats on error
             var defaultObj = new { totalPlans = 0, activePlans = 0, totalWords = 0, completedPlans = 0 };
             return JsonSerializer.Serialize(defaultObj);
+        }
+    }
+
+    /// <summary>
+    /// Gets all public plans from all users (for community page)
+    /// Excludes the requesting user's own plans
+    /// </summary>
+    public string GetPublicPlansJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"🌐 Fetching public plans for community (excluding user {userId})");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            // Get public plans from other users with progress calculation
+            cmd.CommandText = @"
+                SELECT 
+                    p.id,
+                    p.title,
+                    p.total_word_count as goal_amount,
+                    COALESCE(p.measurement_unit, 'words') as goal_unit,
+                    p.start_date,
+                    p.end_date,
+                    p.status,
+                    COALESCE(p.activity_type, 'Writing') as activity_type,
+                    COALESCE(p.content_type, 'Novel') as content_type,
+                    p.description,
+                    u.username as creator_username,
+                    COALESCE(
+                        (SELECT SUM(actual_count) FROM plan_days WHERE plan_id = p.id), 
+                        0
+                    ) as total_progress,
+                    CASE 
+                        WHEN p.total_word_count > 0 THEN 
+                            ROUND((COALESCE((SELECT SUM(actual_count) FROM plan_days WHERE plan_id = p.id), 0) / p.total_word_count) * 100, 1)
+                        ELSE 0 
+                    END as progress_percent
+                FROM plans p
+                INNER JOIN users u ON p.user_id = u.id
+                WHERE p.is_private = 0 
+                    AND p.user_id != @u
+                    AND p.status = 'active'
+                ORDER BY p.id DESC
+                LIMIT 50";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var plans = new List<Dictionary<string, object>>();
+            
+            while (reader.Read())
+            {
+                var planId = reader.GetInt32("id");
+                
+                var plan = new Dictionary<string, object>
+                {
+                    ["id"] = planId,
+                    ["title"] = reader.GetString("title"),
+                    ["goal_amount"] = reader.GetInt32("goal_amount"),
+                    ["goal_unit"] = reader.GetString("goal_unit"),
+                    ["start_date"] = reader.IsDBNull(reader.GetOrdinal("start_date")) ? null! : reader.GetDateTime("start_date").ToString("yyyy-MM-dd"),
+                    ["end_date"] = reader.IsDBNull(reader.GetOrdinal("end_date")) ? null! : reader.GetDateTime("end_date").ToString("yyyy-MM-dd"),
+                    ["status"] = reader.GetString("status"),
+                    ["activity_type"] = reader.GetString("activity_type"),
+                    ["content_type"] = reader.GetString("content_type"),
+                    ["description"] = reader.IsDBNull(reader.GetOrdinal("description")) ? "" : reader.GetString("description"),
+                    ["creator_username"] = reader.GetString("creator_username"),
+                    ["total_progress"] = Convert.ToInt64(reader["total_progress"]),
+                    ["progress_percent"] = Convert.ToDouble(reader["progress_percent"]),
+                    ["graph_data"] = new List<int>() // Will be filled below
+                };
+                
+                plans.Add(plan);
+            }
+            
+            reader.Close();
+            
+            // Get graph data (last 14 days of actual_count) for each plan
+            foreach (var plan in plans)
+            {
+                var planId = (int)plan["id"];
+                using var graphCmd = conn.CreateCommand();
+                graphCmd.CommandText = @"
+                    SELECT COALESCE(actual_count, 0) as count
+                    FROM plan_days 
+                    WHERE plan_id = @pid 
+                    ORDER BY date DESC 
+                    LIMIT 14";
+                graphCmd.Parameters.AddWithValue("@pid", planId);
+                
+                using var graphReader = graphCmd.ExecuteReader();
+                var graphData = new List<int>();
+                
+                while (graphReader.Read())
+                {
+                    graphData.Add(graphReader.GetInt32("count"));
+                }
+                
+                // Reverse to show oldest first
+                graphData.Reverse();
+                
+                // If no data, add some placeholder data
+                if (graphData.Count == 0)
+                {
+                    graphData = new List<int> { 0, 0, 0, 0, 0 };
+                }
+                
+                plan["graph_data"] = graphData;
+            }
+            
+            Console.WriteLine($"✓ Retrieved {plans.Count} public plans for community");
+            return JsonSerializer.Serialize(plans);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching public plans: {ex.Number} - {ex.Message}");
+            return "[]";
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching public plans: {ex.Message}");
+            return "[]";
+        }
+    }
+
+    public string? GetUserProfileJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"👤 Fetching user profile for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT id, username, email, bio, created_at 
+                                FROM users 
+                                WHERE id = @u";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            
+            if (!reader.Read())
+            {
+                Console.WriteLine($"✗ User {userId} not found");
+                return null;
+            }
+            
+            var profile = new Dictionary<string, object>
+            {
+                ["id"] = reader.GetInt32("id"),
+                ["username"] = reader.GetString("username"),
+                ["email"] = reader.GetString("email"),
+                ["bio"] = reader.IsDBNull(reader.GetOrdinal("bio")) ? null! : reader.GetString("bio"),
+                ["created_at"] = reader.GetDateTime("created_at").ToString("yyyy-MM-ddTHH:mm:ss")
+            };
+            
+            Console.WriteLine($"✓ Retrieved user profile for user {userId}");
+            return JsonSerializer.Serialize(profile);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching user profile: {ex.Number} - {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching user profile: {ex.Message}");
+            return null;
+        }
+    }
+
+    public bool UpdateUserProfile(int userId, string username, string email, string? bio)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"👤 Updating user profile for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"UPDATE users 
+                                SET username = @u, email = @e, bio = @b, updated_at = CURRENT_TIMESTAMP 
+                                WHERE id = @id";
+            cmd.Parameters.AddWithValue("@u", username);
+            cmd.Parameters.AddWithValue("@e", email);
+            cmd.Parameters.AddWithValue("@b", string.IsNullOrWhiteSpace(bio) ? (object)DBNull.Value : bio);
+            cmd.Parameters.AddWithValue("@id", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            
+            if (rowsAffected == 1)
+            {
+                Console.WriteLine($"✓ Updated user profile for user {userId}");
+                return true;
+            }
+            
+            _lastError = "User not found or update failed";
+            Console.WriteLine($"✗ Failed to update user profile for user {userId}");
+            return false;
+        }
+        catch (MySqlException ex) when (ex.Number == 1062)
+        {
+            _lastError = "Username or email already exists";
+            Console.WriteLine($"✗ Duplicate username/email: {ex.Message}");
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error updating user profile: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error updating user profile: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool UpdateUserPassword(int userId, string currentPasswordHash, string newPasswordHash)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"🔐 Updating password for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // First verify current password
+            using var verifyCmd = conn.CreateCommand();
+            verifyCmd.CommandText = "SELECT password_hash FROM users WHERE id = @id";
+            verifyCmd.Parameters.AddWithValue("@id", userId);
+            
+            using var reader = verifyCmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                _lastError = "User not found";
+                return false;
+            }
+            
+            var storedHash = reader.GetString("password_hash");
+            reader.Close();
+            
+            if (storedHash != currentPasswordHash)
+            {
+                _lastError = "Current password is incorrect";
+                Console.WriteLine($"✗ Password verification failed for user {userId}");
+                return false;
+            }
+            
+            // Update password
+            using var updateCmd = conn.CreateCommand();
+            updateCmd.CommandText = "UPDATE users SET password_hash = @p, updated_at = CURRENT_TIMESTAMP WHERE id = @id";
+            updateCmd.Parameters.AddWithValue("@p", newPasswordHash);
+            updateCmd.Parameters.AddWithValue("@id", userId);
+            
+            var rowsAffected = updateCmd.ExecuteNonQuery();
+            
+            if (rowsAffected == 1)
+            {
+                Console.WriteLine($"✓ Updated password for user {userId}");
+                return true;
+            }
+            
+            _lastError = "Failed to update password";
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error updating password: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error updating password: {ex.Message}");
+            return false;
+        }
+    }
+
+    public string? GetUserSettingsJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"⚙️ Fetching user settings for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT date_format, week_start_day, email_reminders_enabled, 
+                                reminder_timezone, reminder_frequency, professions 
+                                FROM user_settings 
+                                WHERE user_id = @u";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            
+            Dictionary<string, object> settings;
+            
+            if (reader.Read())
+            {
+                settings = new Dictionary<string, object>
+                {
+                    ["date_format"] = reader.IsDBNull(reader.GetOrdinal("date_format")) ? "MM/DD/YYYY" : reader.GetString("date_format"),
+                    ["week_start_day"] = reader.IsDBNull(reader.GetOrdinal("week_start_day")) ? "Monday" : reader.GetString("week_start_day"),
+                    ["email_reminders_enabled"] = reader.GetBoolean("email_reminders_enabled"),
+                    ["reminder_timezone"] = reader.IsDBNull(reader.GetOrdinal("reminder_timezone")) ? "GMT +00:00" : reader.GetString("reminder_timezone"),
+                    ["reminder_frequency"] = reader.IsDBNull(reader.GetOrdinal("reminder_frequency")) ? "Daily @ 8AM" : reader.GetString("reminder_frequency"),
+                    ["professions"] = reader.IsDBNull(reader.GetOrdinal("professions")) ? "[]" : reader.GetString("professions")
+                };
+            }
+            else
+            {
+                // Return default settings if none exist
+                settings = new Dictionary<string, object>
+                {
+                    ["date_format"] = "MM/DD/YYYY",
+                    ["week_start_day"] = "Monday",
+                    ["email_reminders_enabled"] = false,
+                    ["reminder_timezone"] = "GMT +00:00",
+                    ["reminder_frequency"] = "Daily @ 8AM",
+                    ["professions"] = "[]"
+                };
+            }
+            
+            Console.WriteLine($"✓ Retrieved user settings for user {userId}");
+            return JsonSerializer.Serialize(settings);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching user settings: {ex.Number} - {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching user settings: {ex.Message}");
+            return null;
+        }
+    }
+
+    public bool UpdateUserSettings(int userId, string? dateFormat, string? weekStartDay, bool? emailRemindersEnabled, string? reminderTimezone, string? reminderFrequency, string? professionsJson)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"⚙️ Updating user settings for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Check if settings exist
+            using var checkCmd = conn.CreateCommand();
+            checkCmd.CommandText = "SELECT COUNT(*) FROM user_settings WHERE user_id = @u";
+            checkCmd.Parameters.AddWithValue("@u", userId);
+            var exists = Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+            
+            if (exists)
+            {
+                // Update existing settings
+                using var updateCmd = conn.CreateCommand();
+                updateCmd.CommandText = @"UPDATE user_settings 
+                                        SET date_format = COALESCE(@df, date_format),
+                                            week_start_day = COALESCE(@wsd, week_start_day),
+                                            email_reminders_enabled = COALESCE(@ere, email_reminders_enabled),
+                                            reminder_timezone = COALESCE(@rt, reminder_timezone),
+                                            reminder_frequency = COALESCE(@rf, reminder_frequency),
+                                            professions = COALESCE(@prof, professions),
+                                            updated_at = CURRENT_TIMESTAMP
+                                        WHERE user_id = @u";
+                updateCmd.Parameters.AddWithValue("@u", userId);
+                updateCmd.Parameters.AddWithValue("@df", dateFormat ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@wsd", weekStartDay ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@ere", emailRemindersEnabled ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@rt", reminderTimezone ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@rf", reminderFrequency ?? (object)DBNull.Value);
+                updateCmd.Parameters.AddWithValue("@prof", professionsJson ?? (object)DBNull.Value);
+                
+                updateCmd.ExecuteNonQuery();
+            }
+            else
+            {
+                // Insert new settings
+                using var insertCmd = conn.CreateCommand();
+                insertCmd.CommandText = @"INSERT INTO user_settings 
+                                        (user_id, date_format, week_start_day, email_reminders_enabled, 
+                                         reminder_timezone, reminder_frequency, professions)
+                                        VALUES (@u, @df, @wsd, @ere, @rt, @rf, @prof)";
+                insertCmd.Parameters.AddWithValue("@u", userId);
+                insertCmd.Parameters.AddWithValue("@df", dateFormat ?? "MM/DD/YYYY");
+                insertCmd.Parameters.AddWithValue("@wsd", weekStartDay ?? "Monday");
+                insertCmd.Parameters.AddWithValue("@ere", emailRemindersEnabled ?? false);
+                insertCmd.Parameters.AddWithValue("@rt", reminderTimezone ?? "GMT +00:00");
+                insertCmd.Parameters.AddWithValue("@rf", reminderFrequency ?? "Daily @ 8AM");
+                insertCmd.Parameters.AddWithValue("@prof", professionsJson ?? "[]");
+                
+                insertCmd.ExecuteNonQuery();
+            }
+            
+            Console.WriteLine($"✓ Updated user settings for user {userId}");
+            return true;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error updating user settings: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error updating user settings: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool DeleteUserAccount(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"🗑️ Deleting user account {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Delete user (cascade will handle related data)
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM users WHERE id = @id";
+            cmd.Parameters.AddWithValue("@id", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            
+            if (rowsAffected == 1)
+            {
+                Console.WriteLine($"✓ Deleted user account {userId}");
+                return true;
+            }
+            
+            _lastError = "User not found";
+            Console.WriteLine($"✗ User {userId} not found");
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error deleting user account: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error deleting user account: {ex.Message}");
+            return false;
+        }
+    }
+
+    public string GetStatsJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📊 Fetching stats for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Get all plan_days for user's plans, aggregated by date
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT 
+                    pd.date,
+                    COALESCE(SUM(pd.actual_count), 0) as daily_count
+                FROM plan_days pd
+                INNER JOIN plans p ON pd.plan_id = p.id
+                WHERE p.user_id = @u
+                    AND pd.date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+                GROUP BY pd.date
+                ORDER BY pd.date ASC";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var dailyStats = new Dictionary<string, int>();
+            
+            while (reader.Read())
+            {
+                var date = reader.GetDateTime("date").ToString("yyyy-MM-dd");
+                var count = reader.GetInt32("daily_count");
+                dailyStats[date] = count;
+            }
+            
+            reader.Close();
+            
+            // Get total words across all plans
+            using var totalCmd = conn.CreateCommand();
+            totalCmd.CommandText = @"
+                SELECT COALESCE(SUM(pd.actual_count), 0) as total_words
+                FROM plan_days pd
+                INNER JOIN plans p ON pd.plan_id = p.id
+                WHERE p.user_id = @u";
+            totalCmd.Parameters.AddWithValue("@u", userId);
+            var totalWords = Convert.ToInt64(totalCmd.ExecuteScalar());
+            
+            // Generate activity data for last 90 days (fill missing days with 0)
+            var today = DateTime.Today;
+            var activityData = new List<Dictionary<string, object>>();
+            var allDaysData = new List<Dictionary<string, object>>();
+            long cumulative = 0;
+            int bestDay = 0;
+            int currentStreak = 0;
+            
+            // Build all days data first
+            for (int i = 89; i >= 0; i--)
+            {
+                var date = today.AddDays(-i);
+                var dateKey = date.ToString("yyyy-MM-dd");
+                var count = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : 0;
+                
+                cumulative += count;
+                
+                if (count > bestDay)
+                {
+                    bestDay = count;
+                }
+                
+                var dayData = new Dictionary<string, object>
+                {
+                    ["date"] = dateKey,
+                    ["count"] = count
+                };
+                
+                allDaysData.Add(dayData);
+                
+                // Last 14 days for bar chart
+                if (i < 14)
+                {
+                    activityData.Add(dayData);
+                }
+            }
+            
+            // Calculate streak (count backwards from today)
+            for (int i = 0; i < allDaysData.Count; i++)
+            {
+                var dayData = allDaysData[i];
+                var count = Convert.ToInt32(dayData["count"]);
+                
+                if (count > 0)
+                {
+                    currentStreak++;
+                }
+                else
+                {
+                    break; // Streak broken
+                }
+            }
+            
+            // Calculate weekly average (last 90 days = ~12.86 weeks)
+            var weeklyAvg = totalWords > 0 ? (int)Math.Round(totalWords / 12.86) : 0;
+            
+            var stats = new Dictionary<string, object>
+            {
+                ["totalWords"] = totalWords,
+                ["weeklyAvg"] = weeklyAvg,
+                ["bestDay"] = bestDay,
+                ["currentStreak"] = currentStreak,
+                ["activityData"] = activityData, // Last 14 days
+                ["allDaysData"] = allDaysData   // Last 90 days for line chart and heatmap
+            };
+            
+            Console.WriteLine($"✓ Retrieved stats: Total={totalWords}, WeeklyAvg={weeklyAvg}, BestDay={bestDay}, Streak={currentStreak}");
+            return JsonSerializer.Serialize(stats);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching stats: {ex.Number} - {ex.Message}");
+            // Return default stats on error
+            var defaultStats = new Dictionary<string, object>
+            {
+                ["totalWords"] = 0,
+                ["weeklyAvg"] = 0,
+                ["bestDay"] = 0,
+                ["currentStreak"] = 0,
+                ["activityData"] = new List<object>(),
+                ["allDaysData"] = new List<object>()
+            };
+            return JsonSerializer.Serialize(defaultStats);
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching stats: {ex.Message}");
+            // Return default stats on error
+            var defaultStats = new Dictionary<string, object>
+            {
+                ["totalWords"] = 0,
+                ["weeklyAvg"] = 0,
+                ["bestDay"] = 0,
+                ["currentStreak"] = 0,
+                ["activityData"] = new List<object>(),
+                ["allDaysData"] = new List<object>()
+            };
+            return JsonSerializer.Serialize(defaultStats);
         }
     }
 }

@@ -1,22 +1,25 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { CalendarHeaderComponent } from './calendar-header/calendar-header.component';
 import { CalendarGridComponent } from './calendar-grid/calendar-grid.component';
+import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../services/api.service';
 import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-calendar-page',
   standalone: true,
-  imports: [CommonModule, CalendarHeaderComponent, CalendarGridComponent, RouterModule],
+  imports: [CommonModule, CalendarHeaderComponent, CalendarGridComponent, RouterModule, ContentLoaderComponent],
   templateUrl: './calendar-page.component.html',
   styleUrls: ['./calendar-page.component.scss']
 })
 export class CalendarPageComponent implements OnInit, OnDestroy {
   currentDate: Date = new Date();
   targets: { [key: string]: number } = {};
+  dailyLogs: { [key: string]: number } = {}; // Actual word counts
   deadlines: { [key: string]: boolean } = {};
   plansByDate: { [key: string]: any[] } = {}; // Plans grouped by date for progress-vs-plan mode
   allPlans: any[] = []; // Store all plans for progress-vs-plan mode
@@ -29,6 +32,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
   viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
   timeFilter: 'future' | 'all' = 'all';
   private routeSubscription?: Subscription;
+  private navigationSubscription?: Subscription;
 
   get monthName(): string {
     return this.currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -36,12 +40,17 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
 
   constructor(
     private route: ActivatedRoute,
-    private apiService: ApiService
-  ) {}
+    private apiService: ApiService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit() {
     this.username = localStorage.getItem('username') || 'User';
-    
+
+    // Load data immediately
+    this.loadCalendarData();
+
     // Subscribe to query params to get planId
     this.routeSubscription = this.route.queryParams.subscribe(params => {
       const planIdParam = params['planId'];
@@ -50,15 +59,40 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
         console.log('Loading plan details for plan ID:', this.planId);
         this.loadPlanDetails();
       } else {
+        this.planId = null;
+        this.planDetails = null;
         // If no planId, load all plans calendar view
         this.fetchPlanDays();
       }
     });
+
+    // Reload on navigation back to this page
+    this.navigationSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      if (event.url.includes('/calendar')) {
+        this.loadCalendarData();
+      }
+    });
+  }
+
+  loadCalendarData() {
+    const planIdParam = this.route.snapshot.queryParamMap.get('planId');
+    if (planIdParam) {
+      this.planId = +planIdParam;
+      this.loadPlanDetails();
+    } else {
+      this.planId = null;
+      this.fetchPlanDays();
+    }
   }
 
   ngOnDestroy() {
     if (this.routeSubscription) {
       this.routeSubscription.unsubscribe();
+    }
+    if (this.navigationSubscription) {
+      this.navigationSubscription.unsubscribe();
     }
   }
 
@@ -67,14 +101,16 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    */
   loadPlanDetails() {
     if (!this.planId) return;
-    
+
     this.isLoading = true;
+    this.cdr.detectChanges();
+
     this.apiService.getPlan(this.planId).subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.planDetails = response.data;
           console.log('Plan details loaded:', this.planDetails);
-          
+
           // Set current date to plan start date if available
           if (this.planDetails.start_date) {
             const startDate = new Date(this.planDetails.start_date);
@@ -82,7 +118,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
               this.currentDate = startDate;
             }
           }
-          
+
           // Generate calendar data for single plan
           this.allPlans = [this.planDetails];
           this.targets = this.generateTargetsFromPlan(this.planDetails);
@@ -92,6 +128,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           console.warn('Plan not found with ID:', this.planId);
         }
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading plan details:', error);
@@ -116,9 +153,11 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
               }
             }
             this.isLoading = false;
+            this.cdr.detectChanges();
           },
           error: () => {
             this.isLoading = false;
+            this.cdr.detectChanges();
           }
         });
       }
@@ -163,12 +202,17 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
     console.log('Time Filter changed to:', filter);
   }
 
-  async fetchPlanDays() {
+  fetchPlanDays() {
+    this.isLoading = true;
+    this.cdr.detectChanges();
+
     const userId = localStorage.getItem('user_id');
     console.log('Fetching calendar data for User ID:', userId);
 
     if (!userId) {
       console.warn('No User ID found in localStorage');
+      this.isLoading = false;
+      this.cdr.detectChanges();
       return;
     }
 
@@ -181,6 +225,26 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
       this.targets = this.generateTargetsFromPlan(this.planDetails);
       this.deadlines = this.generateDeadlinesFromPlan(this.planDetails);
       this.plansByDate = this.generatePlansByDate([this.planDetails]);
+
+      // Fetch actual logs
+      this.apiService.getPlanDays(this.planId).subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            const logs: { [key: string]: number } = {};
+            response.data.forEach((d: any) => {
+              logs[d.date] = d.actual_count;
+            });
+            this.dailyLogs = logs;
+          }
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error loading daily logs', err);
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        }
+      });
       return;
     }
 
@@ -199,6 +263,8 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           this.plansByDate = {};
           this.allPlans = [];
         }
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error fetching plans for calendar:', error);
@@ -206,6 +272,8 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
         this.deadlines = {};
         this.plansByDate = {};
         this.allPlans = [];
+        this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -215,7 +283,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    */
   private generateTargetsFromPlan(plan: any): { [key: string]: number } {
     const targets: { [key: string]: number } = {};
-    
+
     if (!plan.start_date || !plan.end_date || !plan.total_word_count) {
       return targets;
     }
@@ -239,7 +307,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    */
   private generateTargetsFromPlans(plans: any[]): { [key: string]: number } {
     const targets: { [key: string]: number } = {};
-    
+
     plans.forEach(plan => {
       const planTargets = this.generateTargetsFromPlan(plan);
       Object.keys(planTargets).forEach(dateKey => {
@@ -265,7 +333,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    */
   private generateDeadlinesFromPlan(plan: any): { [key: string]: boolean } {
     const deadlines: { [key: string]: boolean } = {};
-    
+
     if (!plan.end_date) {
       return deadlines;
     }
@@ -282,7 +350,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    */
   private generateDeadlinesFromPlans(plans: any[]): { [key: string]: boolean } {
     const deadlines: { [key: string]: boolean } = {};
-    
+
     plans.forEach(plan => {
       const planDeadlines = this.generateDeadlinesFromPlan(plan);
       Object.keys(planDeadlines).forEach(dateKey => {
@@ -298,10 +366,10 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    */
   private generatePlansByDate(plans: any[]): { [key: string]: any[] } {
     const plansByDate: { [key: string]: any[] } = {};
-    
+
     plans.forEach(plan => {
       if (!plan.start_date || !plan.end_date) return;
-      
+
       const startDate = new Date(plan.start_date);
       const endDate = new Date(plan.end_date);
       const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));

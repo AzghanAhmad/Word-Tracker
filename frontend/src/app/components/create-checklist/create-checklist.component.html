@@ -1,19 +1,21 @@
 <div class="create-checklist-container">
     <div class="header">
         <h1>{{ isEditMode ? 'Edit Checklist' : 'Create a Checklist' }}</h1>
-        <p class="subtitle">{{ isEditMode ? 'Update your checklist and tasks' : 'Build a task list to keep your writing project organized' }}</p>
+        <p class="subtitle">{{ isEditMode ? 'Update your checklist tasks' : 'Build a task list to keep your writing project organized' }}</p>
     </div>
 
-    <div *ngIf="isLoadingData" class="loading-message">
-        Loading checklist data...
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="isLoadingData && isEditMode">
+        <i class="fas fa-spinner fa-spin"></i> Loading checklist...
     </div>
 
-    <div class="checklist-form" *ngIf="!isLoadingData">
+    <div class="checklist-form" *ngIf="!isLoadingData || !isEditMode">
         <!-- Checklist Name -->
         <div class="form-group">
             <label for="checklistName">Checklist Name</label>
             <input type="text" id="checklistName" [(ngModel)]="checklistName" class="form-input"
-                placeholder="e.g., NaNoWriMo Tasks, Research Checklist" required>
+                placeholder="e.g., NaNoWriMo Tasks, Research Checklist" required
+                [disabled]="isLoadingData">
         </div>
 
         <!-- Checklist Items -->
@@ -26,35 +28,36 @@
                     </div>
                     <div class="item-text">
                         <input type="text" [(ngModel)]="item.text" class="item-input"
-                            placeholder="Enter task description">
+                            placeholder="Enter task description" [disabled]="isLoadingData">
                     </div>
                     <div class="item-actions">
-                        <button type="button" class="btn-icon" (click)="moveUp(i)" [disabled]="i === 0" title="Move up">
+                        <button type="button" class="btn-icon" (click)="moveUp(i)" 
+                            [disabled]="i === 0 || isLoadingData" title="Move up">
                             ↑
                         </button>
-                        <button type="button" class="btn-icon" (click)="moveDown(i)" [disabled]="i === items.length - 1"
-                            title="Move down">
+                        <button type="button" class="btn-icon" (click)="moveDown(i)" 
+                            [disabled]="i === items.length - 1 || isLoadingData" title="Move down">
                             ↓
                         </button>
                         <button type="button" class="btn-icon btn-delete" (click)="removeItem(i)"
-                            [disabled]="items.length === 1" title="Delete">
+                            [disabled]="items.length === 1 || isLoadingData" title="Delete">
                             ×
                         </button>
                     </div>
                 </div>
             </div>
 
-            <button type="button" class="btn-add-item" (click)="addItem()">
+            <button type="button" class="btn-add-item" (click)="addItem()" [disabled]="isLoadingData">
                 + Add Task
             </button>
         </div>
 
         <!-- Actions -->
         <div class="form-actions">
-            <button type="button" class="btn-secondary" routerLink="/my-checklists" [disabled]="isLoading || isLoadingData">Cancel</button>
+            <button type="button" class="btn-secondary" routerLink="/my-checklists" [disabled]="isLoadingData">Cancel</button>
             <button type="button" class="btn-primary" (click)="saveChecklist()" [disabled]="isLoading || isLoadingData">
+                <span *ngIf="isLoading"><i class="fas fa-spinner fa-spin"></i> Saving...</span>
                 <span *ngIf="!isLoading">{{ isEditMode ? 'Update Checklist' : 'Save Checklist' }}</span>
-                <span *ngIf="isLoading">{{ isEditMode ? 'Updating...' : 'Saving...' }}</span>
             </button>
         </div>
     </div>
