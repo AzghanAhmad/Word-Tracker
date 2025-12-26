@@ -2,12 +2,12 @@
 #include "cJSON.h"
 #include "db.h"
 #include "mongoose.h"
-#include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define SECRET_KEY "change_this_to_a_secure_random_key_in_production"
-#define LISTENING_ADDR "http://127.0.0.1:8080"
+#define LISTENING_ADDR "http://0.0.0.0:8080"
 
 // Standard HTTP Headers
 static const char *HEADERS =
@@ -436,6 +436,108 @@ static void handle_get_dashboard_stats(struct mg_connection *c, int user_id) {
   }
 }
 
+// Projects
+static void handle_create_project(struct mg_connection *c,
+                                  struct mg_http_message *hm) {
+  char title[256] = {0};
+  char subtitle[256] = {0};
+  char description[2048] = {0};
+  bool is_private = false;
+
+  char token[512] = {0};
+  struct mg_str *auth_header = mg_http_get_header(hm, "Authorization");
+  if (auth_header == NULL || auth_header->len == 0) {
+    reply_error(c, 401, "Unauthorized");
+    return;
+  }
+  // format "Bearer <token>"
+  if (auth_header->len > 7 && strncmp(auth_header->buf, "Bearer ", 7) == 0) {
+    snprintf(token, sizeof(token), "%.*s", (int)(auth_header->len - 7),
+             auth_header->buf + 7);
+  } else {
+    snprintf(token, sizeof(token), "%.*s", (int)auth_header->len,
+             auth_header->buf);
+  }
+
+  int user_id = auth_validate_jwt(token, SECRET_KEY);
+  if (user_id <= 0) {
+    reply_error(c, 401, "Invalid token");
+    return;
+  }
+
+  // Parse body
+  cJSON *json = parse_json(hm);
+  if (!json) {
+    reply_error(c, 400, "Invalid JSON");
+    return;
+  }
+
+  cJSON *name_item = cJSON_GetObjectItemCaseSensitive(json, "name");
+  cJSON *subtitle_item = cJSON_GetObjectItemCaseSensitive(json, "subtitle");
+  cJSON *desc_item = cJSON_GetObjectItemCaseSensitive(json, "description");
+  cJSON *private_item = cJSON_GetObjectItemCaseSensitive(json, "is_private");
+
+  if (!cJSON_IsString(name_item) || (name_item->valuestring == NULL)) {
+    cJSON_Delete(json);
+    reply_error(c, 400, "Name required");
+    return;
+  }
+
+  snprintf(title, sizeof(title), "%s", name_item->valuestring);
+
+  if (cJSON_IsString(subtitle_item) && subtitle_item->valuestring != NULL) {
+    snprintf(subtitle, sizeof(subtitle), "%s", subtitle_item->valuestring);
+  }
+
+  if (cJSON_IsString(desc_item) && desc_item->valuestring != NULL) {
+    snprintf(description, sizeof(description), "%s", desc_item->valuestring);
+  }
+
+  if (cJSON_IsBool(private_item)) {
+    is_private = cJSON_IsTrue(private_item);
+  }
+
+  if (db_create_project(user_id, title, subtitle, description, is_private)) {
+    reply_success(c, "Project created");
+  } else {
+    reply_error(c, 500, "Failed to create project");
+  }
+  cJSON_Delete(json);
+}
+
+static void handle_get_projects(struct mg_connection *c,
+                                struct mg_http_message *hm) {
+  char token[512] = {0};
+  struct mg_str *auth_header = mg_http_get_header(hm, "Authorization");
+  if (auth_header == NULL || auth_header->len == 0) {
+    reply_error(c, 401, "Unauthorized");
+    return;
+  }
+  if (auth_header->len > 7 && strncmp(auth_header->buf, "Bearer ", 7) == 0) {
+    snprintf(token, sizeof(token), "%.*s", (int)(auth_header->len - 7),
+             auth_header->buf + 7);
+  } else {
+    snprintf(token, sizeof(token), "%.*s", (int)auth_header->len,
+             auth_header->buf);
+  }
+
+  int user_id = auth_validate_jwt(token, SECRET_KEY);
+  if (user_id <= 0) {
+    reply_error(c, 401, "Invalid token");
+    return;
+  }
+
+  cJSON *projects = db_get_user_projects(user_id);
+  if (projects) {
+    char *json_str = cJSON_PrintUnformatted(projects);
+    mg_http_reply(c, 200, HEADERS, "{\"success\":true,\"data\":%s}", json_str);
+    free(json_str);
+    cJSON_Delete(projects);
+  } else {
+    reply_error(c, 500, "Failed to fetch projects");
+  }
+}
+
 // ROUTER
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
   if (ev == MG_EV_HTTP_MSG) {
@@ -476,6 +578,16 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     }
 
     // 4. Protected Routes
+    if (mg_http_match_uri(hm, "/api/projects")) {
+      if (mg_strcmp(hm->method, mg_str("POST")) == 0)
+        handle_create_project(c, hm);
+      else if (mg_strcmp(hm->method, mg_str("GET")) == 0)
+        handle_get_projects(c, hm);
+      else
+        reply_error(c, 405, "Method Not Allowed");
+      return;
+    }
+
     if (mg_http_match_uri(hm, "/plans")) {
       if (mg_strcmp(hm->method, mg_str("POST")) == 0)
         handle_create_plan(c, hm);
@@ -510,6 +622,17 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
       if (mg_strcmp(hm->method, mg_str("GET")) == 0)
         handle_get_dashboard_stats(c, user_id);
       else
+        reply_error(c, 405, "Method Not Allowed");
+    } else if (mg_http_match_uri(hm, "/stats")) {
+      if (mg_strcmp(hm->method, mg_str("GET")) == 0) {
+        char *json = db_get_full_stats(user_id);
+        if (json) {
+          reply_data(c, json);
+          free(json);
+        } else {
+          reply_error(c, 500, "Failed to fetch stats");
+        }
+      } else
         reply_error(c, 405, "Method Not Allowed");
     } else {
       reply_error(c, 404, "Not Found");

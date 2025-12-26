@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink, NavigationEnd } from '@angular/router';
@@ -97,6 +97,9 @@ export class CreatePlanComponent implements OnInit {
 
     // Share dropdown
     showShareDropdown: boolean = false;
+
+    // Description word counter
+    maxDescriptionWords: number = 300;
 
     private routeSubscription?: Subscription;
     private navigationSubscription?: Subscription;
@@ -584,17 +587,21 @@ export class CreatePlanComponent implements OnInit {
             progress_tracking_type: this.progressTrackingType
         };
 
+        this.isLoading = true; // Set loading state
+
         if (this.isEditMode && this.planId) {
             this.apiService.updatePlan(this.planId, payload).subscribe({
                 next: (response) => {
+                    this.isLoading = false;
                     if (response.success) {
                         // Success message is shown by interceptor
                         this.router.navigate(['/dashboard']);
                     } else {
-                        this.notificationService.showError(response.message || 'Failed to update plan');
+                        // Error message is shown by interceptor
                     }
                 },
                 error: (error) => {
+                    this.isLoading = false;
                     console.error('Error updating plan:', error);
                     // Error message is shown by interceptor
                 }
@@ -606,14 +613,16 @@ export class CreatePlanComponent implements OnInit {
 
         this.apiService.createPlan(payload).subscribe({
             next: (response) => {
+                this.isLoading = false;
                 if (response.success) {
                     // Success message is shown by interceptor
                     this.router.navigate(['/dashboard']);
                 } else {
-                    this.notificationService.showError(response.message || 'Failed to create plan');
+                    // Error message is shown by interceptor
                 }
             },
             error: (error) => {
+                this.isLoading = false;
                 console.error('Error creating plan:', error);
                 // Error message is shown by interceptor
             }
@@ -628,30 +637,6 @@ export class CreatePlanComponent implements OnInit {
             // If creating new plan, just navigate away
             this.router.navigate(['/dashboard']);
         }
-    }
-
-    insertFormatting(type: string) {
-        const textarea = document.querySelector('textarea[placeholder="Enter a description"]') as HTMLTextAreaElement;
-        if (!textarea) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = this.planDescription;
-        let prefix = '', suffix = '';
-
-        switch (type) {
-            case 'bold': prefix = '**'; suffix = '**'; break;
-            case 'italic': prefix = '_'; suffix = '_'; break;
-            case 'list-ul': prefix = '\n- '; break;
-            case 'list-ol': prefix = '\n1. '; break;
-        }
-
-        this.planDescription = text.substring(0, start) + prefix + text.substring(start, end) + suffix + text.substring(end);
-
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-        });
     }
 
     // Share functionality methods
@@ -688,5 +673,26 @@ export class CreatePlanComponent implements OnInit {
         this.isPrivate = !this.isPrivate;
         this.notificationService.showSuccess(`Plan is now ${this.isPrivate ? 'private' : 'public'}`);
         this.showShareDropdown = false;
+    }
+
+    /**
+     * Counts the number of words in the description
+     * @returns The word count
+     */
+    getDescriptionWordCount(): number {
+        if (!this.planDescription || !this.planDescription.trim()) {
+            return 0;
+        }
+        // Split by whitespace and filter out empty strings
+        const words = this.planDescription.trim().split(/\s+/).filter(word => word.length > 0);
+        return words.length;
+    }
+
+    /**
+     * Checks if description exceeds max words
+     * @returns True if description exceeds max words
+     */
+    isDescriptionOverLimit(): boolean {
+        return this.getDescriptionWordCount() > this.maxDescriptionWords;
     }
 }

@@ -128,6 +128,40 @@ import { CommonModule } from '@angular/common';
         }
       }
     }
+
+    @media (max-width: 1024px) {
+      .calendar-header-container {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      
+      .header-controls {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap; // Allow wrapping
+        justify-content: center; // Center everything
+        align-items: center;
+        gap: 1rem;
+      }
+
+      // Force view group to be on a new line for a cleaner stacked look
+      .view-group {
+        order: 3; // Ensure it comes last
+        width: 100%; // Take full width to force new line
+        justify-content: center; // Center the buttons inside
+        margin-top: 0.5rem;
+        display: flex; /* Ensure it's displayed */
+      }
+      
+      .control-btn.today-btn {
+        order: 1;
+      }
+      
+      .nav-group {
+        order: 2;
+      }
+    }
   `]
 })
 export class CalendarHeaderComponent {

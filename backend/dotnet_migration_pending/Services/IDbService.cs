@@ -38,5 +38,10 @@ public interface IDbService
     bool DeleteUserAccount(int userId);
     string GetStatsJson(int userId);
     int CreateFeedback(int? userId, string type, string? email, string message);
+    int CreateProject(int userId, string name, string? subtitle, string? description, bool isPrivate);
+    string GetProjectsJson(int userId);
+    string? GetProjectJson(int id, int userId);
+    bool UpdateProject(int id, int userId, string name, string? subtitle, string? description, bool isPrivate);
+    bool DeleteProject(int id, int userId);
     string GetLastError();
 }

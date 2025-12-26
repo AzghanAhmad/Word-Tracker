@@ -91,7 +91,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error fetching dashboard stats:', error);
         // Fallback to mock data on error
-                this.cdr.detectChanges(); // Force update
+        this.cdr.detectChanges(); // Force update
       }
     });
 
@@ -107,6 +107,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             console.log('Plans loaded:', response.data);
             this.plans = response.data.map((p: any) => ({
               ...p,
+              plan_name: p.title || p.plan_name || 'Untitled Plan', // Handle different API response formats
               progress: p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0
             }));
           } else {
@@ -116,7 +117,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error fetching plans:', error);
           if (userType !== 'demo') {
-            this.plans = [];          } else {
+            this.plans = [];
+          } else {
             this.plans = [];
           }
         }

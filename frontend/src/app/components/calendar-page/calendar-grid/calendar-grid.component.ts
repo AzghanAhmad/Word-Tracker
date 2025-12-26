@@ -49,7 +49,8 @@ export interface CalendarCell {
   styles: [`
     .calendar-container {
       background: #fff;
-      border: 1px solid #ccc; // Main calendar border
+      border: 1px solid #ccc;
+      overflow-x: auto;
     }
 
     .weekdays-row {
@@ -57,6 +58,7 @@ export interface CalendarCell {
       grid-template-columns: repeat(7, 1fr);
       border-bottom: 2px solid #ccc;
       background: #fff;
+      min-width: 700px;
     }
 
     .weekday {
@@ -76,6 +78,7 @@ export interface CalendarCell {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       background: #fff;
+      min-width: 700px; // Match header
     }
   `]
 })

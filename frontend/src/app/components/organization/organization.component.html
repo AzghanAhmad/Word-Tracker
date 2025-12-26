@@ -1,0 +1,143 @@
+<div class="organization-container">
+    <div class="header">
+        <h2>Organization Plans</h2>
+        <button class="btn-primary" (click)="toggleCreateForm()" *ngIf="!showCreateForm && !showEditForm">
+            <i class="fas fa-plus"></i> Organization Plan
+        </button>
+    </div>
+
+    <!-- Error Message -->
+    <div class="error-message" *ngIf="errorMessage">
+        <i class="fas fa-exclamation-circle"></i>
+        <span>{{ errorMessage }}</span>
+        <button class="close-error" (click)="errorMessage = ''">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+
+    <!-- Creation Form -->
+    <div class="create-form-container" *ngIf="showCreateForm">
+        <div class="form-card">
+            <div class="form-group row">
+                <label class="col-label">Name</label>
+                <div class="col-input">
+                    <input type="text" [(ngModel)]="newProject.name" placeholder="Name" maxlength="255">
+                    <span class="help-text">Required, max 255 characters</span>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="col-label">Short Tagline</label>
+                <div class="col-input">
+                    <input type="text" [(ngModel)]="newProject.subtitle" placeholder="Tagline" maxlength="255">
+                    <span class="help-text">Optional, max 255 characters</span>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="col-label">Description</label>
+                <div class="col-input">
+                    <textarea [(ngModel)]="newProject.description" placeholder="Description" maxlength="1000"></textarea>
+                    <span class="help-text">Optional, max 1000 characters</span>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="col-label">Privacy</label>
+                <div class="col-input checkbox-container">
+                    <i class="fas fa-lock lock-icon"></i>
+                    <input type="checkbox" id="privacyCheck" [(ngModel)]="newProject.is_private">
+                    <label for="privacyCheck">Make this project private</label>
+                </div>
+            </div>
+
+            <div class="form-actions-bar">
+                <button class="btn-save" (click)="createProject()" [disabled]="!newProject.name?.trim() || isLoading">
+                    <i class="fas fa-spinner fa-spin" *ngIf="isLoading"></i>
+                    <span *ngIf="!isLoading">Save This Project</span>
+                    <span *ngIf="isLoading">Saving...</span>
+                </button>
+                <button class="btn-archive" (click)="toggleCreateForm()" [disabled]="isLoading">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="create-form-container" *ngIf="showEditForm && selectedProject">
+        <div class="form-card">
+            <h3 style="margin-bottom: 1.5rem;">Edit Project</h3>
+            
+            <div class="form-group row">
+                <label class="col-label">Name</label>
+                <div class="col-input">
+                    <input type="text" [(ngModel)]="selectedProject.name" placeholder="Name" maxlength="255">
+                    <span class="help-text">Required, max 255 characters</span>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="col-label">Short Tagline</label>
+                <div class="col-input">
+                    <input type="text" [(ngModel)]="selectedProject.subtitle" placeholder="Tagline" maxlength="255">
+                    <span class="help-text">Optional, max 255 characters</span>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="col-label">Description</label>
+                <div class="col-input">
+                    <textarea [(ngModel)]="selectedProject.description" placeholder="Description" maxlength="1000"></textarea>
+                    <span class="help-text">Optional, max 1000 characters</span>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="col-label">Privacy</label>
+                <div class="col-input checkbox-container">
+                    <i class="fas fa-lock lock-icon"></i>
+                    <input type="checkbox" id="editPrivacyCheck" [(ngModel)]="selectedProject.is_private">
+                    <label for="editPrivacyCheck">Make this project private</label>
+                </div>
+            </div>
+
+            <div class="form-actions-bar">
+                <button class="btn-save" (click)="updateProject()" [disabled]="!selectedProject.name?.trim() || isLoading">
+                    <i class="fas fa-spinner fa-spin" *ngIf="isLoading"></i>
+                    <span *ngIf="!isLoading">Update Project</span>
+                    <span *ngIf="isLoading">Updating...</span>
+                </button>
+                <button class="btn-archive" (click)="cancelEdit()" [disabled]="isLoading">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-spinner" *ngIf="isLoading && !showCreateForm && !showEditForm">
+        <i class="fas fa-spinner fa-spin"></i> Loading...
+    </div>
+
+    <div class="projects-grid" *ngIf="!isLoading && !showCreateForm && !showEditForm">
+        <div class="empty-state" *ngIf="projects.length === 0">
+            <p>No projects found. Create one to get started!</p>
+        </div>
+
+        <div class="project-card" *ngFor="let project of projects">
+            <div class="project-info" (click)="viewProjectDetails(project)">
+                <h3>{{ project.name }}</h3>
+                <p class="subtitle" *ngIf="project.subtitle">{{ project.subtitle }}</p>
+                <p class="description" *ngIf="project.description">{{ project.description }}</p>
+                <span class="badge-private" *ngIf="project.is_private"><i class="fas fa-lock"></i> Private</span>
+                <span class="created-date" *ngIf="project.created_at">
+                    Created: {{ project.created_at | date:'short' }}
+                </span>
+            </div>
+            <div class="project-actions">
+                <button class="btn-icon" (click)="editProject(project); $event.stopPropagation()" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon btn-delete" (click)="deleteProject(project); $event.stopPropagation()" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

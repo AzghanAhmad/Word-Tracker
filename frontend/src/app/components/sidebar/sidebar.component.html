@@ -16,9 +16,9 @@
             </div>
 
             <div class="progress-list" *ngIf="isProgressExpanded">
-                <div class="progress-item" *ngFor="let plan of activePlans">
-                    <div class="progress-item-header" [routerLink]="['/plans', plan.id]" style="cursor: pointer;"
-                        title="View Plan Details">
+                <div class="progress-item" *ngFor="let plan of activePlans" [routerLink]="['/plans', plan.id]"
+                    style="cursor: pointer;" title="View Plan Details">
+                    <div class="progress-item-header">
                         <span class="plan-name">{{ plan.plan_name }}</span>
                         <span class="plan-percentage">{{ plan.progress }}%</span>
                     </div>
@@ -69,6 +69,10 @@
         <div class="divider"></div>
 
         <!-- Group 4: Social -->
+        <a routerLink="/organization-plan" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-sitemap"></i>
+            <span *ngIf="!isCollapsed">Organization Plan</span>
+        </a>
         <a routerLink="/challenges" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
             <i class="fas fa-users"></i>
             <span *ngIf="!isCollapsed">Group Challenges</span>

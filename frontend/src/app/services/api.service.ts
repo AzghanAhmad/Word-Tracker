@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, timer, of } from 'rxjs';
-import { retry } from 'rxjs/operators';
+import { Observable, timer, of, Subject } from 'rxjs';
+import { retry, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { MockDataService } from './mock-data.service';
 
@@ -10,6 +10,11 @@ import { MockDataService } from './mock-data.service';
 })
 export class ApiService {
     private apiUrl = environment.apiUrl;
+    private _refreshSidebar = new Subject<void>();
+
+    get refreshSidebar$() {
+        return this._refreshSidebar.asObservable();
+    }
 
     private get useMock(): boolean {
         return (environment as any).useMockData === true;
@@ -144,20 +149,28 @@ export class ApiService {
     createPlan(plan: any): Observable<any> {
         if (this.useMock) {
             const newPlan = this.mockDataService.addPlan(plan);
+            this._refreshSidebar.next();
             return of({ success: true, message: 'Plan created (Mock)', id: newPlan.id });
         }
-        return this.http.post(`${this.apiUrl}/plans`, plan);
+        return this.http.post(`${this.apiUrl}/plans`, plan).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     updatePlan(id: number, plan: any): Observable<any> {
-        return this.http.put(`${this.apiUrl}/plans/${id}`, plan);
+        return this.http.put(`${this.apiUrl}/plans/${id}`, plan).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     deletePlan(id: number): Observable<any> {
         if (this.useMock) {
+            this._refreshSidebar.next();
             return of({ success: true, message: 'Plan deleted (Mock)' });
         }
-        return this.http.delete(`${this.apiUrl}/plans?id=${id}`);
+        return this.http.delete(`${this.apiUrl}/plans?id=${id}`).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     getPlanDays(planId: number): Observable<any> {
@@ -223,7 +236,9 @@ export class ApiService {
     }
 
     logProgress(planId: number, date: string, actualCount: number, notes: string): Observable<any> {
-        return this.http.post(`${this.apiUrl}/plans/${planId}/days`, { date, actual_count: actualCount, notes });
+        return this.http.post(`${this.apiUrl}/plans/${planId}/days`, { date, actual_count: actualCount, notes }).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     deleteChecklist(checklistId: number): Observable<any> {
@@ -292,5 +307,52 @@ export class ApiService {
             return of({ success: true, message: 'Feedback submitted (Mock)' });
         }
         return this.http.post(`${this.apiUrl}/feedback`, { type, email, message });
+    }
+
+    // ============================================================================
+    // Projects (Organization Plans)
+    // ============================================================================
+
+    createProject(project: { name: string, subtitle?: string, description?: string, is_private?: boolean }): Observable<any> {
+        if (this.useMock) {
+            this._refreshSidebar.next();
+            return of({ success: true, message: 'Project created (Mock)' });
+        }
+        return this.http.post(`${this.apiUrl}/projects`, project).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
+    }
+
+    getProjects(): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: [] });
+        }
+        return this.http.get(`${this.apiUrl}/projects`);
+    }
+
+    getProject(id: number): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: null });
+        }
+        return this.http.get(`${this.apiUrl}/projects/${id}`);
+    }
+
+    updateProject(id: number, project: { name?: string, subtitle?: string, description?: string, is_private?: boolean }): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Project updated (Mock)' });
+        }
+        return this.http.put(`${this.apiUrl}/projects/${id}`, project).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
+    }
+
+    deleteProject(id: number): Observable<any> {
+        if (this.useMock) {
+            this._refreshSidebar.next();
+            return of({ success: true, message: 'Project deleted (Mock)' });
+        }
+        return this.http.delete(`${this.apiUrl}/projects/${id}`).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 }

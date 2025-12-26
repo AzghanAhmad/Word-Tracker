@@ -26,12 +26,16 @@ import { ChallengeDetailComponent } from './components/challenge-detail/challeng
 import { CreatePlanComponent } from './components/create-plan/create-plan.component';
 import { PlanDetailsComponent } from './components/plan-details/plan-details.component';
 
+import { OrganizationComponent } from './components/organization/organization.component';
 import { StatsComponent } from './components/stats/stats.component';
 
 export const routes: Routes = [
     { path: '', component: HomePublicComponent },
     { path: 'login', component: LoginComponent },
     { path: 'register', component: RegisterComponent },
+
+    // Organization Route
+    { path: 'organization-plan', component: OrganizationComponent, canActivate: [authGuard] },
 
     // Legal & Support Pages (Public)
     { path: 'privacy', component: PrivacyComponent },

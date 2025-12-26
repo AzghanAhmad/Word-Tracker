@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { NotificationService, ToastData } from '../../../services/notification.service';
 import { animate, style, transition, trigger } from '@angular/animations';
@@ -21,19 +22,37 @@ import { animate, style, transition, trigger } from '@angular/animations';
         ])
     ]
 })
-export class ToastComponent implements OnInit {
+export class ToastComponent implements OnInit, OnDestroy {
     toasts: ToastData[] = [];
+    private subscription: Subscription | null = null;
+    private lastMessage: string = '';
+    private lastTime: number = 0;
 
     constructor(private notificationService: NotificationService) { }
 
     ngOnInit(): void {
-        this.notificationService.notification$.subscribe(toast => {
+        this.subscription = this.notificationService.notification$.subscribe(toast => {
             this.addToast(toast);
         });
     }
 
+    ngOnDestroy(): void {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+        }
+    }
+
     addToast(toast: ToastData) {
-        const id = Date.now();
+        const now = Date.now();
+        // Prevent duplicate messages within 300ms
+        if (toast.message === this.lastMessage && (now - this.lastTime) < 300) {
+            return;
+        }
+
+        this.lastMessage = toast.message;
+        this.lastTime = now;
+
+        const id = now;
         const newToast = { ...toast, id };
         this.toasts.push(newToast);
 

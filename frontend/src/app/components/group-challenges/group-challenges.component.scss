@@ -5,6 +5,10 @@
     font-family: 'Inter', sans-serif;
 
     // Navigation tabs now use global styles from styles.scss
+    .main-tabs {
+        display: none;
+    }
+
 
     .split-line {
         border-bottom: 1px solid #f0f0f0;

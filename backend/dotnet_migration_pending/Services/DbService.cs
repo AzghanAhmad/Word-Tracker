@@ -2258,4 +2258,237 @@ public class DbService : IDbService
             return -1;
         }
     }
+
+    // ============================================================================
+    // Projects (Organization Plans)
+    // ============================================================================
+
+    public int CreateProject(int userId, string name, string? subtitle, string? description, bool isPrivate)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for CreateProject");
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO projects (user_id, name, subtitle, description, is_private) 
+                               VALUES (@uid, @name, @subtitle, @desc, @private);
+                               SELECT LAST_INSERT_ID();";
+            cmd.Parameters.AddWithValue("@uid", userId);
+            cmd.Parameters.AddWithValue("@name", name);
+            cmd.Parameters.AddWithValue("@subtitle", string.IsNullOrWhiteSpace(subtitle) ? (object)DBNull.Value : subtitle);
+            cmd.Parameters.AddWithValue("@desc", string.IsNullOrWhiteSpace(description) ? (object)DBNull.Value : description);
+            cmd.Parameters.AddWithValue("@private", isPrivate);
+            
+            var result = cmd.ExecuteScalar();
+            var projectId = result is long l ? (int)l : (result is int i ? i : (result is ulong ul ? (int)ul : -1));
+            
+            if (projectId > 0)
+            {
+                Console.WriteLine($"✓ Project created: {name} (ID: {projectId})");
+                return projectId;
+            }
+            
+            Console.WriteLine($"✗ Failed to create project");
+            return -1;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in CreateProject: {ex.Number} - {ex.Message}");
+            return -1;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in CreateProject: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return -1;
+        }
+    }
+
+    public string GetProjectsJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for GetProjectsJson");
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT id, name, subtitle, description, is_private, created_at 
+                               FROM projects 
+                               WHERE user_id = @uid 
+                               ORDER BY created_at DESC";
+            cmd.Parameters.AddWithValue("@uid", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var projects = new List<Dictionary<string, object>>();
+            
+            while (reader.Read())
+            {
+                var project = new Dictionary<string, object>
+                {
+                    ["id"] = reader.GetInt32(0),
+                    ["name"] = reader.GetString(1),
+                    ["subtitle"] = reader.IsDBNull(2) ? null : reader.GetString(2),
+                    ["description"] = reader.IsDBNull(3) ? null : reader.GetString(3),
+                    ["is_private"] = reader.GetBoolean(4),
+                    ["created_at"] = reader.IsDBNull(5) ? null : reader.GetDateTime(5).ToString("yyyy-MM-ddTHH:mm:ss")
+                };
+                projects.Add(project);
+            }
+            
+            Console.WriteLine($"✓ Retrieved {projects.Count} projects");
+            return JsonSerializer.Serialize(projects);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in GetProjectsJson: {ex.Number} - {ex.Message}");
+            return "[]";
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in GetProjectsJson: {ex.Message}");
+            return "[]";
+        }
+    }
+
+    public string? GetProjectJson(int id, int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for GetProjectJson");
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT id, name, subtitle, description, is_private, created_at 
+                               FROM projects 
+                               WHERE id = @id AND user_id = @uid 
+                               LIMIT 1";
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+            {
+                var project = new Dictionary<string, object>
+                {
+                    ["id"] = reader.GetInt32(0),
+                    ["name"] = reader.GetString(1),
+                    ["subtitle"] = reader.IsDBNull(2) ? null : reader.GetString(2),
+                    ["description"] = reader.IsDBNull(3) ? null : reader.GetString(3),
+                    ["is_private"] = reader.GetBoolean(4),
+                    ["created_at"] = reader.IsDBNull(5) ? null : reader.GetDateTime(5).ToString("yyyy-MM-ddTHH:mm:ss")
+                };
+                
+                Console.WriteLine($"✓ Retrieved project: {project["name"]}");
+                return JsonSerializer.Serialize(project);
+            }
+            
+            Console.WriteLine($"✗ Project not found: {id}");
+            return null;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in GetProjectJson: {ex.Number} - {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in GetProjectJson: {ex.Message}");
+            return null;
+        }
+    }
+
+    public bool UpdateProject(int id, int userId, string name, string? subtitle, string? description, bool isPrivate)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for UpdateProject");
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"UPDATE projects 
+                               SET name = @name, subtitle = @subtitle, description = @desc, is_private = @private 
+                               WHERE id = @id AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            cmd.Parameters.AddWithValue("@name", name);
+            cmd.Parameters.AddWithValue("@subtitle", string.IsNullOrWhiteSpace(subtitle) ? (object)DBNull.Value : subtitle);
+            cmd.Parameters.AddWithValue("@desc", string.IsNullOrWhiteSpace(description) ? (object)DBNull.Value : description);
+            cmd.Parameters.AddWithValue("@private", isPrivate);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            if (rowsAffected > 0)
+            {
+                Console.WriteLine($"✓ Project updated: {name} (ID: {id})");
+                return true;
+            }
+            
+            Console.WriteLine($"✗ Project not found or no changes made: {id}");
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in UpdateProject: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in UpdateProject: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool DeleteProject(int id, int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for DeleteProject");
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM projects WHERE id = @id AND user_id = @uid";
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            if (rowsAffected > 0)
+            {
+                Console.WriteLine($"✓ Project deleted: {id}");
+                return true;
+            }
+            
+            Console.WriteLine($"✗ Project not found or no permission: {id}");
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in DeleteProject: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in DeleteProject: {ex.Message}");
+            return false;
+        }
+    }
 }

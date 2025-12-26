@@ -1,6 +1,7 @@
 #ifndef DB_H
 #define DB_H
 
+#include "cJSON.h"
 #include <mysql/mysql.h>
 #include <stdbool.h>
 
@@ -110,8 +111,14 @@ int db_create_challenge(int user_id, const char *title, const char *desc,
                         const char *start);
 char *db_get_challenges(int user_id); // Return JSON
 
-// Dashboard Params
+// Dashboard
 char *db_get_dashboard_stats(int user_id);
+char *db_get_full_stats(int user_id);
+
+// Projects
+bool db_create_project(int user_id, const char *name, const char *subtitle,
+                       const char *description, bool is_private);
+cJSON *db_get_user_projects(int user_id);
 
 // Helpers
 void db_get_last_error(char *buffer, size_t size);

@@ -144,6 +144,7 @@ public class DbInitService
                 date DATE NOT NULL,
                 target_count INT NOT NULL DEFAULT 0,
                 actual_count INT DEFAULT 0,
+                notes TEXT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE,
@@ -213,6 +214,17 @@ public class DbInitService
                 message TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+            )",
+            
+            @"CREATE TABLE IF NOT EXISTS projects (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                subtitle VARCHAR(255),
+                description TEXT,
+                is_private BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )"
         };
 
@@ -257,6 +269,31 @@ public class DbInitService
                 )";
                 await createFeedbackCmd.ExecuteNonQueryAsync();
                 Console.WriteLine("✓ Feedback table created");
+            }
+
+            // Check if projects table exists, create if not
+            using var checkProjectsCmd = conn.CreateCommand();
+            checkProjectsCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.TABLES 
+                                             WHERE TABLE_SCHEMA = DATABASE() 
+                                             AND TABLE_NAME = 'projects'";
+            var projectsTableExists = Convert.ToInt32(await checkProjectsCmd.ExecuteScalarAsync()) > 0;
+            
+            if (!projectsTableExists)
+            {
+                Console.WriteLine("📦 Creating projects table...");
+                using var createProjectsCmd = conn.CreateCommand();
+                createProjectsCmd.CommandText = @"CREATE TABLE IF NOT EXISTS projects (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    subtitle VARCHAR(255),
+                    description TEXT,
+                    is_private BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )";
+                await createProjectsCmd.ExecuteNonQueryAsync();
+                Console.WriteLine("✓ Projects table created");
             }
 
             // Check if 'plans' table has 'plan_name' column (old schema) instead of 'title' (new schema)
@@ -335,6 +372,9 @@ public class DbInitService
             
             // Add bio column to users table if it doesn't exist
             await AddColumnIfNotExistsAsync(conn, "users", "bio", "TEXT");
+            
+            // Add notes column to plan_days table if it doesn't exist
+            await AddColumnIfNotExistsAsync(conn, "plan_days", "notes", "TEXT DEFAULT NULL");
             
             // Create user_settings table if it doesn't exist
             await CreateUserSettingsTableAsync(conn);
