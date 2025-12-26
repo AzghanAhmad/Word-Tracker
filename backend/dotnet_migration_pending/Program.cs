@@ -142,12 +142,12 @@ else
     Console.WriteLine($"Base directory: {AppContext.BaseDirectory}");
 }
 
+// Health check endpoint (available before auth and CORS)
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Health check endpoint (available after CORS but before auth requirement)
-app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 // Map API controllers with /api prefix using route group
 app.MapGroup("api").MapControllers();
@@ -180,31 +180,22 @@ if (frontendPath != null)
     });
 }
 
-// Use Railway's PORT environment variable
-// This must be done BEFORE app.Run() and AFTER all middleware configuration
-var port = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(port))
-{
-    // Railway sets PORT - use it and clear any Kestrel config from appsettings
-    var url = $"http://0.0.0.0:{port}";
-    app.Urls.Clear();
-    app.Urls.Add(url);
-    Console.WriteLine($"🌐 Railway PORT detected: {port}, binding to {url}");
-}
-else
-{
-    // Local development - use default
-    var url = "http://0.0.0.0:8080";
-    app.Urls.Clear();
-    app.Urls.Add(url);
-    Console.WriteLine($"🌐 Using default port: 8080");
-}
+// Use Railway's PORT environment variable or default to 8080 for local development
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var url = $"http://0.0.0.0:{port}";
 
+// Clear any existing URLs and set the new one
+app.Urls.Clear();
+app.Urls.Add(url);
+
+Console.WriteLine($"🌐 Listening on: {url}");
 Console.WriteLine($"📂 Working directory: {Directory.GetCurrentDirectory()}");
 Console.WriteLine($"📦 Base directory: {AppContext.BaseDirectory}");
-Console.WriteLine($"🚀 Word Tracker API starting");
+
+Console.WriteLine($"🚀 Word Tracker API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
 Console.WriteLine($"🔐 JWT Secret: {(secret.Length > 20 ? secret.Substring(0, 20) + "..." : secret)}");
 Console.WriteLine($"🔗 Connection String: {(connectionString.Contains("Password=") ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" : connectionString)}");
+Console.WriteLine($"📍 API Endpoints available at: http://localhost:{port}/api/auth/register and http://localhost:{port}/api/auth/login");
 
 app.Run();
