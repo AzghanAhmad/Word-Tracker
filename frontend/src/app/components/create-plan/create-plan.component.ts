@@ -218,7 +218,12 @@ export class CreatePlanComponent implements OnInit {
                     this.measurementUnit = plan.measurement_unit || 'words';
                     this.isDailyTarget = plan.is_daily_target || false;
                     this.fixedDeadline = plan.fixed_deadline === undefined ? true : plan.fixed_deadline;
-                    this.targetFinishDate = plan.target_finish_date || '';
+                    if (plan.target_finish_date) {
+                        // Format date to YYYY-MM-DD for date input
+                        this.targetFinishDate = new Date(plan.target_finish_date).toISOString().split('T')[0];
+                    } else {
+                        this.targetFinishDate = '';
+                    }
                     this.strategyIntensity = plan.strategy_intensity || 'Average';
                     this.weekendApproach = plan.weekend_approach || 'The Usual';
                     this.reserveDays = plan.reserve_days || 0;
@@ -392,10 +397,53 @@ export class CreatePlanComponent implements OnInit {
 
     onDateChange() {
         this.generatePlanData();
+        // If fixed deadline is true, sync target finish date with end date
+        if (this.fixedDeadline && this.endDate) {
+            this.targetFinishDate = this.endDate;
+        }
     }
 
     onTargetChange() {
         this.generatePlanData();
+    }
+
+    onTargetFinishDateChange() {
+        // Validate that target finish date is after start date
+        if (this.targetFinishDate && this.startDate) {
+            const targetDate = new Date(this.targetFinishDate);
+            const startDate = new Date(this.startDate);
+            if (targetDate < startDate) {
+                this.notificationService.showError('Target finish date must be after start date.');
+                this.targetFinishDate = '';
+                return;
+            }
+        }
+    }
+
+    onFixedDeadlineChange() {
+        // When fixed deadline is enabled, set target finish date to end date
+        if (this.fixedDeadline && this.endDate) {
+            this.targetFinishDate = this.endDate;
+        } else if (!this.fixedDeadline) {
+            // When disabled, clear target finish date
+            this.targetFinishDate = '';
+        }
+    }
+
+    /**
+     * Formats a date string (YYYY-MM-DD) to a readable format (MM/DD/YYYY)
+     * @param dateString - Date string in YYYY-MM-DD format
+     * @returns Formatted date string or empty string if invalid
+     */
+    formatDate(dateString: string): string {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+        } catch {
+            return '';
+        }
     }
 
     onStrategyChange() {
@@ -575,7 +623,7 @@ export class CreatePlanComponent implements OnInit {
             measurement_unit: this.measurementUnit,
             is_daily_target: this.isDailyTarget,
             fixed_deadline: this.fixedDeadline,
-            target_finish_date: this.targetFinishDate || null,
+            target_finish_date: this.targetFinishDate && this.fixedDeadline ? this.targetFinishDate : null,
             strategy_intensity: this.strategyIntensity,
             weekend_approach: this.weekendApproach,
             reserve_days: this.reserveDays,

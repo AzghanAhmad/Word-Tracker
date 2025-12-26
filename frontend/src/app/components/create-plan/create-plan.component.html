@@ -145,17 +145,21 @@
                         </div>
                     </div>
                     <div class="date-info">
-                        <span>Your Start Date: {{startDate || '12/19/2025'}}</span>
+                        <span>Your Start Date: {{ formatDate(startDate) || 'Not set' }}</span>
                     </div>
                     <div class="form-group">
                         <label>Fixed deadline?</label>
                         <div class="radio-group">
-                            <label><input type="radio" [value]="true" [(ngModel)]="fixedDeadline"> Yes</label>
-                            <label><input type="radio" [value]="false" [(ngModel)]="fixedDeadline"> No</label>
+                            <label><input type="radio" [value]="true" [(ngModel)]="fixedDeadline" (change)="onFixedDeadlineChange()"> Yes</label>
+                            <label><input type="radio" [value]="false" [(ngModel)]="fixedDeadline" (change)="onFixedDeadlineChange()"> No</label>
                         </div>
                     </div>
-                    <div class="date-info">
-                        <span>Target Finish Date: {{targetFinishDate || '01/18/2026'}}</span>
+                    <div class="form-group" *ngIf="fixedDeadline">
+                        <label>Target Finish Date</label>
+                        <input type="date" [(ngModel)]="targetFinishDate" (change)="onTargetFinishDateChange()">
+                    </div>
+                    <div class="date-info" *ngIf="!fixedDeadline && targetFinishDate">
+                        <span>Target Finish Date: {{ formatDate(targetFinishDate) }}</span>
                     </div>
                 </div>
             </div>
