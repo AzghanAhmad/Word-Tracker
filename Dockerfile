@@ -18,7 +18,6 @@ RUN dotnet publish -c Release -o ./publish
 # Final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
-
 WORKDIR /app
 
 # Copy backend
