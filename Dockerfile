@@ -18,13 +18,14 @@ RUN dotnet publish -c Release -o ./publish
 # Final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 
+
 WORKDIR /app
 
 # Copy backend
 COPY --from=backend-builder /app/backend/publish ./
 
-# Copy frontend dist
-COPY --from=frontend-builder /app/frontend/dist/word-tracker-frontend/browser ./frontend/dist/word-tracker-frontend/browser
+# Copy frontend dist - Railway expects it in the app root
+COPY --from=frontend-builder /app/frontend/dist/word-tracker-frontend/browser ./wwwroot
 
 # Expose port
 EXPOSE 8080
