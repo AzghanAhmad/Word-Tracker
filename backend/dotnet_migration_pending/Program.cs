@@ -31,7 +31,7 @@ if (connectionString.Contains("Database="))
 }
 
 
-// Initialize database on startup (non-blocking)
+// Initialize database on startup
 if (string.IsNullOrEmpty(connectionString))
 {
     Console.WriteLine("⚠️ WARNING: No database connection string found!");
@@ -39,23 +39,19 @@ if (string.IsNullOrEmpty(connectionString))
 }
 else
 {
-    // Initialize database asynchronously without blocking startup
-    _ = Task.Run(async () =>
+    try
     {
-        try
-        {
-            Console.WriteLine($"🔌 Attempting to connect to database: {dbName}");
-            var dbInit = new DbInitService(connectionString, dbName);
-            await dbInit.InitializeDatabaseAsync();
-            Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
-            Console.WriteLine($"   Stack trace: {ex.StackTrace}");
-            Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
-        }
-    });
+        Console.WriteLine($"🔌 Attempting to connect to database: {dbName}");
+        var dbInit = new DbInitService(connectionString, dbName);
+        dbInit.InitializeDatabaseAsync().GetAwaiter().GetResult();
+        Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
+        Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+        Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
+    }
 }
 
 builder.Services.AddSingleton<IAuthService>(new AuthService(secret));
@@ -97,11 +93,10 @@ if (app.Environment.IsDevelopment())
 // Check multiple possible paths for frontend files
 var possiblePaths = new[]
 {
-    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-    Path.Combine(AppContext.BaseDirectory, "wwwroot"),
     Path.Combine(Directory.GetCurrentDirectory(), "frontend", "dist", "word-tracker-frontend", "browser"),
+    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
     Path.Combine(AppContext.BaseDirectory, "frontend", "dist", "word-tracker-frontend", "browser"),
-    "/app/wwwroot",
+    Path.Combine(AppContext.BaseDirectory, "wwwroot"),
     "/app/frontend/dist/word-tracker-frontend/browser"
 };
 
@@ -142,15 +137,15 @@ else
     Console.WriteLine($"Base directory: {AppContext.BaseDirectory}");
 }
 
-// Health check endpoint (available before auth and CORS)
-app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
-
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
 // Map API controllers with /api prefix using route group
 app.MapGroup("api").MapControllers();
+
+// Health check endpoint (doesn't conflict with frontend)
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
 // Fallback to index.html for Angular routing (SPA)
 if (frontendPath != null)
@@ -183,14 +178,7 @@ if (frontendPath != null)
 // Use Railway's PORT environment variable or default to 8080 for local development
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 var url = $"http://0.0.0.0:{port}";
-
-// Clear any existing URLs and set the new one
-app.Urls.Clear();
 app.Urls.Add(url);
-
-Console.WriteLine($"🌐 Listening on: {url}");
-Console.WriteLine($"📂 Working directory: {Directory.GetCurrentDirectory()}");
-Console.WriteLine($"📦 Base directory: {AppContext.BaseDirectory}");
 
 Console.WriteLine($"🚀 Word Tracker API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
