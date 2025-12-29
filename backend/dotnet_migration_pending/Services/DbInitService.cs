@@ -116,7 +116,7 @@ public class DbInitService
                 start_date DATE NOT NULL,
                 end_date DATE NOT NULL,
                 algorithm_type VARCHAR(50) DEFAULT 'steady',
-                status ENUM('active', 'paused', 'completed') DEFAULT 'active',
+                status VARCHAR(50) DEFAULT 'active',
                 description TEXT,
                 is_private BOOLEAN DEFAULT FALSE,
                 starting_point INT DEFAULT 0,
@@ -135,6 +135,9 @@ public class DbInitService
                 progress_tracking_type VARCHAR(50) DEFAULT 'Daily Goals',
                 activity_type VARCHAR(50) DEFAULT 'Writing',
                 content_type VARCHAR(50) DEFAULT 'Novel',
+                current_progress INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )",
             
@@ -164,6 +167,7 @@ public class DbInitService
                 user_id INT NOT NULL,
                 plan_id INT DEFAULT NULL,
                 name VARCHAR(255) NOT NULL,
+                is_archived BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
@@ -223,6 +227,7 @@ public class DbInitService
                 subtitle VARCHAR(255),
                 description TEXT,
                 is_private BOOLEAN DEFAULT FALSE,
+                is_archived BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )"
@@ -346,7 +351,8 @@ public class DbInitService
                 { "show_historical_data", "BOOLEAN DEFAULT TRUE" },
                 { "progress_tracking_type", "VARCHAR(50) DEFAULT 'Daily Goals'" },
                 { "activity_type", "VARCHAR(50) DEFAULT 'Writing'" },
-                { "content_type", "VARCHAR(50) DEFAULT 'Novel'" }
+                { "content_type", "VARCHAR(50) DEFAULT 'Novel'" },
+                { "current_progress", "INT DEFAULT 0" }
             };
             
             foreach (var (column, definition) in plansColumnsToAdd)
@@ -359,22 +365,189 @@ public class DbInitService
             {
                 { "end_date", "DATE" },
                 { "is_public", "BOOLEAN DEFAULT TRUE" },
-                { "invite_code", "VARCHAR(10)" }
+                { "invite_code", "VARCHAR(10)" },
+                { "status", "ENUM('Active', 'Completed', 'Failed') DEFAULT 'Active'" }
             };
             
             foreach (var (column, definition) in challengesColumnsToAdd)
             {
                 await AddColumnIfNotExistsAsync(conn, "challenges", column, definition);
             }
+
+            // Add missing columns to challenge_participants table if they don't exist
+            var challengeParticipantsColumnsToAdd = new Dictionary<string, string>
+            {
+                { "current_progress", "INT DEFAULT 0" },
+                { "joined_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP" },
+                { "status", "VARCHAR(20) DEFAULT 'active'" }
+            };
+            
+            foreach (var (column, definition) in challengeParticipantsColumnsToAdd)
+            {
+                await AddColumnIfNotExistsAsync(conn, "challenge_participants", column, definition);
+            }
             
             // Create challenge_participants table if it doesn't exist
             await CreateChallengeParticipantsTableAsync(conn);
             
-            // Add bio column to users table if it doesn't exist
+            // Add missing columns to users table if they don't exist
             await AddColumnIfNotExistsAsync(conn, "users", "bio", "TEXT");
+            await AddColumnIfNotExistsAsync(conn, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            await AddColumnIfNotExistsAsync(conn, "users", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
             
             // Add notes column to plan_days table if it doesn't exist
             await AddColumnIfNotExistsAsync(conn, "plan_days", "notes", "TEXT DEFAULT NULL");
+            
+            // Migrate checklist_items: Check if 'position' column exists and rename to 'sort_order'
+            try
+            {
+                using var checkPositionCmd = conn.CreateCommand();
+                checkPositionCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
+                                                 WHERE TABLE_SCHEMA = DATABASE() 
+                                                 AND TABLE_NAME = 'checklist_items' 
+                                                 AND COLUMN_NAME = 'position'";
+                var hasPosition = Convert.ToInt32(await checkPositionCmd.ExecuteScalarAsync()) > 0;
+                
+                if (hasPosition)
+                {
+                    Console.WriteLine("📦 Migrating schema: Renaming 'position' to 'sort_order' in checklist_items...");
+                    using var renameCmd = conn.CreateCommand();
+                    renameCmd.CommandText = "ALTER TABLE checklist_items CHANGE COLUMN position sort_order INT DEFAULT 0";
+                    await renameCmd.ExecuteNonQueryAsync();
+                    Console.WriteLine("✓ Schema migration completed: position -> sort_order");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ Could not check/rename position column: {ex.Message}");
+            }
+            
+            // Ensure sort_order column exists in checklist_items
+            await AddColumnIfNotExistsAsync(conn, "checklist_items", "sort_order", "INT DEFAULT 0");
+            
+            // Ensure is_completed column exists (some schemas use is_done)
+            try
+            {
+                using var checkIsCompletedCmd = conn.CreateCommand();
+                checkIsCompletedCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
+                                                    WHERE TABLE_SCHEMA = DATABASE() 
+                                                    AND TABLE_NAME = 'checklist_items' 
+                                                    AND COLUMN_NAME = 'is_completed'";
+                var hasIsCompleted = Convert.ToInt32(await checkIsCompletedCmd.ExecuteScalarAsync()) > 0;
+                
+                if (!hasIsCompleted)
+                {
+                    // Check if is_done exists instead
+                    using var checkIsDoneCmd = conn.CreateCommand();
+                    checkIsDoneCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
+                                                   WHERE TABLE_SCHEMA = DATABASE() 
+                                                   AND TABLE_NAME = 'checklist_items' 
+                                                   AND COLUMN_NAME = 'is_done'";
+                    var hasIsDone = Convert.ToInt32(await checkIsDoneCmd.ExecuteScalarAsync()) > 0;
+                    
+                    if (hasIsDone)
+                    {
+                        Console.WriteLine("📦 Migrating schema: Renaming 'is_done' to 'is_completed' in checklist_items...");
+                        using var renameIsDoneCmd = conn.CreateCommand();
+                        renameIsDoneCmd.CommandText = "ALTER TABLE checklist_items CHANGE COLUMN is_done is_completed BOOLEAN DEFAULT FALSE";
+                        await renameIsDoneCmd.ExecuteNonQueryAsync();
+                        Console.WriteLine("✓ Schema migration completed: is_done -> is_completed");
+                    }
+                    else
+                    {
+                        await AddColumnIfNotExistsAsync(conn, "checklist_items", "is_completed", "BOOLEAN DEFAULT FALSE");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ Could not check/rename is_completed column: {ex.Message}");
+            }
+            
+            // Ensure content column exists (some schemas use text)
+            try
+            {
+                using var checkContentCmd = conn.CreateCommand();
+                checkContentCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
+                                               WHERE TABLE_SCHEMA = DATABASE() 
+                                               AND TABLE_NAME = 'checklist_items' 
+                                               AND COLUMN_NAME = 'content'";
+                var hasContent = Convert.ToInt32(await checkContentCmd.ExecuteScalarAsync()) > 0;
+                
+                if (!hasContent)
+                {
+                    // Check if text exists instead
+                    using var checkTextCmd = conn.CreateCommand();
+                    checkTextCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.COLUMNS 
+                                                WHERE TABLE_SCHEMA = DATABASE() 
+                                                AND TABLE_NAME = 'checklist_items' 
+                                                AND COLUMN_NAME = 'text'";
+                    var hasText = Convert.ToInt32(await checkTextCmd.ExecuteScalarAsync()) > 0;
+                    
+                    if (hasText)
+                    {
+                        Console.WriteLine("📦 Migrating schema: Renaming 'text' to 'content' in checklist_items...");
+                        using var renameTextCmd = conn.CreateCommand();
+                        renameTextCmd.CommandText = "ALTER TABLE checklist_items CHANGE COLUMN text content TEXT NOT NULL";
+                        await renameTextCmd.ExecuteNonQueryAsync();
+                        Console.WriteLine("✓ Schema migration completed: text -> content");
+                    }
+                    else
+                    {
+                        await AddColumnIfNotExistsAsync(conn, "checklist_items", "content", "TEXT NOT NULL");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ Could not check/rename content column: {ex.Message}");
+            }
+            
+            // Add is_archived column to checklists table if it doesn't exist
+            await AddColumnIfNotExistsAsync(conn, "checklists", "is_archived", "BOOLEAN DEFAULT FALSE");
+            
+            // Fix plans table: convert status to VARCHAR so it can hold 'archived'
+            using (var convertCmd = conn.CreateCommand())
+            {
+                convertCmd.CommandText = "ALTER TABLE plans MODIFY COLUMN status VARCHAR(50) DEFAULT 'active'";
+                await convertCmd.ExecuteNonQueryAsync();
+            }
+            
+            // Add created_at column to plans table if it doesn't exist
+            await AddColumnIfNotExistsAsync(conn, "plans", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            
+            // Add is_archived column to projects table if it doesn't exist
+            await AddColumnIfNotExistsAsync(conn, "projects", "is_archived", "BOOLEAN DEFAULT FALSE");
+            
+            // Auto-update plans that are at 100% progress but not marked as completed
+            try
+            {
+                Console.WriteLine("📦 Checking for plans at 100% progress that need status update...");
+                using var checkCompletedCmd = conn.CreateCommand();
+                checkCompletedCmd.CommandText = @"
+                    UPDATE plans p
+                    INNER JOIN (
+                        SELECT 
+                            plan_id,
+                            COALESCE(SUM(actual_count), 0) as total_logged
+                        FROM plan_days
+                        WHERE actual_count > 0
+                        GROUP BY plan_id
+                    ) pd ON p.id = pd.plan_id
+                    SET p.status = 'completed', p.current_progress = 100
+                    WHERE p.total_word_count > 0
+                    AND (pd.total_logged * 100.0 / p.total_word_count) >= 100
+                    AND (p.status IS NULL OR p.status != 'completed' AND p.status != 'archived')";
+                var updatedRows = await checkCompletedCmd.ExecuteNonQueryAsync();
+                if (updatedRows > 0)
+                {
+                    Console.WriteLine($"✓ Auto-updated {updatedRows} plan(s) to completed status");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ Could not auto-update completed plans: {ex.Message}");
+            }
             
             // Create user_settings table if it doesn't exist
             await CreateUserSettingsTableAsync(conn);

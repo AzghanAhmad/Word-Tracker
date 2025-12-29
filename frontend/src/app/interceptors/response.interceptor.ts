@@ -18,7 +18,9 @@ export const responseInterceptor: HttpInterceptorFn = (req, next) => {
                 // Automatically show success message if backend sends { success: true, message: "..." }
                 const body = event.body as ApiResponse;
                 if (body?.success && body?.message) {
-                    notificationService.showSuccess(body.message);
+                    // We've disabled automatic success messages from interceptor to avoid double alerts.
+                    // Components should handle success messages explicitly.
+                    // notificationService.showSuccess(body.message);
                 }
             }
         }),
@@ -26,14 +28,18 @@ export const responseInterceptor: HttpInterceptorFn = (req, next) => {
             let errorMessage = 'An unexpected error occurred';
 
             if (error.status === 0) {
-                errorMessage = 'Connection error. Please ensure the backend server is running and the proxy is configured.';
+                errorMessage = `Connection error: Cannot reach backend at ${req.url}. Please ensure the backend server is running on port 8080.`;
             } else {
-                if (error.error && error.error.error) {
-                    errorMessage = error.error.error;
-                } else if (error.error && error.error.message) {
-                    errorMessage = error.error.message;
-                } else if (typeof error.error === 'string' && error.error.length > 0) {
-                    errorMessage = error.error;
+                errorMessage = `Error ${error.status} (${error.statusText})`;
+
+                if (error.error) {
+                    if (typeof error.error === 'string') {
+                        errorMessage += `: ${error.error}`;
+                    } else if (error.error.message) {
+                        errorMessage += `: ${error.error.message}`;
+                    } else if (error.error.error) {
+                        errorMessage += `: ${error.error.error}`;
+                    }
                 }
             }
 

@@ -10,7 +10,17 @@ public class DashboardController : ControllerBase
 {
     private readonly IDbService _db;
     public DashboardController(IDbService db) { _db = db; }
-    private int UserId() => int.Parse(User.Claims.First(c => c.Type == "user_id").Value);
+    private int UserId() 
+    {
+        var claim = User.Claims.FirstOrDefault(c => c.Type == "user_id" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (claim == null) 
+        {
+            Console.WriteLine("❌ No user_id claim found in token!");
+            foreach (var c in User.Claims) Console.WriteLine($"   Claim: {c.Type} = {c.Value}");
+            throw new UnauthorizedAccessException("User identification missing from token");
+        }
+        return int.Parse(claim);
+    }
 
     [Authorize]
     [HttpGet("stats")]

@@ -75,14 +75,12 @@ export class SidebarComponent implements OnInit {
                     this.activePlans = validPlans
                         .map((p: any) => {
                             const total = p.total_word_count || p.target_amount || 0;
-                            const current = p.current_count || p.completed_amount || 0; // Backend needs to send this!
-                            // If backend doesn't send current progress, we might need another call or default to 0.
-                            // Assuming 'completed_amount' or similar might be missing, so progress = 0 if not found.
+                            const current = p.current_count || p.completed_amount || 0;
 
                             return {
                                 ...p,
                                 plan_name: p.title || p.plan_name || 'Untitled Plan',
-                                progress: total > 0 ? Math.round((current / total) * 100) : 0
+                                progress: p.current_progress || (total > 0 ? Math.round((current / total) * 100) : 0)
                             };
                         })
                         .slice(0, 5); // Show top 5

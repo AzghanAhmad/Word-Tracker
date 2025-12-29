@@ -5,18 +5,23 @@ public interface IDbService
     bool CreateUser(string username, string email, string passwordHash);
     (int id, string username, string passwordHash)? GetUserByEmail(string email);
     (int id, string username, string passwordHash)? GetUserById(int userId);
-    int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType);
-    bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType);
+    int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType, string? status, int? currentProgress);
+    bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType, string? status, int? currentProgress);
     string GetPlansJson(int userId);
     string? GetPlanJson(int id, int userId);
     string GetPlanDaysJson(int planId, int userId);
+    bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes);
     bool DeletePlan(int id, int userId);
     int CreateChecklist(int userId, int? planId, string name);
     int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items);
     string GetChecklistsJson(int userId);
     string? GetChecklistJson(int id, int userId);
     bool UpdateChecklist(int id, int userId, string name, System.Text.Json.JsonElement[]? items);
+    bool ArchiveChecklist(int id, int userId, bool isArchived);
+    bool ArchivePlan(int id, int userId, bool isArchived);
     bool DeleteChecklist(int id, int userId);
+    string GetArchivedChecklistsJson(int userId);
+    string GetArchivedPlansJson(int userId);
     bool AddChecklistItem(int checklistId, string content);
     bool UpdateChecklistItem(int itemId, bool isDone);
     int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic);
@@ -42,6 +47,8 @@ public interface IDbService
     string GetProjectsJson(int userId);
     string? GetProjectJson(int id, int userId);
     bool UpdateProject(int id, int userId, string name, string? subtitle, string? description, bool isPrivate);
+    bool ArchiveProject(int id, int userId, bool isArchived);
     bool DeleteProject(int id, int userId);
+    string GetArchivedProjectsJson(int userId);
     string GetLastError();
 }

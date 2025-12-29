@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-group-challenges',
@@ -52,13 +53,31 @@ export class GroupChallengesComponent implements OnInit {
     this.loading = true;
     this.cdr.detectChanges();
 
-    this.apiService.getChallenges().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.activeChallenges = response.data;
-          this.totalItems = response.data.length;
-          this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-        }
+    forkJoin({
+      joined: this.apiService.getChallenges(),
+      public: this.apiService.getPublicChallenges()
+    }).subscribe({
+      next: (results) => {
+        const joined = (results.joined.success && results.joined.data) ? results.joined.data : [];
+        const publicChallenges = (results.public.success && results.public.data) ? results.public.data : [];
+
+        // Merge challenges unique by ID
+        const challengeMap = new Map();
+
+        // Add public challenges first
+        publicChallenges.forEach((c: any) => challengeMap.set(c.id, c));
+
+        // Add/Overwrite with joined challenges (ensure is_joined=1 is respected)
+        joined.forEach((c: any) => challengeMap.set(c.id, c));
+
+        this.activeChallenges = Array.from(challengeMap.values());
+
+        // Sort by id DESC (newest first)
+        this.activeChallenges.sort((a, b) => b.id - a.id);
+
+        this.totalItems = this.activeChallenges.length;
+        this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -101,7 +120,7 @@ export class GroupChallengesComponent implements OnInit {
 
   joinByCode() {
     const code = this.inviteCodeInput.trim().toUpperCase();
-    
+
     if (!code) {
       this.notificationService.showError('Please enter an invite code');
       return;
@@ -123,10 +142,10 @@ export class GroupChallengesComponent implements OnInit {
         if (response.success) {
           this.notificationService.showSuccess(response.message || 'Successfully joined the challenge!');
           this.inviteCodeInput = '';
-          
+
           // Reload challenges to show the newly joined challenge
           this.loadActiveChallenges();
-          
+
           // Navigate to challenge detail page if challenge_id is provided
           if (response.challenge_id) {
             setTimeout(() => {
@@ -213,6 +232,9 @@ export class GroupChallengesComponent implements OnInit {
     this.apiService.createChallenge(payload).subscribe({
       next: (response) => {
         console.log('Challenge created:', response);
+        if (response.success) {
+          this.notificationService.showSuccess(response.message || 'Challenge created successfully!');
+        }
         this.isSubmitting = false;
         this.closeModal();
         this.resetForm();

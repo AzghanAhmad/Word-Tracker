@@ -269,6 +269,7 @@
                 color: #94a3b8;
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
+                line-clamp: 2;
                 -webkit-box-orient: vertical;
                 overflow: hidden;
             }
@@ -313,6 +314,11 @@
                 &:hover {
                     background: #f1f5f9;
                     color: #6366f1;
+                }
+
+                &.btn-archive:hover {
+                    background: #fef3c7;
+                    color: #d97706;
                 }
 
                 &.btn-delete:hover {

@@ -5,6 +5,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WordTracker.Api.Services;
 
+// Clear default claim type mapping to keep JWT claims as is
+System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -43,8 +46,15 @@ else
     {
         Console.WriteLine($"🔌 Attempting to connect to database: {dbName}");
         var dbInit = new DbInitService(connectionString, dbName);
-        dbInit.InitializeDatabaseAsync().GetAwaiter().GetResult();
-        Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
+        // Start initialization in background to not block server startup
+        _ = Task.Run(async () => {
+            try {
+                await dbInit.InitializeDatabaseAsync();
+                Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
+            } catch (Exception ex) {
+                Console.WriteLine($"❌ Background database initialization failed: {ex.Message}");
+            }
+        });
     }
     catch (Exception ex)
     {
@@ -144,8 +154,7 @@ app.UseAuthorization();
 // Map API controllers with /api prefix using route group
 app.MapGroup("api").MapControllers();
 
-// Health check endpoint (doesn't conflict with frontend)
-app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+// Health check endpoint is provided by HomeController
 
 // Fallback to index.html for Angular routing (SPA)
 if (frontendPath != null)
@@ -175,8 +184,8 @@ if (frontendPath != null)
     });
 }
 
-// Use Railway's PORT environment variable or default to 8080 for local development
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+// Use Railway's PORT environment variable or default to 8199 for local development
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8199";
 var url = $"http://0.0.0.0:{port}";
 app.Urls.Add(url);
 

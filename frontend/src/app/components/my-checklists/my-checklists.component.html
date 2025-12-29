@@ -31,6 +31,10 @@
                             title="Delete Checklist">
                             <i class="fas fa-trash"></i>
                         </button>
+                        <button class="btn-icon archive" (click)="archiveChecklist(list.id); $event.stopPropagation()"
+                            title="Archive Checklist">
+                            <i class="fas fa-archive"></i>
+                        </button>
                     </div>
                 </div>
 

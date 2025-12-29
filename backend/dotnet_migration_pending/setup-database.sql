@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS plans (
     dashboard_color VARCHAR(10) DEFAULT '#000000',
     show_historical_data BOOLEAN DEFAULT TRUE,
     progress_tracking_type VARCHAR(50) DEFAULT 'Daily Goals',
+    current_progress INT DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

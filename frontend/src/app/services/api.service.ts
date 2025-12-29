@@ -96,6 +96,13 @@ export class ApiService {
         return this.http.get(`${this.apiUrl}/challenges`);
     }
 
+    getPublicChallenges(): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: [] });
+        }
+        return this.http.get(`${this.apiUrl}/challenges/public`);
+    }
+
     getChallenge(id: number): Observable<any> {
         if (this.useMock) {
             return of({ success: false, message: 'Challenge not found' });
@@ -126,6 +133,10 @@ export class ApiService {
 
     leaveChallenge(challengeId: number): Observable<any> {
         return this.http.post(`${this.apiUrl}/challenges/${challengeId}/leave`, {});
+    }
+
+    updateChallengeProgress(challengeId: number, progress: number): Observable<any> {
+        return this.http.patch(`${this.apiUrl}/challenges/${challengeId}/progress`, { progress });
     }
 
     // ============================================================================
@@ -159,6 +170,12 @@ export class ApiService {
 
     updatePlan(id: number, plan: any): Observable<any> {
         return this.http.put(`${this.apiUrl}/plans/${id}`, plan).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
+    }
+
+    archivePlan(id: number, isArchived: boolean): Observable<any> {
+        return this.http.patch(`${this.apiUrl}/plans/${id}/archive`, { is_archived: isArchived }).pipe(
             tap(() => this._refreshSidebar.next())
         );
     }
@@ -239,6 +256,27 @@ export class ApiService {
         return this.http.post(`${this.apiUrl}/plans/${planId}/days`, { date, actual_count: actualCount, notes }).pipe(
             tap(() => this._refreshSidebar.next())
         );
+    }
+
+    archiveChecklist(checklistId: number, isArchived: boolean): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Checklist archived (Mock)' });
+        }
+        return this.http.patch(`${this.apiUrl}/checklists/${checklistId}/archive`, { is_archived: isArchived });
+    }
+
+    getArchivedChecklists(): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: [] });
+        }
+        return this.http.get(`${this.apiUrl}/checklists/archived`);
+    }
+
+    getArchivedPlans(): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: [] });
+        }
+        return this.http.get(`${this.apiUrl}/plans/archived`);
     }
 
     deleteChecklist(checklistId: number): Observable<any> {
@@ -346,6 +384,15 @@ export class ApiService {
         );
     }
 
+    archiveProject(id: number, isArchived: boolean): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Project archived (Mock)' });
+        }
+        return this.http.patch(`${this.apiUrl}/projects/${id}/archive`, { is_archived: isArchived }).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
+    }
+
     deleteProject(id: number): Observable<any> {
         if (this.useMock) {
             this._refreshSidebar.next();
@@ -354,5 +401,12 @@ export class ApiService {
         return this.http.delete(`${this.apiUrl}/projects/${id}`).pipe(
             tap(() => this._refreshSidebar.next())
         );
+    }
+
+    getArchivedProjects(): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: [] });
+        }
+        return this.http.get(`${this.apiUrl}/projects/archived`);
     }
 }

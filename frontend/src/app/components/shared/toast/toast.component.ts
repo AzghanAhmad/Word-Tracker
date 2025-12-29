@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { NotificationService, ToastData } from '../../../services/notification.service';
@@ -28,7 +28,10 @@ export class ToastComponent implements OnInit, OnDestroy {
     private lastMessage: string = '';
     private lastTime: number = 0;
 
-    constructor(private notificationService: NotificationService) { }
+    constructor(
+        private notificationService: NotificationService,
+        private cdr: ChangeDetectorRef
+    ) { }
 
     ngOnInit(): void {
         this.subscription = this.notificationService.notification$.subscribe(toast => {
@@ -54,12 +57,17 @@ export class ToastComponent implements OnInit, OnDestroy {
 
         const id = now;
         const newToast = { ...toast, id };
-        this.toasts.push(newToast);
-
-        // Auto remove after 5 seconds
+        
+        // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
         setTimeout(() => {
-            this.removeToast(id);
-        }, 5000);
+            this.toasts.push(newToast);
+            this.cdr.detectChanges();
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                this.removeToast(id);
+            }, 5000);
+        }, 0);
     }
 
     removeToast(id: number | undefined) {

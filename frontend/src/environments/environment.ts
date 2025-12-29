@@ -1,6 +1,6 @@
 export const environment = {
     production: false,
-    apiUrl: '/api',  // Uses Angular proxy to backend on port 8080
+    apiUrl: '/api',  // Uses Angular proxy to backend
     apiPrefix: '',
     useMockData: false  // Real backend APIs only
 };

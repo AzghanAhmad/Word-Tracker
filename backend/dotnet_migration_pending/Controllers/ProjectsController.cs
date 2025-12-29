@@ -133,6 +133,28 @@ public class ProjectsController : ControllerBase
         }
     }
 
+    [Authorize]
+    [HttpGet("archived")]
+    public IActionResult GetArchived()
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📋 Fetching archived projects for user {userId}");
+            
+            var json = _db.GetArchivedProjectsJson(userId);
+            var data = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(json);
+            
+            Console.WriteLine($"✅ Retrieved {data?.Count ?? 0} archived projects for user {userId}");
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception retrieving archived projects: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while retrieving archived projects" });
+        }
+    }
+
     /// <summary>
     /// Gets a specific project by ID
     /// GET /projects/{id}
@@ -244,5 +266,34 @@ public class ProjectsController : ControllerBase
             return StatusCode(500, new { success = false, message = "An error occurred while deleting the project" });
         }
     }
+
+    [Authorize]
+    [HttpPatch("{id}/archive")]
+    public IActionResult Archive(int id, [FromBody] ArchiveRequest req)
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📦 Archiving project {id} for user {userId}: {req.is_archived}");
+            
+            var ok = _db.ArchiveProject(id, userId, req.is_archived);
+            
+            if (ok)
+            {
+                Console.WriteLine($"✅ Project {id} archive status updated");
+                return Ok(new { success = true, message = req.is_archived ? "Project archived successfully" : "Project restored successfully" });
+            }
+            
+            Console.WriteLine($"✗ Project {id} not found or permission denied");
+            return NotFound(new { success = false, message = "Project not found or you don't have permission to modify it" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception archiving project: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while archiving the project" });
+        }
+    }
+
+    public record ArchiveRequest(bool is_archived);
 }
 

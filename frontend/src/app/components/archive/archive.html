@@ -1,0 +1,123 @@
+<div class="archive-page">
+    <div class="container fade-in">
+        <div class="header">
+            <h1><i class="fas fa-archive"></i> Archive</h1>
+        </div>
+
+        <div class="tabs">
+            <button class="tab" [class.active]="activeTab === 'plans'" (click)="setActiveTab('plans')">
+                <i class="fas fa-book"></i> Plans ({{ archivedPlans.length }})
+            </button>
+            <button class="tab" [class.active]="activeTab === 'checklists'" (click)="setActiveTab('checklists')">
+                <i class="fas fa-check-square"></i> Checklists ({{ archivedChecklists.length }})
+            </button>
+            <button class="tab" [class.active]="activeTab === 'projects'" (click)="setActiveTab('projects')">
+                <i class="fas fa-sitemap"></i> Organization Plans ({{ archivedProjects.length }})
+            </button>
+        </div>
+
+        <app-content-loader *ngIf="isLoading"></app-content-loader>
+
+        <!-- Archived Plans -->
+        <div *ngIf="!isLoading && activeTab === 'plans'">
+            <div class="empty-state" *ngIf="archivedPlans.length === 0">
+                <i class="fas fa-archive"></i>
+                <h3>No archived plans</h3>
+                <p>Plans you archive will appear here</p>
+            </div>
+
+            <div class="items-grid" *ngIf="archivedPlans.length > 0">
+                <div class="item-card" *ngFor="let plan of archivedPlans">
+                    <div class="card-header">
+                        <h3>{{ plan.title || plan.plan_name || 'Untitled Plan' }}</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon restore" (click)="unarchivePlan(plan.id)" title="Restore Plan">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button class="btn-icon delete" (click)="deletePlan(plan.id)" title="Delete Permanently">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="description" *ngIf="plan.description">{{ plan.description }}</p>
+                        <div class="meta">
+                            <span><i class="fas fa-calendar"></i> {{ plan.created_at | date:'mediumDate' }}</span>
+                            <span><i class="fas fa-book"></i> {{ plan.total_word_count | number }} words</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Archived Checklists -->
+        <div *ngIf="!isLoading && activeTab === 'checklists'">
+            <div class="empty-state" *ngIf="archivedChecklists.length === 0">
+                <i class="fas fa-archive"></i>
+                <h3>No archived checklists</h3>
+                <p>Checklists you archive will appear here</p>
+            </div>
+
+            <div class="items-grid" *ngIf="archivedChecklists.length > 0">
+                <div class="item-card" *ngFor="let checklist of archivedChecklists">
+                    <div class="card-header">
+                        <h3>{{ checklist.name || checklist.title || 'Untitled Checklist' }}</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon restore" (click)="unarchiveChecklist(checklist.id)"
+                                title="Restore Checklist">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button class="btn-icon delete" (click)="deleteChecklist(checklist.id)"
+                                title="Delete Permanently">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="meta">
+                            <span><i class="fas fa-calendar"></i> {{ checklist.created_at | date:'mediumDate' }}</span>
+                            <span *ngIf="checklist.item_count !== undefined"><i class="fas fa-list"></i> {{
+                                checklist.item_count }}
+                                items</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Archived Projects (Organization Plans) -->
+        <div *ngIf="!isLoading && activeTab === 'projects'">
+            <div class="empty-state" *ngIf="archivedProjects.length === 0">
+                <i class="fas fa-archive"></i>
+                <h3>No archived organization plans</h3>
+                <p>Organization plans you archive will appear here</p>
+            </div>
+
+            <div class="items-grid" *ngIf="archivedProjects.length > 0">
+                <div class="item-card" *ngFor="let project of archivedProjects">
+                    <div class="card-header">
+                        <h3>{{ project.name || 'Untitled Organization Plan' }}</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon restore" (click)="unarchiveProject(project.id)"
+                                title="Restore Project">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button class="btn-icon delete" (click)="deleteProject(project.id)"
+                                title="Delete Permanently">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="subtitle" *ngIf="project.subtitle">{{ project.subtitle }}</p>
+                        <p class="description" *ngIf="project.description">{{ project.description }}</p>
+                        <div class="meta">
+                            <span><i class="fas fa-calendar"></i> {{ project.created_at | date:'mediumDate' }}</span>
+                            <span *ngIf="project.is_private"><i class="fas fa-lock"></i> Private</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

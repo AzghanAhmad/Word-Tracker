@@ -45,7 +45,7 @@ export class ChallengeDetailComponent implements OnInit {
                 this.loadChallengeDetails(id);
             }
         });
-        
+
         // Reload on navigation back to this page
         this.router.events.pipe(
             filter(event => event instanceof NavigationEnd)
@@ -110,9 +110,33 @@ export class ChallengeDetailComponent implements OnInit {
 
 
     addProgress() {
-        // Note: Progress tracking endpoint not implemented in C backend yet
-        alert('Progress tracking feature not yet implemented in C backend');
-        this.todayWords = null;
+        if (!this.todayWords || this.todayWords <= 0) return;
+
+        this.isLoading = true;
+        this.cdr.detectChanges();
+
+        const wordsToAdd = this.todayWords;
+        const challengeId = parseInt(this.challengeId!);
+
+        this.apiService.updateChallengeProgress(challengeId, wordsToAdd).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    // Refresh data
+                    this.todayWords = null;
+                    this.loadChallengeDetails(this.challengeId!);
+                } else {
+                    alert('Failed to update progress: ' + response.message);
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (error) => {
+                console.error('Error updating progress:', error);
+                alert('An error occurred while updating progress');
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     getPercent(current: number, total: number): number {

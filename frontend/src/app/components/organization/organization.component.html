@@ -37,7 +37,8 @@
             <div class="form-group row">
                 <label class="col-label">Description</label>
                 <div class="col-input">
-                    <textarea [(ngModel)]="newProject.description" placeholder="Description" maxlength="1000"></textarea>
+                    <textarea [(ngModel)]="newProject.description" placeholder="Description"
+                        maxlength="1000"></textarea>
                     <span class="help-text">Optional, max 1000 characters</span>
                 </div>
             </div>
@@ -66,7 +67,7 @@
     <div class="create-form-container" *ngIf="showEditForm && selectedProject">
         <div class="form-card">
             <h3 style="margin-bottom: 1.5rem;">Edit Project</h3>
-            
+
             <div class="form-group row">
                 <label class="col-label">Name</label>
                 <div class="col-input">
@@ -86,7 +87,8 @@
             <div class="form-group row">
                 <label class="col-label">Description</label>
                 <div class="col-input">
-                    <textarea [(ngModel)]="selectedProject.description" placeholder="Description" maxlength="1000"></textarea>
+                    <textarea [(ngModel)]="selectedProject.description" placeholder="Description"
+                        maxlength="1000"></textarea>
                     <span class="help-text">Optional, max 1000 characters</span>
                 </div>
             </div>
@@ -101,7 +103,8 @@
             </div>
 
             <div class="form-actions-bar">
-                <button class="btn-save" (click)="updateProject()" [disabled]="!selectedProject.name?.trim() || isLoading">
+                <button class="btn-save" (click)="updateProject()"
+                    [disabled]="!selectedProject.name?.trim() || isLoading">
                     <i class="fas fa-spinner fa-spin" *ngIf="isLoading"></i>
                     <span *ngIf="!isLoading">Update Project</span>
                     <span *ngIf="isLoading">Updating...</span>
@@ -134,7 +137,12 @@
                 <button class="btn-icon" (click)="editProject(project); $event.stopPropagation()" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-icon btn-delete" (click)="deleteProject(project); $event.stopPropagation()" title="Delete">
+                <button class="btn-icon btn-archive" (click)="archiveProject(project); $event.stopPropagation()"
+                    title="Archive">
+                    <i class="fas fa-archive"></i>
+                </button>
+                <button class="btn-icon btn-delete" (click)="deleteProject(project); $event.stopPropagation()"
+                    title="Delete">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>

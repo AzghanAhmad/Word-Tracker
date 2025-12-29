@@ -119,6 +119,23 @@ export class MyChecklistsComponent implements OnInit {
         });
     }
 
+    archiveChecklist(id: number) {
+        if (confirm('Are you sure you want to archive this checklist?')) {
+            this.apiService.archiveChecklist(id, true).subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        // Reload the checklists to reflect the change
+                        this.loadChecklists();
+                    }
+                },
+                error: (err) => {
+                    console.error('Error archiving checklist:', err);
+                    alert('Failed to archive checklist. Please try again.');
+                }
+            });
+        }
+    }
+
     deleteChecklist(id: number) {
         if (confirm('Are you sure you want to delete this checklist?')) {
             this.apiService.deleteChecklist(id).subscribe({

@@ -105,11 +105,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
         next: (response) => {
           if (response.success && response.data) {
             console.log('Plans loaded:', response.data);
-            this.plans = response.data.map((p: any) => ({
-              ...p,
-              plan_name: p.title || p.plan_name || 'Untitled Plan', // Handle different API response formats
-              progress: p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0
-            }));
+            // Show all plans except archived ones
+            this.plans = response.data
+              .filter((p: any) => {
+                // Only filter out archived plans - show completed plans too
+                const status = (p.status || '').toLowerCase();
+                return status !== 'archived';
+              })
+              .map((p: any) => {
+                const color = (p.dashboard_color || p.color_code || '#6366f1').trim();
+                const validColor = color && color.length > 0 && color.startsWith('#') ? color : '#6366f1';
+                const progress = p.current_progress || (p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0);
+                
+                // Normalize status for display
+                let displayStatus = p.status || 'In Progress';
+                if (displayStatus.toLowerCase() === 'active') {
+                  displayStatus = 'In Progress';
+                } else if (displayStatus.toLowerCase() === 'completed') {
+                  displayStatus = 'Completed';
+                }
+                
+                return {
+                  ...p,
+                  plan_name: p.title || p.plan_name || 'Untitled Plan',
+                  progress: progress,
+                  completed_amount: (p.current_progress && p.current_progress > 0)
+                    ? Math.max(p.completed_amount, Math.round((p.current_progress / 100) * p.target_amount))
+                    : p.completed_amount,
+                  color_code: validColor, // Ensure color is never empty
+                  dashboard_color: validColor,
+                  status: displayStatus
+                };
+              });
           } else {
             this.plans = [];
           }

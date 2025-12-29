@@ -3,15 +3,13 @@
         <!-- Logo Section -->
         <div class="nav-left">
             <a [routerLink]="isPublic ? '/' : '/dashboard'" class="logo" (click)="closeMobileMenu()">
-                <span class="logo-text">ScribeCount</span>
+                <img src="assets/logo-new.png" alt="ScribeCount Logo" class="logo-img">
             </a>
 
             <!-- Desktop Navigation Links -->
             <div class="nav-links desktop-only">
                 <!-- Public Links -->
                 <ng-container *ngIf="isPublic">
-                    <a href="#features" class="nav-link">Features</a>
-                    <a href="#community" class="nav-link">Community</a>
                 </ng-container>
 
                 <!-- App Links -->
@@ -59,8 +57,6 @@
         <div class="mobile-links">
             <!-- Public Mobile Links -->
             <ng-container *ngIf="isPublic">
-                <a href="#features" (click)="closeMobileMenu()">Features</a>
-                <a href="#community" (click)="closeMobileMenu()">Community</a>
                 <div class="mobile-auth">
                     <a routerLink="/login" class="btn-login" (click)="closeMobileMenu()">Log In</a>
                     <a routerLink="/register" class="btn-signup" (click)="closeMobileMenu()">Sign Up</a>

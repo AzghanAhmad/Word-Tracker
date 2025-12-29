@@ -48,7 +48,7 @@
             <p class="progress-text">{{ userProgress | number }} / {{ challenge.goal_amount | number }} words</p>
 
             <!-- Log Words -->
-            <div class="log-words-form" *ngIf="challenge.status === 'Ongoing'">
+            <div class="log-words-form" *ngIf="challenge.status === 'Ongoing' || challenge.status === 'Active'">
                 <input type="number" [(ngModel)]="todayWords" placeholder="Add Today's Words" min="1">
                 <button class="btn-primary" (click)="addProgress()" [disabled]="!todayWords || todayWords <= 0">
                     <i class="fas fa-plus"></i> Add

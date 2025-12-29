@@ -248,6 +248,39 @@ export class OrganizationComponent implements OnInit, OnDestroy {
       });
   }
 
+  archiveProject(project: Project) {
+    if (!project.id) return;
+
+    if (!confirm(`Are you sure you want to archive "${project.name}"? It will be moved to the archive.`)) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.isLoading = true;
+    this.cdr.detectChanges();
+
+    this.apiService.archiveProject(project.id, true)
+      .pipe(
+        finalize(() => {
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (res: any) => {
+          if (res.success) {
+            this.loadProjects();
+          } else {
+            this.errorMessage = res.message || 'Failed to archive project';
+          }
+        },
+        error: (err: any) => {
+          console.error('Failed to archive project', err);
+          this.errorMessage = err.error?.message || 'Failed to archive project. Please try again.';
+        }
+      });
+  }
+
   viewProjectDetails(project: Project) {
     // Navigate to project details page or show modal
     // Future: Implement project details view

@@ -133,7 +133,7 @@ public class DbService : IDbService
     /// Creates a new writing plan for a user
     /// Returns the ID of the created plan, or -1 if creation failed
     /// </summary>
-    public int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType)
+    public int CreatePlan(int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType, string? status, int? currentProgress)
     {
         _lastError = string.Empty;
         try
@@ -159,8 +159,8 @@ public class DbService : IDbService
             
             // Insert plan with all configuration options
             cmd.CommandText = @"INSERT INTO plans
-                (user_id,title,total_word_count,start_date,end_date,algorithm_type,description,is_private,starting_point,measurement_unit,is_daily_target,fixed_deadline,target_finish_date,strategy_intensity,weekend_approach,reserve_days,display_view_type,week_start_day,grouping_type,dashboard_color,show_historical_data,progress_tracking_type,activity_type,content_type)
-                VALUES (@user_id,@title,@total,@start,@end,@algo,@desc,@priv,@startp,@meas,@daily,@fixed,@target,@strat,@weekend,@reserve,@view,@wstart,@group,@color,@hist,@track,@activity,@content);
+                (user_id,title,total_word_count,start_date,end_date,algorithm_type,description,is_private,starting_point,measurement_unit,is_daily_target,fixed_deadline,target_finish_date,strategy_intensity,weekend_approach,reserve_days,display_view_type,week_start_day,grouping_type,dashboard_color,show_historical_data,progress_tracking_type,activity_type,content_type,status,current_progress)
+                VALUES (@user_id,@title,@total,@start,@end,@algo,@desc,@priv,@startp,@meas,@daily,@fixed,@target,@strat,@weekend,@reserve,@view,@wstart,@group,@color,@hist,@track,@activity,@content,@status,@curr_prog);
                 SELECT LAST_INSERT_ID();";
             
             // Set parameters with proper null handling
@@ -188,6 +188,8 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@track", progressTrackingType);
             cmd.Parameters.AddWithValue("@activity", string.IsNullOrWhiteSpace(activityType) ? "Writing" : activityType);
             cmd.Parameters.AddWithValue("@content", string.IsNullOrWhiteSpace(contentType) ? "Novel" : contentType);
+            cmd.Parameters.AddWithValue("@status", string.IsNullOrWhiteSpace(status) ? "active" : status);
+            cmd.Parameters.AddWithValue("@curr_prog", currentProgress ?? 0);
             
             // Log the SQL for debugging
             Console.WriteLine($"Executing INSERT for plan: Title={title}, UserId={userId}, StartDate={startDate}, EndDate={endDate}");
@@ -242,12 +244,12 @@ public class DbService : IDbService
         }
     }
 
-    public bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType)
+    public bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType, string? status, int? currentProgress)
     {
         _lastError = string.Empty;
         try
         {
-            Console.WriteLine($"🔄 Updating plan {planId} for user {userId}: Title={title}");
+            Console.WriteLine($"🔄 Updating plan {planId} for user {userId}: Title={title}, Status={status}, Progress={currentProgress}");
             
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
@@ -293,7 +295,9 @@ public class DbService : IDbService
                 show_historical_data=@hist,
                 progress_tracking_type=@track,
                 activity_type=@activity,
-                content_type=@content
+                content_type=@content,
+                status=@status,
+                current_progress=@curr_prog
                 WHERE id=@pid AND user_id=@uid";
             
             // Set parameters with proper null handling
@@ -322,6 +326,21 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@track", progressTrackingType);
             cmd.Parameters.AddWithValue("@activity", string.IsNullOrWhiteSpace(activityType) ? "Writing" : activityType);
             cmd.Parameters.AddWithValue("@content", string.IsNullOrWhiteSpace(contentType) ? "Novel" : contentType);
+            
+            // Auto-update status to 'completed' if progress reaches 100%
+            string finalStatus = status ?? "active";
+            if (currentProgress.HasValue && currentProgress.Value >= 100)
+            {
+                finalStatus = "completed";
+                Console.WriteLine($"🎉 Plan {planId} reached 100% progress! Auto-marking as completed.");
+            }
+            else if (string.IsNullOrWhiteSpace(status))
+            {
+                finalStatus = "active";
+            }
+            
+            cmd.Parameters.AddWithValue("@status", finalStatus);
+            cmd.Parameters.AddWithValue("@curr_prog", currentProgress ?? 0);
             
             var rowsAffected = cmd.ExecuteNonQuery();
             
@@ -363,7 +382,8 @@ public class DbService : IDbService
             using var cmd = conn.CreateCommand();
             
             // Get all plans for user, ordered by creation date (newest first)
-            cmd.CommandText = "SELECT * FROM plans WHERE user_id=@u ORDER BY id DESC";
+            // Exclude archived plans
+            cmd.CommandText = "SELECT * FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived') ORDER BY id DESC";
             cmd.Parameters.AddWithValue("@u", userId);
             
             using var reader = cmd.ExecuteReader();
@@ -416,8 +436,22 @@ public class DbService : IDbService
         var dict = new Dictionary<string, object>();
         for (var i = 0; i < reader.FieldCount; i++)
         {
+            var fieldName = reader.GetName(i);
             var val = reader.IsDBNull(i) ? null : reader.GetValue(i);
-            dict[reader.GetName(i)] = val!;
+            
+            // Convert MySQL date types to strings for JSON serialization
+            if (val is DateTime dt)
+            {
+                dict[fieldName] = dt.ToString("yyyy-MM-dd");
+            }
+            else if (val is DateOnly dateOnly)
+            {
+                dict[fieldName] = dateOnly.ToString("yyyy-MM-dd");
+            }
+            else
+            {
+                dict[fieldName] = val ?? DBNull.Value;
+            }
         }
         return JsonSerializer.Serialize(dict);
     }
@@ -480,7 +514,7 @@ public class DbService : IDbService
                     ["date"] = reader.GetDateTime(dateOrdinal).ToString("yyyy-MM-dd"),
                     ["target_count"] = reader.IsDBNull(targetCountOrdinal) ? 0 : reader.GetInt32(targetCountOrdinal),
                     ["actual_count"] = reader.IsDBNull(actualCountOrdinal) ? 0 : reader.GetInt32(actualCountOrdinal),
-                    ["notes"] = reader.IsDBNull(notesOrdinal) ? null : reader.GetString(notesOrdinal)
+                    ["notes"] = reader.IsDBNull(notesOrdinal) ? (string?)null : reader.GetString(notesOrdinal)
                 };
                 days.Add(day);
             }
@@ -502,6 +536,111 @@ public class DbService : IDbService
         }
     }
 
+    public bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📝 Logging progress for plan {planId}, user {userId}, date {date}: {actualCount} words");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Verify plan belongs to user
+            using (var verifyCmd = conn.CreateCommand())
+            {
+                verifyCmd.CommandText = "SELECT COUNT(*) FROM plans WHERE id=@pid AND user_id=@uid";
+                verifyCmd.Parameters.AddWithValue("@pid", planId);
+                verifyCmd.Parameters.AddWithValue("@uid", userId);
+                if (Convert.ToInt32(verifyCmd.ExecuteScalar()) == 0)
+                {
+                    _lastError = "Plan not found or access denied";
+                    return false;
+                }
+            }
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
+                VALUES (@pid, @date, @count, @notes, 0)
+                ON DUPLICATE KEY UPDATE actual_count = @count, notes = @notes";
+            
+            cmd.Parameters.AddWithValue("@pid", planId);
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@count", actualCount);
+            cmd.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
+            
+            cmd.ExecuteNonQuery();
+            
+            // Recalculate and update progress percentage based on total words logged
+            using (var updateProgressCmd = conn.CreateCommand())
+            {
+                // Get total word count and current status for the plan
+                updateProgressCmd.CommandText = "SELECT total_word_count, COALESCE(status, 'active') as status FROM plans WHERE id=@pid";
+                updateProgressCmd.Parameters.AddWithValue("@pid", planId);
+                using var reader = updateProgressCmd.ExecuteReader();
+                int totalWordCount = 0;
+                string currentStatus = "active";
+                if (reader.Read())
+                {
+                    totalWordCount = reader.GetInt32("total_word_count");
+                    var statusOrdinal = reader.GetOrdinal("status");
+                    currentStatus = reader.IsDBNull(statusOrdinal) ? "active" : reader.GetString(statusOrdinal);
+                }
+                reader.Close();
+                
+                if (totalWordCount > 0)
+                {
+                    // Calculate total words logged from all plan_days
+                    updateProgressCmd.CommandText = @"
+                        SELECT COALESCE(SUM(actual_count), 0) 
+                        FROM plan_days 
+                        WHERE plan_id=@pid AND actual_count > 0";
+                    updateProgressCmd.Parameters.Clear();
+                    updateProgressCmd.Parameters.AddWithValue("@pid", planId);
+                    var totalLogged = Convert.ToInt32(updateProgressCmd.ExecuteScalar());
+                    
+                    // Calculate progress percentage
+                    var progressPercentage = Math.Min(100, Math.Max(0, (int)Math.Round((double)totalLogged / totalWordCount * 100)));
+                    
+                    // Determine status based on progress
+                    // Only update to completed if not already archived
+                    string newStatus = currentStatus;
+                    if (progressPercentage >= 100 && currentStatus?.ToLower() != "archived")
+                    {
+                        newStatus = "completed";
+                        Console.WriteLine($"🎉 Plan {planId} reached 100% progress! Marking as completed.");
+                    }
+                    else if (progressPercentage < 100 && currentStatus?.ToLower() == "completed")
+                    {
+                        // If progress drops below 100%, change back to active
+                        newStatus = "active";
+                        Console.WriteLine($"📝 Plan {planId} progress dropped below 100%, changing back to active.");
+                    }
+                    
+                    // Update current_progress and status in plans table
+                    updateProgressCmd.CommandText = "UPDATE plans SET current_progress = @progress, status = @status WHERE id=@pid";
+                    updateProgressCmd.Parameters.Clear();
+                    updateProgressCmd.Parameters.AddWithValue("@pid", planId);
+                    updateProgressCmd.Parameters.AddWithValue("@progress", progressPercentage);
+                    updateProgressCmd.Parameters.AddWithValue("@status", newStatus);
+                    updateProgressCmd.ExecuteNonQuery();
+                    
+                    Console.WriteLine($"📊 Updated progress percentage: {progressPercentage}% (Total logged: {totalLogged} / Target: {totalWordCount}), Status: {newStatus}");
+                }
+            }
+            
+            Console.WriteLine("✅ Progress logged successfully");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error logging progress: {ex.Message}";
+            Console.WriteLine($"✗ Error logging progress: {ex.Message}");
+            return false;
+        }
+    }
+
     public int CreateChecklist(int userId, int? planId, string name)
     {
         _lastError = string.Empty;
@@ -510,7 +649,7 @@ public class DbService : IDbService
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"INSERT INTO checklists (user_id,plan_id,name) VALUES (@u,@p,@n); SELECT LAST_INSERT_ID();";
+            cmd.CommandText = @"INSERT INTO checklists (user_id,plan_id,name,is_archived) VALUES (@u,@p,@n,0); SELECT LAST_INSERT_ID();";
             cmd.Parameters.AddWithValue("@u", userId);
             cmd.Parameters.AddWithValue("@p", planId ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@n", name);
@@ -559,7 +698,7 @@ public class DbService : IDbService
                 // Create checklist
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = transaction;
-                cmd.CommandText = @"INSERT INTO checklists (user_id,plan_id,name) VALUES (@u,@p,@n); SELECT LAST_INSERT_ID();";
+                cmd.CommandText = @"INSERT INTO checklists (user_id,plan_id,name,is_archived) VALUES (@u,@p,@n,0); SELECT LAST_INSERT_ID();";
                 cmd.Parameters.AddWithValue("@u", userId);
                 cmd.Parameters.AddWithValue("@p", planId ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@n", name);
@@ -658,9 +797,9 @@ public class DbService : IDbService
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT c.*, 
                 (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id) as item_count,
-                (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id AND is_done = 1) as completed_count
+                (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id AND is_completed = 1) as completed_count
                 FROM checklists c 
-                WHERE c.user_id = @u 
+                WHERE c.user_id = @u AND (c.is_archived IS NULL OR c.is_archived = 0)
                 ORDER BY c.created_at DESC";
             cmd.Parameters.AddWithValue("@u", userId);
             
@@ -705,7 +844,7 @@ public class DbService : IDbService
                 using var itemsConn = new MySqlConnection(_connectionString);
                 itemsConn.Open();
                 using var itemsCmd = itemsConn.CreateCommand();
-                itemsCmd.CommandText = @"SELECT id, content, is_done, sort_order 
+                itemsCmd.CommandText = @"SELECT id, content, is_completed, sort_order 
                     FROM checklist_items 
                     WHERE checklist_id = @cid 
                     ORDER BY sort_order ASC, id ASC";
@@ -721,8 +860,8 @@ public class DbService : IDbService
                         ["id"] = itemsReader.GetInt32("id"),
                         ["text"] = itemsReader.GetString("content"),
                         ["content"] = itemsReader.GetString("content"), // Keep both for compatibility
-                        ["is_done"] = itemsReader.GetBoolean("is_done"),
-                        ["is_completed"] = itemsReader.GetBoolean("is_done"), // Alias for frontend
+                        ["is_done"] = itemsReader.GetBoolean("is_completed"),
+                        ["is_completed"] = itemsReader.GetBoolean("is_completed"), // Alias for frontend
                         ["sort_order"] = itemsReader.GetInt32("sort_order")
                     };
                     items.Add(item);
@@ -762,7 +901,7 @@ public class DbService : IDbService
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT c.*, 
                 (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id) as item_count,
-                (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id AND is_done = 1) as completed_count
+                (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id AND is_completed = 1) as completed_count
                 FROM checklists c 
                 WHERE c.id = @id AND c.user_id = @u";
             cmd.Parameters.AddWithValue("@id", id);
@@ -813,7 +952,7 @@ public class DbService : IDbService
             using var itemsConn = new MySqlConnection(_connectionString);
             itemsConn.Open();
             using var itemsCmd = itemsConn.CreateCommand();
-            itemsCmd.CommandText = @"SELECT id, content, is_done, sort_order 
+            itemsCmd.CommandText = @"SELECT id, content, is_completed, sort_order 
                 FROM checklist_items 
                 WHERE checklist_id = @cid 
                 ORDER BY sort_order ASC, id ASC";
@@ -829,8 +968,8 @@ public class DbService : IDbService
                     ["id"] = itemsReader.GetInt32("id"),
                     ["text"] = itemsReader.GetString("content"),
                     ["content"] = itemsReader.GetString("content"),
-                    ["is_done"] = itemsReader.GetBoolean("is_done"),
-                    ["is_completed"] = itemsReader.GetBoolean("is_done"),
+                    ["is_done"] = itemsReader.GetBoolean("is_completed"),
+                    ["is_completed"] = itemsReader.GetBoolean("is_completed"),
                     ["sort_order"] = itemsReader.GetInt32("sort_order")
                 };
                 items.Add(item);
@@ -950,17 +1089,6 @@ public class DbService : IDbService
         }
     }
 
-    public bool DeleteChecklist(int id, int userId)
-    {
-        using var conn = new MySqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM checklists WHERE id=@id AND user_id=@u";
-        cmd.Parameters.AddWithValue("@id", id);
-        cmd.Parameters.AddWithValue("@u", userId);
-        return cmd.ExecuteNonQuery() == 1;
-    }
-
     public bool AddChecklistItem(int checklistId, string content)
     {
         _lastError = string.Empty;
@@ -1010,11 +1138,11 @@ public class DbService : IDbService
             Console.WriteLine($"✓ Database connection opened");
             
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE checklist_items SET is_done=@d WHERE id=@id";
+            cmd.CommandText = "UPDATE checklist_items SET is_completed=@d WHERE id=@id";
             cmd.Parameters.AddWithValue("@d", isDone);
             cmd.Parameters.AddWithValue("@id", itemId);
             
-            Console.WriteLine($"   Executing UPDATE checklist_items SET is_done={isDone} WHERE id={itemId}");
+            Console.WriteLine($"   Executing UPDATE checklist_items SET is_completed={isDone} WHERE id={itemId}");
             var rowsAffected = cmd.ExecuteNonQuery();
             var result = rowsAffected == 1;
             
@@ -1053,6 +1181,268 @@ public class DbService : IDbService
         }
     }
 
+    public bool ArchiveChecklist(int id, int userId, bool isArchived)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📦 Archiving checklist {id} for user {userId}: {isArchived}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE checklists SET is_archived=@a WHERE id=@id AND user_id=@u";
+            cmd.Parameters.AddWithValue("@a", isArchived);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            var result = rowsAffected == 1;
+            
+            if (result)
+            {
+                Console.WriteLine($"✓ Checklist {id} archived status set to {isArchived}");
+            }
+            else
+            {
+                _lastError = "Checklist not found or access denied";
+                Console.WriteLine($"✗ Checklist {id} not found or access denied");
+            }
+            
+            return result;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error archiving checklist: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error archiving checklist: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool ArchivePlan(int id, int userId, bool isArchived)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            var status = isArchived ? "archived" : "active";
+            Console.WriteLine($"📦 Archiving plan {id} for user {userId}: {status}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE plans SET status=@s WHERE id=@id AND user_id=@u";
+            cmd.Parameters.AddWithValue("@s", status);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            var result = rowsAffected == 1;
+            
+            if (result)
+            {
+                Console.WriteLine($"✓ Plan {id} status set to {status}");
+            }
+            else
+            {
+                _lastError = "Plan not found or access denied";
+                Console.WriteLine($"✗ Plan {id} not found or access denied");
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error archiving plan: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool DeleteChecklist(int id, int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"🗑️ Deleting checklist {id} for user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Start transaction to delete items first
+            using var transaction = conn.BeginTransaction();
+            
+            try
+            {
+                // Delete checklist items first
+                using (var itemsCmd = conn.CreateCommand())
+                {
+                    itemsCmd.Transaction = transaction;
+                    itemsCmd.CommandText = "DELETE FROM checklist_items WHERE checklist_id=@id";
+                    itemsCmd.Parameters.AddWithValue("@id", id);
+                    itemsCmd.ExecuteNonQuery();
+                }
+                
+                // Delete checklist
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.Transaction = transaction;
+                    cmd.CommandText = "DELETE FROM checklists WHERE id=@id AND user_id=@u";
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.Parameters.AddWithValue("@u", userId);
+                    
+                    var rowsAffected = cmd.ExecuteNonQuery();
+                    if (rowsAffected == 0)
+                    {
+                        transaction.Rollback();
+                        _lastError = "Checklist not found or access denied";
+                        Console.WriteLine($"✗ Checklist {id} not found or access denied");
+                        return false;
+                    }
+                }
+                
+                transaction.Commit();
+                Console.WriteLine($"✓ Checklist {id} deleted successfully");
+                return true;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error deleting checklist: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error deleting checklist: {ex.Message}");
+            return false;
+        }
+    }
+
+    public string GetArchivedChecklistsJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT c.*, 
+                (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id) as item_count,
+                (SELECT COUNT(*) FROM checklist_items WHERE checklist_id = c.id AND is_completed = 1) as completed_count
+                FROM checklists c 
+                WHERE c.user_id = @u AND c.is_archived = 1
+                ORDER BY c.created_at DESC";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var checklists = new List<Dictionary<string, object>>();
+            
+            while (reader.Read())
+            {
+                var checklist = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    var fieldName = reader.GetName(i);
+                    if (reader.IsDBNull(i))
+                    {
+                        checklist[fieldName] = null!;
+                        continue;
+                    }
+                    
+                    var val = reader.GetValue(i);
+                    if (val is DateTime dt)
+                    {
+                        checklist[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
+                    }
+                    else
+                    {
+                        checklist[fieldName] = val;
+                    }
+                }
+                checklists.Add(checklist);
+            }
+            
+            Console.WriteLine($"✓ Retrieved {checklists.Count} archived checklists for user {userId}");
+            return JsonSerializer.Serialize(checklists);
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error getting archived checklists: {ex.Message}");
+            return "[]";
+        }
+    }
+
+    public string GetArchivedPlansJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT * FROM plans WHERE user_id=@u AND status='archived' ORDER BY created_at DESC";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var plans = new List<Dictionary<string, object>>();
+            
+            while (reader.Read())
+            {
+                var plan = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    var fieldName = reader.GetName(i);
+                    if (reader.IsDBNull(i))
+                    {
+                        plan[fieldName] = null!;
+                        continue;
+                    }
+                    
+                    var val = reader.GetValue(i);
+                    if (val is DateTime dt)
+                    {
+                        plan[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
+                    }
+                    else if (val is DateOnly dateOnly)
+                    {
+                        plan[fieldName] = dateOnly.ToString("yyyy-MM-dd");
+                    }
+                    else
+                    {
+                        plan[fieldName] = val;
+                    }
+                }
+                plans.Add(plan);
+            }
+            
+            Console.WriteLine($"✓ Retrieved {plans.Count} archived plans for user {userId}");
+            return JsonSerializer.Serialize(plans);
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error getting archived plans: {ex.Message}");
+            return "[]";
+        }
+    }
+
     public int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic)
     {
         _lastError = string.Empty;
@@ -1072,8 +1462,8 @@ public class DbService : IDbService
             var durationDays = (int)(end - start).TotalDays;
             
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"INSERT INTO challenges (user_id,title,description,type,goal_count,duration_days,start_date,end_date,is_public,invite_code) 
-                VALUES (@u,@t,@d,@y,@g,@n,@s,@e,@p,@i); SELECT LAST_INSERT_ID();";
+            cmd.CommandText = @"INSERT INTO challenges (user_id,title,description,type,goal_count,duration_days,start_date,end_date,is_public,invite_code,status) 
+                VALUES (@u,@t,@d,@y,@g,@n,@s,@e,@p,@i,'Active'); SELECT LAST_INSERT_ID();";
             cmd.Parameters.AddWithValue("@u", userId);
             cmd.Parameters.AddWithValue("@t", title);
             cmd.Parameters.AddWithValue("@d", description);
@@ -1364,7 +1754,7 @@ public class DbService : IDbService
             conn.Open();
             
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "INSERT IGNORE INTO challenge_participants (challenge_id, user_id, current_progress) VALUES (@c, @u, 0)";
+            cmd.CommandText = "INSERT IGNORE INTO challenge_participants (challenge_id, user_id, current_progress, joined_at, status) VALUES (@c, @u, 0, NOW(), 'active')";
             cmd.Parameters.AddWithValue("@c", challengeId);
             cmd.Parameters.AddWithValue("@u", userId);
             
@@ -1385,6 +1775,7 @@ public class DbService : IDbService
             return false;
         }
     }
+
 
     public int? GetChallengeIdByInviteCode(string inviteCode)
     {
@@ -1470,7 +1861,7 @@ public class DbService : IDbService
             conn.Open();
             
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE challenge_participants SET current_progress = @p WHERE challenge_id = @c AND user_id = @u";
+            cmd.CommandText = "UPDATE challenge_participants SET current_progress = current_progress + @p WHERE challenge_id = @c AND user_id = @u";
             cmd.Parameters.AddWithValue("@p", progress);
             cmd.Parameters.AddWithValue("@c", challengeId);
             cmd.Parameters.AddWithValue("@u", userId);
@@ -1548,12 +1939,15 @@ public class DbService : IDbService
             using var cmd = conn.CreateCommand();
             cmd.Parameters.AddWithValue("@u", userId);
             
-            // Total Plans - count all plans for the user
-            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u";
+            // Total Plans - count all visible plans (excluding archived) for the user
+            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived')";
             var totalPlans = Convert.ToInt32(cmd.ExecuteScalar());
             
-            // Active Plans - count plans with status='active'
-            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND status='active'";
+            // Active Plans - count plans that are active (exclude completed and archived)
+            cmd.CommandText = @"SELECT COUNT(*) FROM plans 
+                               WHERE user_id=@u 
+                               AND COALESCE(status, 'active') != 'completed'
+                               AND COALESCE(status, 'active') != 'archived'";
             var activePlans = Convert.ToInt32(cmd.ExecuteScalar());
             
             // Total Words - sum of total_word_count from all plans
@@ -1563,13 +1957,26 @@ public class DbService : IDbService
             // Completed Plans - count plans with status='completed'
             cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND status='completed'";
             var completedPlans = Convert.ToInt32(cmd.ExecuteScalar());
+
+            // Total Challenges (Joined)
+            cmd.CommandText = "SELECT COUNT(*) FROM challenge_participants WHERE user_id=@u";
+            var totalChallenges = Convert.ToInt32(cmd.ExecuteScalar());
+
+            // Active Challenges (Joined & Active)
+            cmd.CommandText = @"SELECT COUNT(*) 
+                                FROM challenge_participants cp 
+                                JOIN challenges c ON cp.challenge_id = c.id 
+                                WHERE cp.user_id = @u AND c.status = 'Active'";
+            var activeChallenges = Convert.ToInt32(cmd.ExecuteScalar());
             
             var obj = new 
             { 
                 totalPlans, 
                 activePlans, 
                 totalWords, 
-                completedPlans 
+                completedPlans,
+                totalChallenges,
+                activeChallenges
             };
             
             Console.WriteLine($"✓ Dashboard stats calculated: Total={totalPlans}, Active={activePlans}, Words={totalWords}, Completed={completedPlans}");
@@ -2148,19 +2555,24 @@ public class DbService : IDbService
                 }
             }
             
-            // Calculate streak (count backwards from today)
-            for (int i = 0; i < allDaysData.Count; i++)
+            // Calculate current streak (counting backwards from today)
+            // We allow today to be 0 without breaking the streak yet (user has all day to write)
+            for (int i = allDaysData.Count - 1; i >= 0; i--)
             {
-                var dayData = allDaysData[i];
-                var count = Convert.ToInt32(dayData["count"]);
+                var count = Convert.ToInt32(allDaysData[i]["count"]);
                 
                 if (count > 0)
                 {
                     currentStreak++;
                 }
+                else if (i == allDaysData.Count - 1)
+                {
+                    // Today is empty, but we don't break yet - keep looking at previous days
+                    continue;
+                }
                 else
                 {
-                    break; // Streak broken
+                    break; // Gap found in previous days
                 }
             }
             
@@ -2321,7 +2733,7 @@ public class DbService : IDbService
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"SELECT id, name, subtitle, description, is_private, created_at 
                                FROM projects 
-                               WHERE user_id = @uid 
+                               WHERE user_id = @uid AND is_archived = 0 
                                ORDER BY created_at DESC";
             cmd.Parameters.AddWithValue("@uid", userId);
             
@@ -2489,6 +2901,98 @@ public class DbService : IDbService
             _lastError = $"Error: {ex.Message}";
             Console.WriteLine($"✗ Error in DeleteProject: {ex.Message}");
             return false;
+        }
+    }
+
+    public bool ArchiveProject(int id, int userId, bool isArchived)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📦 Archiving project {id} for user {userId}: {isArchived}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE projects SET is_archived=@a WHERE id=@id AND user_id=@u";
+            cmd.Parameters.AddWithValue("@a", isArchived);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            var result = rowsAffected == 1;
+            
+            if (result)
+            {
+                Console.WriteLine($"✓ Project {id} archived status set to {isArchived}");
+            }
+            else
+            {
+                _lastError = "Project not found or access denied";
+                Console.WriteLine($"✗ Project {id} not found or access denied");
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error archiving project: {ex.Message}");
+            return false;
+        }
+    }
+
+    public string GetArchivedProjectsJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT *, 0 as type FROM projects 
+                                WHERE user_id = @u AND is_archived = 1
+                                ORDER BY created_at DESC";
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var projects = new List<Dictionary<string, object>>();
+            
+            while (reader.Read())
+            {
+                var project = new Dictionary<string, object>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    var fieldName = reader.GetName(i);
+                    if (reader.IsDBNull(i))
+                    {
+                        project[fieldName] = null!;
+                        continue;
+                    }
+                    
+                    var val = reader.GetValue(i);
+                    if (val is DateTime dt)
+                    {
+                        project[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
+                    }
+                    else
+                    {
+                        project[fieldName] = val;
+                    }
+                }
+                projects.Add(project);
+            }
+            
+            Console.WriteLine($"✓ Retrieved {projects.Count} archived projects for user {userId}");
+            return JsonSerializer.Serialize(projects);
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error getting archived projects: {ex.Message}");
+            return "[]";
         }
     }
 }

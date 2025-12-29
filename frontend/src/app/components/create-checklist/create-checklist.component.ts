@@ -77,8 +77,10 @@ export class CreateChecklistComponent implements OnInit {
     }
 
     loadChecklist(id: number) {
-        this.isLoadingData = true;
-        this.cdr.detectChanges();
+        setTimeout(() => {
+            this.isLoadingData = true;
+            this.cdr.detectChanges();
+        }, 0);
         
         this.apiService.getChecklist(id).subscribe({
             next: (response) => {
@@ -98,13 +100,17 @@ export class CreateChecklistComponent implements OnInit {
                     console.error('Checklist not found');
                     this.router.navigate(['/my-checklists']);
                 }
-                this.isLoadingData = false;
-                this.cdr.detectChanges();
+                setTimeout(() => {
+                    this.isLoadingData = false;
+                    this.cdr.detectChanges();
+                }, 0);
             },
             error: (err) => {
                 console.error('Error loading checklist:', err);
-                this.isLoadingData = false;
-                this.cdr.detectChanges();
+                setTimeout(() => {
+                    this.isLoadingData = false;
+                    this.cdr.detectChanges();
+                }, 0);
             }
         });
     }
@@ -147,7 +153,11 @@ export class CreateChecklistComponent implements OnInit {
             return;
         }
 
-        this.isLoading = true;
+        setTimeout(() => {
+            this.isLoading = true;
+            this.cdr.detectChanges();
+        }, 0);
+        
         const payload = {
             plan_id: this.planId,
             name: this.checklistName,
@@ -165,12 +175,18 @@ export class CreateChecklistComponent implements OnInit {
                     } else {
                         alert('Error updating checklist: ' + response.message);
                     }
-                    this.isLoading = false;
+                    setTimeout(() => {
+                        this.isLoading = false;
+                        this.cdr.detectChanges();
+                    }, 0);
                 },
                 error: (err) => {
                     console.error('Error updating checklist:', err);
                     alert('An error occurred while updating the checklist.');
-                    this.isLoading = false;
+                    setTimeout(() => {
+                        this.isLoading = false;
+                        this.cdr.detectChanges();
+                    }, 0);
                 }
             });
             return;
@@ -183,12 +199,18 @@ export class CreateChecklistComponent implements OnInit {
                 } else {
                     alert('Error creating checklist: ' + response.message);
                 }
-                this.isLoading = false;
+                setTimeout(() => {
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }, 0);
             },
             error: (err) => {
                 console.error('Error creating checklist:', err);
                 alert('An error occurred while creating the checklist.');
-                this.isLoading = false;
+                setTimeout(() => {
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }, 0);
             }
         });
     }

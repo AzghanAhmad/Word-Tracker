@@ -15,6 +15,7 @@ public class ChecklistsController : ControllerBase
     public record ChecklistItemRequest(string text, bool? is_done);
     public record CreateChecklistRequest(string name, int? plan_id, ChecklistItemRequest[]? items);
     public record AddItemRequest(int checklist_id, string content);
+    public record ArchiveRequest(bool is_archived);
 
     /// <summary>
     /// Creates a new checklist with items for the authenticated user
@@ -142,6 +143,32 @@ public class ChecklistsController : ControllerBase
     }
 
     /// <summary>
+    /// Retrieves all archived checklists for the authenticated user
+    /// GET /checklists/archived
+    /// </summary>
+    [Authorize]
+    [HttpGet("archived")]
+    public IActionResult GetArchived()
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📋 Fetching archived checklists for user {userId}");
+            
+            var json = _db.GetArchivedChecklistsJson(userId);
+            var data = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+            
+            Console.WriteLine($"✅ Retrieved archived checklists successfully");
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception fetching archived checklists: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while fetching archived checklists" });
+        }
+    }
+
+    /// <summary>
     /// Updates an existing checklist with items
     /// PUT /checklists/{id}
     /// </summary>
@@ -211,6 +238,37 @@ public class ChecklistsController : ControllerBase
                 Console.WriteLine($"   Inner exception: {ex.InnerException.Message}");
             }
             return StatusCode(500, new { success = false, message = $"An error occurred: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Archives or unarchives a checklist
+    /// PATCH /checklists/{id}/archive
+    /// </summary>
+    [Authorize]
+    [HttpPatch("{id}/archive")]
+    public IActionResult Archive(int id, [FromBody] ArchiveRequest req)
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📦 Archiving checklist {id} for user {userId}: {req.is_archived}");
+            
+            var ok = _db.ArchiveChecklist(id, userId, req.is_archived);
+            
+            if (ok)
+            {
+                Console.WriteLine($"✅ Checklist {id} archive status updated");
+                return Ok(new { success = true, message = req.is_archived ? "Checklist archived successfully" : "Checklist unarchived successfully" });
+            }
+            
+            Console.WriteLine($"✗ Checklist {id} not found or permission denied");
+            return NotFound(new { success = false, message = "Checklist not found or you don't have permission to modify it" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception archiving checklist: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while archiving the checklist" });
         }
     }
 

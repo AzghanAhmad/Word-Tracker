@@ -106,8 +106,7 @@
                             {{ getDescriptionWordCount() }} words / <b>Max {{ maxDescriptionWords }} words</b>
                         </span>
                     </div>
-                    <textarea #descriptionInput [(ngModel)]="planDescription"
-                        placeholder="Enter a description" 
+                    <textarea #descriptionInput [(ngModel)]="planDescription" placeholder="Enter a description"
                         [class.over-limit]="isDescriptionOverLimit()"></textarea>
                 </div>
             </div>
@@ -150,8 +149,10 @@
                     <div class="form-group">
                         <label>Fixed deadline?</label>
                         <div class="radio-group">
-                            <label><input type="radio" [value]="true" [(ngModel)]="fixedDeadline" (change)="onFixedDeadlineChange()"> Yes</label>
-                            <label><input type="radio" [value]="false" [(ngModel)]="fixedDeadline" (change)="onFixedDeadlineChange()"> No</label>
+                            <label><input type="radio" [value]="true" [(ngModel)]="fixedDeadline"
+                                    (change)="onFixedDeadlineChange()"> Yes</label>
+                            <label><input type="radio" [value]="false" [(ngModel)]="fixedDeadline"
+                                    (change)="onFixedDeadlineChange()"> No</label>
                         </div>
                     </div>
                     <div class="form-group" *ngIf="fixedDeadline">
@@ -169,6 +170,23 @@
 
 
 
+            <!-- Display Settings -->
+            <div class="sidebar-card">
+                <div class="card-header">
+                    <h3>Display Settings</h3>
+                    <i class="fas fa-arrows-alt-v"></i>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Dashboard Color</label>
+                        <div class="color-picker-row">
+                            <input type="color" [(ngModel)]="dashboardColor" class="dashboard-color-input">
+                            <span>{{ dashboardColor }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Progress Section -->
             <div class="sidebar-card">
                 <div class="card-header">
@@ -177,31 +195,24 @@
                 </div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" [(ngModel)]="showHistoricalData">
-                            Show historical data
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>Tracking Type</label>
-                        <select [(ngModel)]="progressTrackingType">
-                            <option value="Daily Goals">Daily Goals</option>
-                            <option value="Session Based">Session Based</option>
-                            <option value="Milestones">Milestones</option>
-                        </select>
+                        <label>Manual Progress (%)</label>
+                        <input type="number" [(ngModel)]="currentProgress"
+                            (ngModelChange)="onManualProgressChange($event)" min="0" max="100" placeholder="0 - 100">
+                        <p class="hint mt-1">Enter a number 1-100 to update plan progress.</p>
                     </div>
                 </div>
             </div>
+
         </aside>
 
         <!-- Main Content -->
         <main class="plan-main">
             <!-- Schedule/Stats View -->
-            <div *ngIf="viewMode === 'schedule' || viewMode === 'stats'">
+            <div *ngIf="viewMode === 'schedule'">
                 <div class="schedule-summary">
                     <div class="word-badge">
                         <span class="count">{{ targetWordCount | number }} words</span>
-                        <span class="label">over</span>
+                        &nbsp;<span class="label">over</span>&nbsp;
                         <span class="days">{{ totalDays }} days</span>
                     </div>
                     <div class="timeline">
@@ -225,7 +236,6 @@
                                     <th>Work to Complete</th>
                                     <th>Actual Work Done</th>
                                     <th>Expected Progress</th>
-                                    <th>Your Actual Progress</th>
                                     <th>Work Left</th>
                                 </tr>
                             </thead>
@@ -235,9 +245,12 @@
                                     <td>{{ day.day }}</td>
                                     <td>{{ day.date }}</td>
                                     <td><b>{{ day.workToComplete | number }}</b></td>
-                                    <td>{{ day.actualWorkDone }}</td>
+                                    <td>
+                                        <input type="number" [(ngModel)]="day.actualWorkDone"
+                                            (ngModelChange)="onTableProgressChange(day)" class="table-input"
+                                            placeholder="0">
+                                    </td>
                                     <td>{{ day.expectedProgress | number }}</td>
-                                    <td>{{ day.yourActualProgress }}</td>
                                     <td>{{ day.workLeft | number }}</td>
                                 </tr>
                             </tbody>
@@ -378,81 +391,135 @@
 
             <!-- Progress Tab View -->
             <div *ngIf="viewMode === 'progress'" class="progress-view-content">
-                <div class="progress-summary-header">
-                    <p>{{ targetWordCount | number }} words over {{ totalDays }} days ({{ getFormattedDateRange() }})
-                    </p>
-                    <button class="btn-save-progress" (click)="saveProgress()">Save Progress</button>
-                </div>
-
-                <div class="progress-updates-card">
-                    <div class="progress-updates-header">
-                        <button class="btn-add-progress" (click)="addProgressEntry()">
-                            <i class="fas fa-calendar-plus"></i> Add Progress
-                        </button>
-                        <div class="header-columns">
-                            <span class="col-target">Target Lines</span>
-                            <span class="col-overall">Overall Progress ({{ progressEntries.length }} updates)</span>
-                            <span class="col-notes">Notes & Time</span>
-                        </div>
-                    </div>
-
-                    <div class="progress-entries-list">
-                        <div *ngFor="let entry of progressEntries" class="progress-entry-row"
-                            [class.today-row]="entry.isToday">
-                            <div class="date-col">
-                                <span class="date-text">
-                                    <ng-container *ngIf="entry.isToday">TODAY, </ng-container>
-                                    {{ entry.date | date:'EEEE, MMM d' }}
-                                    <ng-container
-                                        *ngIf="entry.date.getDate() === 1 || entry.date.getDate() === 21 || entry.date.getDate() === 31">st</ng-container>
-                                    <ng-container
-                                        *ngIf="entry.date.getDate() === 2 || entry.date.getDate() === 22">nd</ng-container>
-                                    <ng-container
-                                        *ngIf="entry.date.getDate() === 3 || entry.date.getDate() === 23">rd</ng-container>
-                                    <ng-container
-                                        *ngIf="![1,2,3,21,22,23,31].includes(entry.date.getDate())">th</ng-container>
-                                </span>
-                                <i class="fas fa-plus-circle add-icon"></i>
+                <div class="progress-overview-banner">
+                    <div class="overview-left">
+                        <h2>Overall Completion</h2>
+                        <div class="big-progress-container">
+                            <div class="progress-info">
+                                <span class="percent-text">{{ currentProgress }}%</span>
+                                <span class="words-text">{{ totalWordsLogged | number }} / {{ targetWordCount | number
+                                    }} words</span>
                             </div>
-                            <div class="target-col">{{ entry.targetWords | number }}</div>
-                            <div class="input-col">
-                                <input type="number" [(ngModel)]="entry.actualWords" placeholder="Update me!">
-                            </div>
-                            <div class="notes-col">
-                                <i class="fas fa-clipboard notes-icon"></i>
-                            </div>
-                            <div class="action-col">
-                                <i class="fas fa-times-circle delete-icon" (click)="removeProgressEntry(entry.id)"></i>
+                            <div class="big-progress-bar">
+                                <div class="fill" [style.width.%]="currentProgress"></div>
                             </div>
                         </div>
                     </div>
+                    <div class="overview-right">
+                        <!-- <button class="btn-save-progress" (click)="saveProgress()">
+                            <i class="fas fa-save"></i> Back up to cloud
+                        </button> -->
+                    </div>
                 </div>
+
             </div>
 
             <!-- Stats Tab View -->
             <div *ngIf="viewMode === 'stats'" class="stats-view-content">
-                <div class="stats-top-actions">
-                    <a href="javascript:void(0)" class="learn-more">
-                        <i class="fas fa-info-circle"></i> Learn More About Stats
-                    </a>
+                <div class="stats-dashboard-grid">
+                    <!-- Main Gauge Card -->
+                    <div class="stats-main-card">
+                        <div class="gauge-container">
+                            <svg viewBox="0 0 100 100" class="on-track-gauge">
+                                <circle cx="50" cy="50" r="45" class="gauge-bg"></circle>
+                                <circle cx="50" cy="50" r="45" class="gauge-fill"
+                                    [style.strokeDashoffset]="getOnTrackStroke()"></circle>
+                            </svg>
+                            <div class="gauge-center">
+                                <span class="gauge-value">{{ currentProgress }}%</span>
+                                <span class="gauge-label">Completion</span>
+                            </div>
+                        </div>
+                        <div class="gauge-details">
+                            <h3>Goal Status</h3>
+                            <p class="status-badge" [ngClass]="{
+                                'ahead': onTrackStatus === 'Ahead of Schedule',
+                                'on-track': onTrackStatus === 'On Track',
+                                'behind': onTrackStatus === 'Behind Schedule'
+                            }">{{ onTrackStatus }}</p>
+                            <p *ngIf="onTrackPercent >= 100">You are exceeding your goals! Keep the momentum.</p>
+                            <p *ngIf="onTrackPercent < 100 && onTrackPercent >= 80">You're slightly behind, but well
+                                within reach.</p>
+                            <p *ngIf="onTrackPercent < 80">Time to pick up the pace to hit your deadline.</p>
+                            <div class="streak-mini-badge">
+                                <i class="fas fa-fire"></i> {{ currentStreak }} Day Streak
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Quick Stats -->
+                    <div class="stats-quick-grid">
+                        <div class="quick-stat-tile">
+                            <div class="icon-box blue"><i class="fas fa-pen-nib"></i></div>
+                            <div class="tile-info">
+                                <span class="label">Total Words</span>
+                                <span class="value">{{ totalWordsLogged | number }}</span>
+                            </div>
+                        </div>
+                        <div class="quick-stat-tile">
+                            <div class="icon-box green"><i class="fas fa-check-circle"></i></div>
+                            <div class="tile-info">
+                                <span class="label">Words Left</span>
+                                <span class="value">{{ wordsRemaining | number }}</span>
+                            </div>
+                        </div>
+                        <div class="quick-stat-tile">
+                            <div class="icon-box purple"><i class="fas fa-trophy"></i></div>
+                            <div class="tile-info" *ngIf="bestDay">
+                                <span class="label">Best Session</span>
+                                <span class="value">{{ bestDay.count | number }}</span>
+                                <span class="sub-label">{{ bestDay.date }}</span>
+                            </div>
+                        </div>
+                        <div class="quick-stat-tile">
+                            <div class="icon-box orange"><i class="fas fa-stopwatch"></i></div>
+                            <div class="tile-info">
+                                <span class="label">Plan Days</span>
+                                <span class="value">{{ totalDays }}</span>
+                                <span class="sub-label">{{ daysLeft }} remaining</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-value">{{ dailyAvg | number }}</div>
-                        <div class="stat-label">Daily Avg Words <i class="fas fa-star"></i></div>
+                <!-- Recent Activity Chart -->
+                <div class="stats-activity-chart-section">
+                    <h3>Recent Activity</h3>
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            <div *ngFor="let item of recentActivity" class="chart-column">
+                                <div class="bar-container">
+                                    <div class="bar-fill" [style.height.%]="item.height"
+                                        [title]="item.count + ' words'">
+                                        <span class="bar-value" *ngIf="item.height > 15">{{ item.count | number
+                                            }}</span>
+                                    </div>
+                                </div>
+                                <div class="column-label">{{ item.day }}</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">{{ weeklyAvg | number }}</div>
-                        <div class="stat-label">Weekly Avg Words <i class="fas fa-star"></i></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">{{ weekdayAvg | number }}</div>
-                        <div class="stat-label">Weekday Avg Words <i class="fas fa-star"></i></div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">{{ weekendAvg | number }}</div>
-                        <div class="stat-label">Weekend Avg Words <i class="fas fa-star"></i></div>
+                </div>
+
+                <div class="stats-averages-section">
+                    <h3>Writing Efficiency</h3>
+                    <div class="averages-grid">
+                        <div class="avg-card">
+                            <label>Overall Daily Average</label>
+                            <div class="avg-value">{{ dailyAvg | number }} <span>words/day</span></div>
+                        </div>
+                        <div class="avg-card">
+                            <label>Weekly Target</label>
+                            <div class="avg-value">{{ weeklyAvg | number }} <span>words/week</span></div>
+                        </div>
+                        <div class="avg-card">
+                            <label>Weekdays</label>
+                            <div class="avg-value">{{ weekdayAvg | number }} <span>avg words</span></div>
+                        </div>
+                        <div class="avg-card">
+                            <label>Weekends</label>
+                            <div class="avg-value">{{ weekendAvg | number }} <span>avg words</span></div>
+                        </div>
                     </div>
                 </div>
             </div>

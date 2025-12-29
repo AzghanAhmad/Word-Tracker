@@ -51,7 +51,9 @@ public class PlansController : ControllerBase
         bool? show_historical_data,
         string? progress_tracking_type,
         string? activity_type,
-        string? content_type
+        string? content_type,
+        string? status,
+        int? current_progress
     );
 
     /// <summary>
@@ -64,38 +66,63 @@ public class PlansController : ControllerBase
     {
         try
         {
+            var userId = UserId();
+            Console.WriteLine($"📥 Received CreatePlan request for user {userId}");
+            Console.WriteLine($"📝 Payload: Title='{req.title}', Words={req.total_word_count}, Start='{req.start_date}', End='{req.end_date}', Algo='{req.algorithm_type}'");
+
             // Validate required fields
             if (string.IsNullOrWhiteSpace(req.title))
+            {
+                Console.WriteLine("❌ Validation failed: Title is empty");
                 return BadRequest(new { success = false, message = "Plan title is required" });
+            }
 
             if (string.IsNullOrWhiteSpace(req.start_date))
+            {
+                Console.WriteLine("❌ Validation failed: Start date is empty");
                 return BadRequest(new { success = false, message = "Start date is required" });
+            }
 
             if (string.IsNullOrWhiteSpace(req.end_date))
+            {
+                Console.WriteLine("❌ Validation failed: End date is empty");
                 return BadRequest(new { success = false, message = "End date is required" });
+            }
 
             if (string.IsNullOrWhiteSpace(req.algorithm_type))
+            {
+                Console.WriteLine("❌ Validation failed: Algorithm type is empty");
                 return BadRequest(new { success = false, message = "Algorithm type is required" });
+            }
 
             // Validate word count
             if (req.total_word_count <= 0)
+            {
+                Console.WriteLine($"❌ Validation failed: Word count is {req.total_word_count}");
                 return BadRequest(new { success = false, message = "Total word count must be greater than 0" });
+            }
 
             // Validate dates
             if (!DateTime.TryParse(req.start_date, out var startDate))
+            {
+                Console.WriteLine($"❌ Validation failed: Invalid start date '{req.start_date}'");
                 return BadRequest(new { success = false, message = "Invalid start date format" });
+            }
 
             if (!DateTime.TryParse(req.end_date, out var endDate))
+            {
+                Console.WriteLine($"❌ Validation failed: Invalid end date '{req.end_date}'");
                 return BadRequest(new { success = false, message = "Invalid end date format" });
+            }
 
             if (endDate <= startDate)
+            {
+                Console.WriteLine($"❌ Validation failed: End date {req.end_date} is before or equal to start date {req.start_date}");
                 return BadRequest(new { success = false, message = "End date must be after start date" });
+            }
 
             // Create plan in database
-            var userId = UserId();
-            
-            // Log request for debugging
-            Console.WriteLine($"Creating plan for user {userId}: Title={req.title}, Words={req.total_word_count}, Start={req.start_date}, End={req.end_date}");
+            Console.WriteLine($"💾 Calling DbService.CreatePlan...");
             
             var planId = _db.CreatePlan(
                 userId,
@@ -121,7 +148,9 @@ public class PlansController : ControllerBase
                 req.show_historical_data ?? true,
                 req.progress_tracking_type ?? "Daily Goals",
                 req.activity_type ?? "Writing",
-                req.content_type ?? "Novel"
+                req.content_type ?? "Novel",
+                req.status ?? "active",
+                req.current_progress ?? 0
             );
 
             if (planId > 0)
@@ -190,6 +219,168 @@ public class PlansController : ControllerBase
     }
 
     /// <summary>
+    /// Request model for logging progress
+    /// </summary>
+    public record LogProgressRequest(string date, int actual_count, string? notes);
+
+    /// <summary>
+    /// Logs progress for a specific day
+    /// POST /plans/{id}/days
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id}/days")]
+    public IActionResult LogDay(int id, [FromBody] LogProgressRequest req)
+    {
+        try
+        {
+            var userId = UserId();
+            
+            if (string.IsNullOrWhiteSpace(req.date))
+                return BadRequest(new { success = false, message = "Date is required" });
+
+            if (!DateTime.TryParse(req.date, out _))
+                return BadRequest(new { success = false, message = "Invalid date format" });
+
+            var success = _db.LogPlanProgress(id, userId, req.date, req.actual_count, req.notes);
+            
+            if (success)
+                return Ok(new { success = true, message = "Progress logged successfully" });
+
+            return StatusCode(500, new { success = false, message = _db.GetLastError() ?? "Failed to log progress" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error logging progress: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while logging progress" });
+        }
+    }
+
+    [Authorize]
+    [HttpGet("archived")]
+    public IActionResult GetArchived()
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📋 Fetching archived plans for user {userId}");
+            
+            var json = _db.GetArchivedPlansJson(userId);
+            var plansData = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(json);
+            
+            var transformedData = plansData?.Select(TransformPlan).ToList();
+            
+            Console.WriteLine($"✅ Retrieved {transformedData?.Count ?? 0} archived plans successfully");
+            return Ok(new { success = true, data = transformedData });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception fetching archived plans: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while fetching archived plans" });
+        }
+    }
+
+    private Dictionary<string, object> TransformPlan(Dictionary<string, object> plan)
+    {
+        string GetString(string key, string defaultValue = "") =>
+            plan.ContainsKey(key) && plan[key] != null ? plan[key].ToString() ?? defaultValue : defaultValue;
+
+        int GetInt(string key, int defaultValue = 0)
+        {
+            if (!plan.ContainsKey(key) || plan[key] == null) return defaultValue;
+            if (plan[key] is int i) return i;
+            if (int.TryParse(plan[key].ToString(), out var parsed)) return parsed;
+            return defaultValue;
+        }
+
+        bool GetBool(string key, bool defaultValue = false)
+        {
+            if (!plan.ContainsKey(key) || plan[key] == null) return defaultValue;
+            if (plan[key] is bool b) return b;
+            var strVal = plan[key].ToString();
+            if (strVal == "1") return true;
+            if (strVal == "0") return false;
+            return bool.TryParse(strVal, out var parsed) ? parsed : defaultValue;
+        }
+
+        var status = GetString("status", "active").ToLower();
+        var statusMap = new Dictionary<string, string>
+        {
+            { "active", "In Progress" },
+            { "paused", "On Hold" },
+            { "completed", "Completed" },
+            { "archived", "Archived" }
+        };
+        var frontendStatus = statusMap.ContainsKey(status) ? statusMap[status] : "In Progress";
+        var totalWords = GetInt("total_word_count", 0);
+        var dashboardColor = GetString("dashboard_color", "#000000");
+
+        return new Dictionary<string, object>
+        {
+            ["id"] = GetInt("id", 0),
+            ["plan_name"] = GetString("title", ""),
+            ["title"] = GetString("title", ""),
+            ["total_word_count"] = totalWords,
+            ["target_amount"] = totalWords,
+            ["completed_amount"] = 0,
+            ["start_date"] = GetString("start_date", ""),
+            ["end_date"] = GetString("end_date", ""),
+            ["algorithm_type"] = GetString("algorithm_type", ""),
+            ["status"] = frontendStatus,
+            ["db_status"] = status, // Raw database status for editing
+            ["description"] = GetString("description", ""),
+            ["is_private"] = GetBool("is_private", false),
+            ["starting_point"] = GetInt("starting_point", 0),
+            ["measurement_unit"] = GetString("measurement_unit", "words"),
+            ["is_daily_target"] = GetBool("is_daily_target", false),
+            ["fixed_deadline"] = GetBool("fixed_deadline", true),
+            ["target_finish_date"] = GetString("target_finish_date", ""),
+            ["strategy_intensity"] = GetString("strategy_intensity", ""),
+            ["weekend_approach"] = GetString("weekend_approach", ""),
+            ["reserve_days"] = GetInt("reserve_days", 0),
+            ["display_view_type"] = GetString("display_view_type", "Table"),
+            ["week_start_day"] = GetString("week_start_day", "Mondays"),
+            ["grouping_type"] = GetString("grouping_type", "Day"),
+            ["dashboard_color"] = dashboardColor,
+            ["color_code"] = dashboardColor,
+            ["show_historical_data"] = GetBool("show_historical_data", true),
+            ["progress_tracking_type"] = GetString("progress_tracking_type", "Daily Goals"),
+            ["activity_type"] = GetString("activity_type", "Writing"),
+            ["content_type"] = GetString("content_type", "Novel"),
+            ["current_progress"] = GetInt("current_progress", 0),
+            ["progress"] = 0
+        };
+    }
+
+    [Authorize]
+    [HttpPatch("{id}/archive")]
+    public IActionResult Archive(int id, [FromBody] ArchiveRequest req)
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📦 Archiving plan {id} for user {userId}: {req.is_archived}");
+            
+            var ok = _db.ArchivePlan(id, userId, req.is_archived);
+            
+            if (ok)
+            {
+                Console.WriteLine($"✅ Plan {id} archive status updated");
+                return Ok(new { success = true, message = req.is_archived ? "Plan archived successfully" : "Plan restored successfully" });
+            }
+            
+            Console.WriteLine($"✗ Plan {id} not found or permission denied");
+            return NotFound(new { success = false, message = "Plan not found or you don't have permission to modify it" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception archiving plan: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "An error occurred while archiving the plan" });
+        }
+    }
+
+    public record ArchiveRequest(bool is_archived);
+
+    /// <summary>
     /// Retrieves plans for the authenticated user
     /// GET /plans - Get all plans
     /// GET /plans?id={id} - Get specific plan
@@ -210,158 +401,23 @@ public class PlansController : ControllerBase
                     return NotFound(new { success = false, message = "Plan not found" });
 
                 var planData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(planJson);
-                
-                // Transform to match frontend expectations (same as list endpoint)
-                string GetString(string key, string defaultValue = "")
-                {
-                    if (!planData.ContainsKey(key) || planData[key] == null) return defaultValue;
-                    return planData[key].ToString() ?? defaultValue;
-                }
+                if (planData == null)
+                     return StatusCode(500, new { success = false, message = "Failed to deserialize plan" });
 
-                int GetInt(string key, int defaultValue = 0)
-                {
-                    if (!planData.ContainsKey(key) || planData[key] == null) return defaultValue;
-                    if (planData[key] is int i) return i;
-                    if (int.TryParse(planData[key].ToString(), out var parsed)) return parsed;
-                    return defaultValue;
-                }
-
-                bool GetBool(string key, bool defaultValue = false)
-                {
-                    if (!planData.ContainsKey(key) || planData[key] == null) return defaultValue;
-                    if (planData[key] is bool b) return b;
-                    if (bool.TryParse(planData[key].ToString(), out var parsed)) return parsed;
-                    return defaultValue;
-                }
-
-                var status = GetString("status", "active").ToLower();
-                var statusMap = new Dictionary<string, string>
-                {
-                    { "active", "In Progress" },
-                    { "paused", "On Hold" },
-                    { "completed", "Completed" }
-                };
-                var frontendStatus = statusMap.ContainsKey(status) ? statusMap[status] : "In Progress";
-
-                var totalWords = GetInt("total_word_count", 0);
-                var dashboardColor = GetString("dashboard_color", "#000000");
-
-                var transformedPlan = new Dictionary<string, object>
-                {
-                    ["id"] = GetInt("id", 0),
-                    ["plan_name"] = GetString("title", ""),
-                    ["title"] = GetString("title", ""),
-                    ["total_word_count"] = totalWords,
-                    ["target_amount"] = totalWords,
-                    ["completed_amount"] = 0,
-                    ["start_date"] = GetString("start_date", ""),
-                    ["end_date"] = GetString("end_date", ""),
-                    ["algorithm_type"] = GetString("algorithm_type", ""),
-                    ["status"] = frontendStatus,
-                    ["description"] = GetString("description", ""),
-                    ["is_private"] = GetBool("is_private", false),
-                    ["measurement_unit"] = GetString("measurement_unit", "words"),
-                    ["is_daily_target"] = GetBool("is_daily_target", false),
-                    ["fixed_deadline"] = GetBool("fixed_deadline", true),
-                    ["target_finish_date"] = GetString("target_finish_date", ""),
-                    ["strategy_intensity"] = GetString("strategy_intensity", ""),
-                    ["weekend_approach"] = GetString("weekend_approach", ""),
-                    ["reserve_days"] = GetInt("reserve_days", 0),
-                    ["display_view_type"] = GetString("display_view_type", "Table"),
-                    ["week_start_day"] = GetString("week_start_day", "Mondays"),
-                    ["grouping_type"] = GetString("grouping_type", "Day"),
-                    ["dashboard_color"] = dashboardColor,
-                    ["color_code"] = dashboardColor,
-                    ["show_historical_data"] = GetBool("show_historical_data", true),
-                    ["progress_tracking_type"] = GetString("progress_tracking_type", "Daily Goals"),
-                    ["activity_type"] = GetString("activity_type", "Writing"),
-                    ["content_type"] = GetString("content_type", "Novel"),
-                    ["progress"] = 0
-                };
-
+                var transformedPlan = TransformPlan(planData);
                 return Ok(new { success = true, data = transformedPlan });
             }
 
             // Get all plans for user
             var plansJson = _db.GetPlansJson(userId);
             var plansData = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(plansJson);
-
-            // Transform database fields to match frontend expectations
-            var transformedPlans = plansData?.Select(plan =>
-            {
-                // Helper function to safely get string value
-                string GetString(string key, string defaultValue = "") =>
-                    plan.ContainsKey(key) && plan[key] != null ? plan[key].ToString() ?? defaultValue : defaultValue;
-
-                // Helper function to safely get int value
-                int GetInt(string key, int defaultValue = 0)
-                {
-                    if (!plan.ContainsKey(key) || plan[key] == null) return defaultValue;
-                    if (plan[key] is int i) return i;
-                    if (int.TryParse(plan[key].ToString(), out var parsed)) return parsed;
-                    return defaultValue;
-                }
-
-                // Helper function to safely get bool value
-                bool GetBool(string key, bool defaultValue = false)
-                {
-                    if (!plan.ContainsKey(key) || plan[key] == null) return defaultValue;
-                    if (plan[key] is bool b) return b;
-                    if (bool.TryParse(plan[key].ToString(), out var parsed)) return parsed;
-                    return defaultValue;
-                }
-
-                // Convert status to frontend format
-                var status = GetString("status", "active").ToLower();
-                var statusMap = new Dictionary<string, string>
-                {
-                    { "active", "In Progress" },
-                    { "paused", "On Hold" },
-                    { "completed", "Completed" }
-                };
-                var frontendStatus = statusMap.ContainsKey(status) ? statusMap[status] : "In Progress";
-
-                var totalWords = GetInt("total_word_count", 0);
-                var dashboardColor = GetString("dashboard_color", "#000000");
-
-                return new Dictionary<string, object>
-                {
-                    ["id"] = GetInt("id", 0),
-                    ["plan_name"] = GetString("title", ""),
-                    ["title"] = GetString("title", ""),
-                    ["total_word_count"] = totalWords,
-                    ["target_amount"] = totalWords,
-                    ["completed_amount"] = 0, // Will be calculated from plan_days in future
-                    ["start_date"] = GetString("start_date", ""),
-                    ["end_date"] = GetString("end_date", ""),
-                    ["algorithm_type"] = GetString("algorithm_type", ""),
-                    ["status"] = frontendStatus,
-                    ["description"] = GetString("description", ""),
-                    ["is_private"] = GetBool("is_private", false),
-                    ["measurement_unit"] = GetString("measurement_unit", "words"),
-                    ["is_daily_target"] = GetBool("is_daily_target", false),
-                    ["fixed_deadline"] = GetBool("fixed_deadline", true),
-                    ["target_finish_date"] = GetString("target_finish_date", ""),
-                    ["strategy_intensity"] = GetString("strategy_intensity", ""),
-                    ["weekend_approach"] = GetString("weekend_approach", ""),
-                    ["reserve_days"] = GetInt("reserve_days", 0),
-                    ["display_view_type"] = GetString("display_view_type", "Table"),
-                    ["week_start_day"] = GetString("week_start_day", "Mondays"),
-                    ["grouping_type"] = GetString("grouping_type", "Day"),
-                    ["dashboard_color"] = dashboardColor,
-                    ["color_code"] = dashboardColor,
-                    ["show_historical_data"] = GetBool("show_historical_data", true),
-                    ["progress_tracking_type"] = GetString("progress_tracking_type", "Daily Goals"),
-                    ["activity_type"] = GetString("activity_type", "Writing"),
-                    ["content_type"] = GetString("content_type", "Novel"),
-                    ["progress"] = 0 // Will be calculated in frontend
-                };
-            }).ToList();
+            var transformedPlans = plansData?.Select(TransformPlan).ToList();
 
             return Ok(new { success = true, data = transformedPlans });
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"❌ Error in Get Plans: {ex.Message}");
             return StatusCode(500, new { success = false, message = "An error occurred while retrieving plans" });
         }
     }
@@ -431,7 +487,9 @@ public class PlansController : ControllerBase
                 req.show_historical_data ?? true,
                 req.progress_tracking_type ?? "Daily Goals",
                 req.activity_type ?? "Writing",
-                req.content_type ?? "Novel"
+                req.content_type ?? "Novel",
+                req.status,
+                req.current_progress
             );
 
             if (success)

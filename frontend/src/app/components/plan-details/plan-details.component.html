@@ -11,7 +11,8 @@
             <div class="status-badge" [ngClass]="{
                 'status-active': plan.status === 'In Progress',
                 'status-completed': plan.status === 'Completed',
-                'status-paused': plan.status === 'On Hold'
+                'status-paused': plan.status === 'On Hold',
+                'status-archived': plan.status === 'Archived'
             }">{{ plan.status }}</div>
             <h1>{{ plan.plan_name || plan.title }}</h1>
             <div class="meta-row">
@@ -28,8 +29,13 @@
                 style="background-color: #6366f1; color: white; border: none; cursor: pointer;">
                 <i class="fas fa-edit"></i> Edit / Track
             </button>
-            <button class="btn-delete" (click)="deletePlan()">
+            <button class="btn-delete" (click)="deletePlan()" title="Delete Plan">
                 <i class="fas fa-trash"></i>
+            </button>
+            <button class="btn-archive" (click)="toggleArchive()"
+                [title]="(plan.status === 'Archived' || plan.status === 'archived') ? 'Restore Plan' : 'Archive Plan'">
+                <i class="fas"
+                    [ngClass]="(plan.status === 'Archived' || plan.status === 'archived') ? 'fa-undo' : 'fa-archive'"></i>
             </button>
         </div>
     </div>
@@ -52,8 +58,7 @@
                 <div class="goals-grid">
                     <div class="goal-item">
                         <span class="label">Goal Type</span>
-                        <span class="value">{{ plan.goal_type === 'overall' ? 'Overall Target' : 'Daily Target'
-                            }}</span>
+                        <span class="value">{{ plan.is_daily_target ? 'Daily Target' : 'Overall Target' }}</span>
                     </div>
                     <div class="goal-item">
                         <span class="label">Target Word Count</span>
@@ -69,11 +74,12 @@
                     </div>
                     <div class="goal-item">
                         <span class="label">Fixed Deadline</span>
-                        <span class="value">{{ plan.has_deadline ? 'Yes' : 'No' }}</span>
+                        <span class="value">{{ plan.fixed_deadline ? 'Yes' : 'No' }}</span>
                     </div>
                     <div class="goal-item">
                         <span class="label">Target Finish Date</span>
-                        <span class="value">{{ getFormattedDate(plan.end_date) }}</span>
+                        <span class="value">{{ plan.fixed_deadline ? getFormattedDate(plan.end_date) : 'Flexible'
+                            }}</span>
                     </div>
                     <div class="goal-item">
                         <span class="label">Content Type</span>
@@ -82,6 +88,21 @@
                     <div class="goal-item">
                         <span class="label">Tracking Type</span>
                         <span class="value">{{ plan.progress_tracking_type || 'Daily Goals' }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Show Historical Data</span>
+                        <span class="value">{{ plan.show_historical_data ? 'Yes' : 'No' }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Current Progress</span>
+                        <span class="value">{{ plan.current_progress || 0 }}%</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Theme Color</span>
+                        <div class="value color-swatch"
+                            [style.background-color]="plan.dashboard_color || plan.color_code || '#000000'"
+                            style="width: 20px; height: 20px; border-radius: 50%; display: inline-block; vertical-align: middle; border: 1px solid #ddd;">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -119,23 +140,92 @@
 
             <!-- Recent Activity -->
             <div class="card activity-card">
-                <h2>Recent Sessions</h2>
+                <div class="card-header-with-action">
+                    <div>
+                        <h2><i class="fas fa-history"></i> Recent Sessions</h2>
+                        <p class="section-description">Last 10 work days with progress</p>
+                    </div>
+                    <button class="btn-add-session" (click)="showAddSessionForm = !showAddSessionForm" 
+                        [class.active]="showAddSessionForm" title="Add new session">
+                        <i class="fas" [class.fa-plus]="!showAddSessionForm" [class.fa-times]="showAddSessionForm"></i>
+                        <span>{{ showAddSessionForm ? 'Cancel' : 'Add Session' }}</span>
+                    </button>
+                </div>
+
+                <!-- Add New Session Form -->
+                <div class="add-session-form" *ngIf="showAddSessionForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" [(ngModel)]="newSessionDate" [max]="todayDate" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Words</label>
+                            <input type="number" [(ngModel)]="newSessionWords" min="0" placeholder="0" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" (click)="addNewSession()" [disabled]="!newSessionDate || !newSessionWords || newSessionWords <= 0">
+                            <i class="fas fa-save"></i> Save Session
+                        </button>
+                        <button class="btn-secondary" (click)="showAddSessionForm = false">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="log-list" *ngIf="activityLogs.length > 0">
-                    <div class="log-item" *ngFor="let log of activityLogs">
+                    <div class="log-item" *ngFor="let log of activityLogs" [class.editing]="editingSessionId === log.id">
                         <div class="log-icon">
-                            <i class="fas fa-pen"></i>
+                            <i class="fas fa-pen-fancy"></i>
                         </div>
                         <div class="log-info">
-                            <span class="log-date">{{ log.date }}</span>
-                            <span class="log-duration" *ngIf="log.target > 0">Target: {{ log.target | number }} words</span>
+                            <div class="log-date">{{ log.date }}</div>
+                            <div class="log-target-info">
+                                <span class="target-label">Target:</span>
+                                <span class="target-value">{{ log.target | number }} words</span>
+                            </div>
                         </div>
-                        <div class="log-amount" [class.met-target]="log.words >= log.target" [class.below-target]="log.words < log.target && log.target > 0">
-                            +{{ log.words | number }} words
+                        <div class="log-words" *ngIf="editingSessionId !== log.id">
+                            <div class="words-info">
+                                <span class="words-display" [class.met-target]="log.words >= log.target" 
+                                    [class.below-target]="log.words < log.target && log.target > 0">
+                                    {{ log.words | number }} words
+                                </span>
+                                <span class="progress-badge" *ngIf="log.target > 0" 
+                                    [class.met-target]="log.words >= log.target"
+                                    [class.below-target]="log.words < log.target">
+                                    {{ (log.words / log.target * 100) | number:'1.0-0' }}%
+                                </span>
+                            </div>
+                            <div class="log-actions">
+                                <button class="btn-edit-small" (click)="startEditingSession(log)" title="Edit words">
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <button class="btn-delete-small" (click)="deleteSession(log)" title="Delete session">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="log-words-edit" *ngIf="editingSessionId === log.id">
+                            <input type="number" [(ngModel)]="editingSessionValue" min="0" 
+                                class="words-input" placeholder="Words" (keyup.enter)="saveSession(log)"
+                                (keyup.escape)="cancelEditingSession()" #editInput>
+                            <span class="words-label">words</span>
+                            <div class="edit-actions">
+                                <button class="btn-save-small" (click)="saveSession(log)" title="Save">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn-cancel-small" (click)="cancelEditingSession()" title="Cancel">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="empty-state" *ngIf="activityLogs.length === 0 && !isLoading">
-                    <p>No activity logs yet. Start tracking your progress!</p>
+                    <i class="fas fa-inbox"></i>
+                    <p>No work sessions logged yet. Start tracking your progress in the plan!</p>
                 </div>
             </div>
         </div>

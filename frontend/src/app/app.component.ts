@@ -97,7 +97,7 @@ export class AppComponent {
   isPublicPage = true;
 
   // Pages that should show the public layout (no sidebar)
-  publicRoutes = ['/', '/login', '/register', '/privacy', '/terms', '/feedback', '/credits'];
+  publicRoutes = ['/', '/login', '/register', '/privacy', '/terms', '/feedback', '/credits', '/forgot-password', '/forgot-username', '/contact'];
 
   constructor(private router: Router) {
     this.router.events.pipe(

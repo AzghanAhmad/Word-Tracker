@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
@@ -9,7 +10,7 @@ import { Subscription, filter } from 'rxjs';
 @Component({
     selector: 'app-plan-details',
     standalone: true,
-    imports: [CommonModule, RouterLink, ContentLoaderComponent],
+    imports: [CommonModule, FormsModule, RouterLink, ContentLoaderComponent],
     templateUrl: './plan-details.component.html',
     styleUrls: ['./plan-details.component.scss']
 })
@@ -23,6 +24,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         projectedFinishDate: null
     };
     activityLogs: any[] = [];
+    editingSessionId: number | null = null;
+    editingSessionValue: number = 0;
+    showAddSessionForm: boolean = false;
+    newSessionDate: string = '';
+    newSessionWords: number = 0;
+    todayDate: string = '';
     private routeSubscription?: Subscription;
     private navigationSubscription?: Subscription;
 
@@ -35,6 +42,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     ) { }
 
     ngOnInit() {
+        // Set today's date as max for date input and default for new sessions
+        const today = new Date();
+        this.todayDate = today.toISOString().split('T')[0];
+        this.newSessionDate = this.todayDate; // Default to today
+        
         // Load data immediately
         this.loadPlanData();
 
@@ -138,24 +150,48 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         this.apiService.getPlanDays(this.planId).subscribe({
             next: (response) => {
                 if (response.success && response.data) {
+                    // Filter only days where work has been done (actual_count > 0)
                     // Sort by date descending (most recent first)
+                    // Show only last 10 work days
                     this.activityLogs = response.data
-                        .map((d: any) => ({
-                            date: new Date(d.date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
-                            }),
-                            words: d.actual_count || 0,
-                            target: d.target_count || 0,
-                            dateObj: new Date(d.date)
-                        }))
+                        .filter((d: any) => (d.actual_count || 0) > 0) // Only days with work done
+                        .map((d: any) => {
+                            const dateObj = new Date(d.date);
+                            return {
+                                id: d.id || dateObj.getTime(),
+                                date: dateObj.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                }),
+                                words: d.actual_count || 0,
+                                target: d.target_count || 0,
+                                dateObj: dateObj,
+                                rawDate: d.date, // Store original date string for API calls
+                                notes: d.notes || ''
+                            };
+                        })
                         .sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime())
-                        .slice(0, 10); // Show only last 10 entries
+                        .slice(0, 10); // Show only last 10 work days
 
-                    // Update completed amount from logs
-                    const totalFromLogs = response.data.reduce((sum: number, d: any) => sum + (d.actual_count || 0), 0);
-                    if (this.plan && totalFromLogs > 0) {
+                    // Update completed amount from logs (only within valid date range)
+                    let validLogs = response.data;
+                    if (this.plan.start_date && this.plan.end_date) {
+                        const start = new Date(this.plan.start_date);
+                        start.setHours(0, 0, 0, 0);
+                        const end = new Date(this.plan.end_date);
+                        end.setHours(23, 59, 59, 999);
+
+                        validLogs = response.data.filter((d: any) => {
+                            const date = new Date(d.date);
+                            return date >= start && date <= end;
+                        });
+                    }
+
+                    const totalFromLogs = validLogs.reduce((sum: number, d: any) => sum + (d.actual_count || 0), 0);
+
+                    // Always update plan completed amount with the accurate log sum
+                    if (this.plan) {
                         this.plan.completed_amount = totalFromLogs;
                     }
                 }
@@ -184,9 +220,23 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         this.stats.daysRemaining = diff > 0 ? diff : 0;
 
         // Calculate completed amount from activity logs if available
-        const completedAmount = this.activityLogs.reduce((sum, log) => sum + log.words, 0);
-        const totalCompleted = this.plan.completed_amount || completedAmount || 0;
+        let totalCompleted = this.activityLogs.reduce((sum, log) => sum + log.words, 0);
+
+        // If we have explicit plan completion amount in DB, use that
+        if (this.plan.completed_amount > totalCompleted) {
+            totalCompleted = this.plan.completed_amount;
+        }
+
         const targetAmount = this.plan.target_amount || this.plan.total_word_count || 0;
+
+        // If manual progress is set, calculate implied words
+        if (this.plan.current_progress && this.plan.current_progress > 0) {
+            const impliedWords = Math.round((this.plan.current_progress / 100) * targetAmount);
+            // Use implied words if it's greater than logged words (user might be updating manually only)
+            if (impliedWords > totalCompleted) {
+                totalCompleted = impliedWords;
+            }
+        }
 
         // Words Per Day needed
         const remainingWords = targetAmount - totalCompleted;
@@ -197,12 +247,54 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         }
 
         // Progress percentage for display
-        this.plan.progress = targetAmount > 0
+        const calculatedProgress = targetAmount > 0
             ? Math.round((totalCompleted / targetAmount) * 100)
             : 0;
 
+        // Use manual progress if set, otherwise fall back to calculated
+        this.plan.progress = (this.plan.current_progress && this.plan.current_progress > 0)
+            ? this.plan.current_progress
+            : calculatedProgress;
+
         // Update completed_amount for display
-        this.plan.completed_amount = totalCompleted;
+        this.plan.completed_amount = (targetAmount > 0)
+            ? Math.min(totalCompleted, targetAmount)
+            : totalCompleted;
+    }
+
+    toggleArchive() {
+        if (!this.plan || !this.planId) return;
+
+        const isArchived = this.plan.status === 'Archived' || this.plan.status === 'archived';
+        const newStatus = isArchived ? 'active' : 'archived';
+        const confirmMsg = newStatus === 'archived'
+            ? 'Are you sure you want to archive this plan? It will be moved to the archives.'
+            : 'Are you sure you want to unarchive this plan? It will be moved back to active plans.';
+
+        if (confirm(confirmMsg)) {
+            this.isLoading = true;
+            this.cdr.detectChanges();
+
+            this.apiService.archivePlan(this.planId, newStatus === 'archived').subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        this.notificationService.showSuccess(`Plan ${newStatus === 'archived' ? 'archived' : 'unarchived'} successfully`);
+                        // Reload plan data
+                        this.loadPlanDetails();
+                    } else {
+                        this.notificationService.showError('Failed to update status');
+                        this.isLoading = false;
+                        this.cdr.detectChanges();
+                    }
+                },
+                error: (err) => {
+                    console.error('Error updating status', err);
+                    this.notificationService.showError('Failed to update status');
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }
+            });
+        }
     }
 
     deletePlan() {
@@ -242,5 +334,103 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     getFormattedDate(dateStr: string): string {
         return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    startEditingSession(log: any) {
+        this.editingSessionId = log.id;
+        this.editingSessionValue = log.words;
+        // Focus the input after a brief delay to ensure it's rendered
+        setTimeout(() => {
+            const input = document.querySelector('.words-input') as HTMLInputElement;
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 100);
+    }
+
+    cancelEditingSession() {
+        this.editingSessionId = null;
+        this.editingSessionValue = 0;
+    }
+
+    saveSession(log: any) {
+        if (!this.planId) return;
+
+        const words = Math.max(0, this.editingSessionValue || 0);
+        const dateStr = log.rawDate || log.dateObj.toISOString().split('T')[0];
+
+        this.apiService.logProgress(this.planId, dateStr, words, log.notes || '').subscribe({
+            next: (response) => {
+                if (response.success) {
+                    // Update the log in the array
+                    log.words = words;
+                    this.editingSessionId = null;
+                    this.notificationService.showSuccess('Session updated successfully');
+                    
+                    // Reload plan details to get updated progress percentage
+                    this.loadPlanDetails();
+                } else {
+                    this.notificationService.showError('Failed to update session');
+                }
+            },
+            error: (err) => {
+                console.error('Error updating session', err);
+                this.notificationService.showError('Failed to update session');
+            }
+        });
+    }
+
+    deleteSession(log: any) {
+        if (!this.planId) return;
+        
+        if (confirm(`Are you sure you want to delete this session from ${log.date}?`)) {
+            const dateStr = log.rawDate || log.dateObj.toISOString().split('T')[0];
+            
+            // Set words to 0 to effectively delete the session
+            this.apiService.logProgress(this.planId, dateStr, 0, '').subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        this.notificationService.showSuccess('Session deleted successfully');
+                        // Reload plan details to get updated progress percentage
+                        this.loadPlanDetails();
+                    } else {
+                        this.notificationService.showError('Failed to delete session');
+                    }
+                },
+                error: (err) => {
+                    console.error('Error deleting session', err);
+                    this.notificationService.showError('Failed to delete session');
+                }
+            });
+        }
+    }
+
+    addNewSession() {
+        if (!this.planId || !this.newSessionDate || !this.newSessionWords || this.newSessionWords <= 0) {
+            this.notificationService.showError('Please enter a valid date and word count');
+            return;
+        }
+
+        this.apiService.logProgress(this.planId, this.newSessionDate, this.newSessionWords, '').subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.notificationService.showSuccess('Session added successfully');
+                    // Reset form
+                    this.newSessionDate = this.todayDate; // Reset to today
+                    this.newSessionWords = 0;
+                    this.showAddSessionForm = false;
+                    // Reload plan details to get updated progress percentage and refresh sessions list
+                    this.loadPlanDetails();
+                } else {
+                    this.notificationService.showError('Failed to add session');
+                }
+            },
+            error: (err) => {
+                console.error('Error adding session', err);
+                const errorMsg = err.error?.message || 'Failed to add session';
+                this.notificationService.showError(errorMsg);
+            }
+        });
     }
 }

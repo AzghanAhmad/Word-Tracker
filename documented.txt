@@ -1,0 +1,547 @@
+# Word Tracker Application - Complete Documentation
+
+## Project Overview
+Word Tracker is a comprehensive writing management application that helps users plan, track, and achieve their writing goals. The application provides tools for creating writing plans, tracking daily progress, managing checklists, and staying motivated through statistics and gamification features.
+
+---
+
+## Technology Stack
+- **Frontend**: Angular 18+ with TypeScript, SCSS styling
+- **Backend**: .NET Core Web API with C#
+- **Database**: MySQL
+- **Server**: XAMPP (MySQL), .NET Runtime
+- **Deployment**: Docker support, Railway-ready
+
+---
+
+## Project Structure
+
+### Root Directory (`/word-t-main`)
+- **backend/**: Contains the .NET Core Web API backend
+- **frontend/**: Contains the Angular frontend application
+- **Dockerfile**: Docker configuration for containerization
+- **railway.toml**: Railway deployment configuration
+- **test-api.ps1**: PowerShell script for API testing
+
+---
+
+## Backend Structure (`/backend/dotnet_migration_pending`)
+
+### Controllers (API Endpoints)
+
+#### 1. **AuthController.cs**
+**Purpose**: Handles user authentication and authorization
+- User registration with email/username validation
+- User login with JWT token generation
+- Password hashing using BCrypt
+- Token-based authentication
+
+#### 2. **ChallengesController.cs**
+**Purpose**: Manages writing challenges and competitions
+- Create public/private challenges with goals
+- Join challenges via invite codes
+- Track challenge progress
+- Update participant progress
+- Leave/delete challenges
+- Fetch all public challenges and user-specific challenges
+
+#### 3. **ChecklistsController.cs**
+**Purpose**: Manages task checklists and to-do items
+- Create checklists with optional items
+- Retrieve user checklists
+- Update checklist names and items
+- Archive/unarchive checklists
+- Delete checklists permanently
+- Get archived checklists
+
+#### 4. **CommunityController.cs**
+**Purpose**: Manages community features and public plans
+- Fetch public writing plans shared by users
+- Community engagement features
+
+#### 5. **DashboardController.cs**
+**Purpose**: Provides dashboard statistics
+- Get user dashboard stats (total plans, active plans, etc.)
+- Aggregated data for overview
+
+#### 6. **FeedbackController.cs**
+**Purpose**: Handles user feedback submissions
+- Collect user feedback with optional email
+- Support different feedback types (general, bug, feature)
+- Anonymous feedback support
+
+#### 7. **HomeController.cs**
+**Purpose**: Health checks and basic endpoints
+- API health check endpoint
+- Basic system status
+
+#### 8. **PlansController.cs**
+**Purpose**: Core writing plan management
+- Create detailed writing plans with algorithms
+- Update plan details and settings
+- Track daily progress (log words written)
+- Archive/restore plans
+- Delete plans
+- Retrieve plan details and statistics
+- Get archived plans
+
+#### 9. **ProjectsController.cs** (Organization Plans)
+**Purpose**: Manages organizational projects
+- Create projects with name, subtitle, description
+- Update project details
+- Archive/restore projects
+- Delete projects
+- Privacy settings (public/private)
+- Get archived projects
+
+#### 10. **StatsController.cs**
+**Purpose**: Advanced statistics and analytics
+- Get detailed writing statistics
+- Activity heatmaps (90-day view)
+- Day streaks calculation
+- Best day tracking
+- Weekly averages
+
+#### 11. **UserController.cs**
+**Purpose**: User profile and settings management
+- Get user profile information
+- Update profile (username, email, bio)
+- Change password
+- Get/update user settings (date format, reminders, etc.)
+- Delete user account
+
+### Services (Business Logic)
+
+#### 1. **AuthService.cs** (`IAuthService`)
+**Purpose**: Authentication utilities
+- Password hashing using BCrypt
+- Password verification
+
+#### 2. **DbService.cs** (`IDbService`)
+**Purpose**: Core database operations layer
+- **User Management**: Create users, get user info, update profiles
+- **Plan Management**: CRUD operations for writing plans
+- **Progress Tracking**: Log daily word counts, update plan days
+- **Checklist Operations**: Manage checklists and items
+- **Challenge Operations**: Create and manage challenges
+- **Statistics**: Calculate streaks, averages, progress
+- **Archive Operations**: Soft-delete functionality for plans/checklists/projects
+- **Project Management**: CRUD operations for organization projects
+
+#### 3. **DbInitService.cs**
+**Purpose**: Database initialization and migrations
+- Create database schema on startup
+- Automatic table creation if missing
+- Schema migrations (add missing columns)
+- Seed data (optional)
+- Handles backward compatibility
+
+#### 4. **IAuthService.cs**
+**Purpose**: Authentication service interface
+
+#### 5. **IDbService.cs**
+**Purpose**: Database service interface
+- Defines all database operation signatures
+- Contract for data access layer
+
+---
+
+## Frontend Structure (`/frontend/src/app`)
+
+### Components
+
+#### Authentication & Public Pages
+
+##### 1. **login/** 
+**Purpose**: User login page
+- Username/email and password input
+- JWT token storage
+- "Remember me" functionality
+- Redirect to dashboard on success
+
+##### 2. **register/**
+**Purpose**: New user registration
+- Username, email, password validation
+- Password confirmation
+- Account creation
+- Auto-login after registration
+
+##### 3. **forgot-password/**
+**Purpose**: Password recovery (placeholder)
+- Email-based password reset flow
+
+##### 4. **forgot-username/**
+**Purpose**: Username recovery (placeholder)
+- Email-based username recovery
+
+##### 5. **home-public/**
+**Purpose**: Public landing page
+- Marketing content
+- Feature highlights
+- Call-to-action buttons
+- Public navigation
+
+##### 6. **auth-layout/**
+**Purpose**: Layout wrapper for authentication pages
+- Consistent styling for login/register
+- Branded background
+
+#### Core Application Pages
+
+##### 7. **dashboard/**
+**Purpose**: Main user dashboard
+- Overview of active plans
+- Quick stats (total words, active plans)
+- Recent activity
+- Quick actions (create plan, checklist)
+
+##### 8. **dashboard-home/**
+**Purpose**: Enhanced dashboard homepage
+- Visual statistics
+- Progress charts
+- Quick navigation
+
+##### 9. **create-plan/**
+**Purpose**: Writing plan creation and editing
+- Multi-step plan creation wizard
+- Algorithm selection (Linear, Logarithmic, Sigmoid, etc.)
+- Goal setting (word count, dates)
+- Advanced settings (weekend approach, intensity, etc.)
+- Edit existing plans
+
+##### 10. **plan-details/**
+**Purpose**: Individual plan view and management
+- View plan details and progress
+- Daily progress logging
+- Edit plan button
+- Archive/delete plan
+- Visual progress indicators
+- Calendar view of plan days
+
+##### 11. **calendar-page/**
+**Purpose**: Calendar view of all plans
+- Monthly/weekly calendar display
+- View plan days and goals
+- Quick log word counts
+
+##### 12. **calendar/** (Component)
+**Purpose**: Reusable calendar widget
+- Date selection
+- Event display
+
+#### Checklist Management
+
+##### 13. **my-checklists/**
+**Purpose**: View all user checklists
+- List all active checklists
+- Toggle item completion
+- Archive checklists
+- Create new checklist button
+
+##### 14. **create-checklist/**
+**Purpose**: Create and edit checklists
+- Add checklist name
+- Add/remove items dynamically
+- Save checklist
+- Edit existing checklist
+
+##### 15. **checklist-page/**
+**Purpose**: Individual checklist view
+- View all items
+- Check/uncheck items
+- Real-time updates
+
+#### Organization & Projects
+
+##### 16. **organization/**
+**Purpose**: Manage organization projects
+- Create projects with metadata
+- List all projects
+- Edit project details
+- Archive/delete projects
+- Privacy toggle
+
+#### Social & Community
+
+##### 17. **community/**
+**Purpose**: View public writing plans
+- Browse community plans
+- See other users' progress
+- Inspiration and motivation
+
+##### 18. **group-challenges/**
+**Purpose**: Join and manage group challenges
+- View available challenges
+- Create new challenges
+- Join with invite code
+- Track leaderboard
+
+##### 19. **challenge-detail/**
+**Purpose**: Individual challenge view
+- Challenge details and rules
+- Participant list and progress
+- Update your progress
+- Leave challenge
+
+#### Statistics & Progress
+
+##### 20. **stats/**
+**Purpose**: Advanced user statistics
+- Writing heatmap (90 days)
+- Day streak display
+- Total words written
+- Best day performance
+- Weekly averages
+- Activity line charts
+
+#### Archive Management
+
+##### 21. **archive/**
+**Purpose**: View and manage archived items
+- Tabbed interface (Plans, Checklists, Projects)
+- Restore archived items
+- Permanently delete items
+- Archive counts
+
+#### User Management
+
+##### 22. **profile/**
+**Purpose**: User profile management
+- View/edit username, email, bio
+- Display account creation date
+- Update profile information
+
+##### 23. **settings/**
+**Purpose**: User preferences and settings
+- Date format preferences
+- Week start day
+- Email reminder settings
+- Timezone selection
+- Profession tags
+
+#### Navigation & Layout
+
+##### 24. **navbar/**
+**Purpose**: Authenticated user navigation bar
+- User menu
+- Logout
+- Profile link
+- Notification bell (placeholder)
+
+##### 25. **public-navbar/**
+**Purpose**: Public pages navigation
+- Login/Register links
+- Branding
+- Home link
+
+##### 26. **sidebar/**
+**Purpose**: Main application sidebar navigation
+- Dashboard link
+- My Plans
+- Create Plan
+- Calendar
+- My Checklists
+- Archive
+- Organization Plan
+- Group Challenges
+- Community Plans
+- Stats
+- Settings
+- Collapsible menu
+
+##### 27. **footer/**
+**Purpose**: Application footer
+- Copyright
+- Links to terms, privacy, help
+- Social media links
+
+#### Utility Components
+
+##### 28. **content-loader/**
+**Purpose**: Reusable loading spinner
+- Consistent loading states
+- Animated spinner
+
+##### 29. **shared/**
+**Purpose**: Shared utilities and components
+- Common functions
+- Reusable directives
+
+##### 30. **feature-cards/**
+**Purpose**: Display feature highlights
+- Marketing cards
+- Feature descriptions
+
+#### Support & Information
+
+##### 31. **help/**
+**Purpose**: Help center
+- FAQs
+- User guides
+
+##### 32. **help-docs/**
+**Purpose**: Detailed documentation
+- Feature explanations
+- How-to guides
+
+##### 33. **privacy/**
+**Purpose**: Privacy policy page
+- Data handling policies
+- User privacy information
+
+##### 34. **terms/**
+**Purpose**: Terms of service
+- User agreement
+- Service terms
+
+##### 35. **credits/**
+**Purpose**: Attribution and credits
+- Third-party libraries
+- Contributors
+
+##### 36. **feedback/**
+**Purpose**: Submit feedback
+- Feedback form
+- Bug reports
+- Feature requests
+
+##### 37. **contact/**
+**Purpose**: Contact information
+- Support email
+- Contact form
+
+##### 38. **api-tester/**
+**Purpose**: Developer tool for API testing
+- Test API endpoints
+- Debug tool
+
+---
+
+## Key Features by Module
+
+### Writing Plan Management
+- **Algorithms**: Linear, Logarithmic, Sigmoid, Custom
+- **Tracking**: Daily word count logging, progress visualization
+- **Flexibility**: Pause/resume, archive, edit goals
+- **Smart Planning**: Weekend approach, reserve days, intensity settings
+
+### Checklist System
+- **Task Management**: Create, edit, complete tasks
+- **Organization**: Archive completed checklists
+- **Integration**: Link checklists to writing plans
+
+### Organization Projects
+- **Project Planning**: Organize multiple writing projects
+- **Metadata**: Name, subtitle, description, privacy
+- **Archiving**: Keep workspace clean
+
+### Gamification
+- **Day Streaks**: Track consecutive writing days
+- **Challenges**: Compete with others or yourself
+- **Statistics**: Visualize progress with charts and heatmaps
+
+### User Experience
+- **Responsive Design**: Works on desktop, tablet, mobile
+- **Dark Mode Ready**: Modern UI with consistent theming
+- **Real-time Updates**: Instant feedback on actions
+
+---
+
+## Database Schema Overview
+
+### Core Tables
+1. **users**: User accounts (id, username, email, password_hash, bio, created_at, updated_at)
+2. **plans**: Writing plans (with extensive configuration fields)
+3. **plan_days**: Daily progress tracking for plans
+4. **checklists**: Task lists (id, name, user_id, plan_id, is_archived)
+5. **checklist_items**: Individual tasks (content, is_done, sort_order)
+6. **challenges**: Group challenges (title, description, goal, dates)
+7. **challenge_participants**: Challenge membership and progress
+8. **projects**: Organization projects (name, subtitle, description, is_private, is_archived)
+9. **user_settings**: User preferences (date format, reminders, etc.)
+10. **feedback**: User feedback submissions
+
+---
+
+## API Architecture
+
+### Authentication
+- JWT token-based auth
+- Secure password hashing with BCrypt
+- Token expiration and refresh
+
+### Data Flow
+1. Frontend makes HTTP request to API
+2. API Controller validates request, extracts user from JWT
+3. Controller calls Service layer (DbService)
+4. Service executes SQL queries via MySqlConnector
+5. Data is serialized to JSON
+6. Controller returns standardized response `{ success: true/false, data/message }`
+
+### Error Handling
+- Centralized error logging
+- User-friendly error messages
+- Validation at controller and service levels
+
+---
+
+## Development Setup
+
+### Prerequisites
+- Node.js 18+
+- .NET 8.0 SDK
+- XAMPP (MySQL)
+- Angular CLI
+
+### Running Locally
+1. Start MySQL via XAMPP
+2. Backend: `cd backend/dotnet_migration_pending && dotnet run`
+3. Frontend: `cd frontend && npm install && npm start`
+4. Access app at `http://localhost:4200`
+5. API at `http://localhost:8199`
+
+### Environment Configuration
+- Backend connection string in `appsettings.json`
+- Frontend API URL in `environment.ts`
+
+---
+
+## Key Design Patterns
+
+### Frontend
+- **Component-based architecture**: Modular, reusable components
+- **Service pattern**: API calls centralized in ApiService
+- **Guard pattern**: Route protection with authGuard
+- **Observable pattern**: Reactive data streams with RxJS
+
+### Backend
+- **Repository pattern**: DbService as data access layer
+- **Dependency injection**: Services injected into controllers
+- **Interface segregation**: Clear contracts with interfaces
+- **Single Responsibility**: Each controller handles one domain
+
+---
+
+## Recent Enhancements
+1. **Archive System**: Soft-delete for plans, checklists, and projects
+2. **Day Streak**: Fixed calculation to count from today backwards
+3. **Organization Projects**: Full CRUD with archiving
+4. **Database Migrations**: Automatic schema updates
+5. **Profile Management**: Bio, timestamps, password changes
+
+---
+
+## Future Roadmap Ideas
+- Real-time collaboration
+- AI writing suggestions
+- Export data to PDF/CSV
+- Mobile app (React Native)
+- Integrations (Google Docs, Scrivener)
+- Advanced analytics dashboard
+- Social features (followers, comments)
+
+---
+
+**Last Updated**: December 29, 2024
+**Version**: 1.0
+**Maintained by**: Development Team

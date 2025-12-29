@@ -1,18 +1,19 @@
 <div class="dashboard-container">
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="page-title">Welcome to Word Tracker</h1>
+            <p class="page-subtitle">Track your progress and stay organized</p>
+        </div>
+        <a routerLink="/create-plan" class="btn-create-plan">
+            <span class="icon">+</span>
+            <span>Create New Plan</span>
+        </a>
+    </div>
+
     <app-content-loader *ngIf="isLoading"></app-content-loader>
 
     <!-- Main Content (Hidden while loading) -->
     <div *ngIf="!isLoading">
-        <div class="dashboard-header">
-            <div class="header-content">
-                <h1 class="page-title">Welcome to Word Tracker</h1>
-                <p class="page-subtitle">Track your progress and stay organized</p>
-            </div>
-            <a routerLink="/create-plan" class="btn-create-plan">
-                <span class="icon">+</span>
-                <span>Create New Plan</span>
-            </a>
-        </div>
 
         <!-- Dashboard Stats Summary -->
         <div class="stats-grid"
@@ -33,6 +34,15 @@
                 </div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1; margin-top: 0.5rem;">{{
                     stats.activePlans
+                    }}</div>
+            </div>
+            <div class="stat-card"
+                style="background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Active
+                    Challenges
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #8b5cf6; margin-top: 0.5rem;">{{
+                    stats.activeChallenges
                     }}</div>
             </div>
             <div class="stat-card"

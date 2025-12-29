@@ -164,7 +164,13 @@ select {
     /* Remove default styling on iOS */
     -moz-appearance: none;
     appearance: none;
+    border: 1px solid black;
+    width: 100% !important;
     /* Standard property */
+
+    &::placeholder {
+        color: transparent !important;
+    }
 }
 
 /* ==========================================
@@ -581,7 +587,7 @@ select {
    ANGULAR FORM STATES
    ========================================== */
 .ng-valid.ng-dirty.ng-touched {
-    min-width: 100%;
+    min-width: 64%;
 }
 
 /* ==========================================
