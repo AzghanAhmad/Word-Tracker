@@ -26,11 +26,11 @@ COPY --from=backend-builder /app/backend/publish ./
 # Copy frontend dist
 COPY --from=frontend-builder /app/frontend/dist/word-tracker-frontend/browser ./frontend/dist/word-tracker-frontend/browser
 
-# Expose port
+# Expose port (Railway will provide PORT env var at runtime)
+# We expose a common port, but Railway will override via PORT env var
 EXPOSE 8080
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
 ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 # Start the application

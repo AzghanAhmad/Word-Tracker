@@ -34,11 +34,12 @@ if (connectionString.Contains("Database="))
 }
 
 
-// Initialize database on startup
+// Initialize database on startup (non-blocking)
 if (string.IsNullOrEmpty(connectionString))
 {
     Console.WriteLine("⚠️ WARNING: No database connection string found!");
     Console.WriteLine("   Set DB_CONNECTION environment variable or configure in appsettings.json");
+    Console.WriteLine("   The application will start, but database operations will fail.");
 }
 else
 {
@@ -47,18 +48,21 @@ else
         Console.WriteLine($"🔌 Attempting to connect to database: {dbName}");
         var dbInit = new DbInitService(connectionString, dbName);
         // Start initialization in background to not block server startup
+        // This allows the server to start even if DB is temporarily unavailable
         _ = Task.Run(async () => {
             try {
                 await dbInit.InitializeDatabaseAsync();
                 Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
             } catch (Exception ex) {
                 Console.WriteLine($"❌ Background database initialization failed: {ex.Message}");
+                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
             }
         });
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
+        Console.WriteLine($"❌ Database initialization setup failed: {ex.Message}");
         Console.WriteLine($"   Stack trace: {ex.StackTrace}");
         Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
     }
@@ -184,10 +188,20 @@ if (frontendPath != null)
     });
 }
 
-// Use Railway's PORT environment variable or default to 8199 for local development
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8199";
+// Use Railway's PORT environment variable or default to 8080 for local development
+// Railway provides PORT env var at runtime
+var port = Environment.GetEnvironmentVariable("PORT");
+if (string.IsNullOrEmpty(port))
+{
+    port = "8080"; // Default for local development
+}
+
+// Configure Kestrel to listen on the specified port
+// Railway requires binding to 0.0.0.0 to accept external connections
 var url = $"http://0.0.0.0:{port}";
+app.Urls.Clear(); // Clear any default URLs
 app.Urls.Add(url);
+Console.WriteLine($"🔧 Configured Kestrel to listen on: {url}");
 
 Console.WriteLine($"🚀 Word Tracker API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
