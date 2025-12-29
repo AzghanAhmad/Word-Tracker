@@ -9,6 +9,12 @@ using WordTracker.Api.Services;
 System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Kestrel to use Railway's PORT before building
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+Console.WriteLine($"🔧 Setting Kestrel to listen on port: {port}");
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
@@ -188,25 +194,14 @@ if (frontendPath != null)
     });
 }
 
-// Use Railway's PORT environment variable or default to 8080 for local development
-// Railway provides PORT env var at runtime
-var port = Environment.GetEnvironmentVariable("PORT");
-if (string.IsNullOrEmpty(port))
-{
-    port = "8080"; // Default for local development
-}
-
-// Configure Kestrel to listen on the specified port
-// Railway requires binding to 0.0.0.0 to accept external connections
-var url = $"http://0.0.0.0:{port}";
-app.Urls.Clear(); // Clear any default URLs
-app.Urls.Add(url);
-Console.WriteLine($"🔧 Configured Kestrel to listen on: {url}");
+// Log the final listening URL (already configured above via UseUrls)
+var finalPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var url = $"http://0.0.0.0:{finalPort}";
 
 Console.WriteLine($"🚀 Word Tracker API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
 Console.WriteLine($"🔐 JWT Secret: {(secret.Length > 20 ? secret.Substring(0, 20) + "..." : secret)}");
 Console.WriteLine($"🔗 Connection String: {(connectionString.Contains("Password=") ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" : connectionString)}");
-Console.WriteLine($"📍 API Endpoints available at: http://localhost:{port}/api/auth/register and http://localhost:{port}/api/auth/login");
+Console.WriteLine($"📍 API Endpoints available at: http://localhost:{finalPort}/api/auth/register and http://localhost:{finalPort}/api/auth/login");
 
 app.Run();
