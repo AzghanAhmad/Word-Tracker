@@ -164,12 +164,14 @@ select {
     /* Remove default styling on iOS */
     -moz-appearance: none;
     appearance: none;
-    border: 1px solid black;
-    width: 100% !important;
-    /* Standard property */
+    border: 1px solid var(--border-color);
+    width: 100%;
+    background-color: #ffffff;
+    color: var(--text-primary);
 
     &::placeholder {
-        color: transparent !important;
+        color: #999999;
+        opacity: 1; /* Firefox */
     }
 }
 
