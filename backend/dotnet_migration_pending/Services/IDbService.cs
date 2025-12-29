@@ -50,5 +50,7 @@ public interface IDbService
     bool ArchiveProject(int id, int userId, bool isArchived);
     bool DeleteProject(int id, int userId);
     string GetArchivedProjectsJson(int userId);
+    bool SubscribeNewsletter(string email);
+    bool ResetPasswordByEmail(string email, string newPasswordHash);
     string GetLastError();
 }

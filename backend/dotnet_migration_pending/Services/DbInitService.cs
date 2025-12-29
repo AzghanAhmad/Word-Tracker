@@ -230,6 +230,14 @@ public class DbInitService
                 is_archived BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )",
+            
+            @"CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE,
+                INDEX idx_email (email)
             )"
         };
 
@@ -299,6 +307,28 @@ public class DbInitService
                 )";
                 await createProjectsCmd.ExecuteNonQueryAsync();
                 Console.WriteLine("✓ Projects table created");
+            }
+
+            // Check if newsletter_subscriptions table exists, create if not
+            using var checkNewsletterCmd = conn.CreateCommand();
+            checkNewsletterCmd.CommandText = @"SELECT COUNT(*) FROM information_schema.TABLES 
+                                             WHERE TABLE_SCHEMA = DATABASE() 
+                                             AND TABLE_NAME = 'newsletter_subscriptions'";
+            var newsletterTableExists = Convert.ToInt32(await checkNewsletterCmd.ExecuteScalarAsync()) > 0;
+            
+            if (!newsletterTableExists)
+            {
+                Console.WriteLine("📦 Creating newsletter_subscriptions table...");
+                using var createNewsletterCmd = conn.CreateCommand();
+                createNewsletterCmd.CommandText = @"CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    INDEX idx_email (email)
+                )";
+                await createNewsletterCmd.ExecuteNonQueryAsync();
+                Console.WriteLine("✓ Newsletter subscriptions table created");
             }
 
             // Check if 'plans' table has 'plan_name' column (old schema) instead of 'title' (new schema)

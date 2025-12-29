@@ -63,6 +63,30 @@ export class ApiService {
         return this.http.post(`${this.apiUrl}/auth/register`, { username, email, password });
     }
 
+    forgotPassword(email: string): Observable<any> {
+        if (this.useMock) {
+            return of({
+                success: true,
+                exists: true,
+                message: 'Password reset email sent (Mock)',
+                tempPassword: '123456'
+            });
+        }
+        return this.http.post(`${this.apiUrl}/auth/forgot-password`, { email });
+    }
+
+    forgotUsername(email: string): Observable<any> {
+        if (this.useMock) {
+            return of({
+                success: true,
+                exists: true,
+                message: 'Username sent to email (Mock)',
+                username: 'mockuser123'
+            });
+        }
+        return this.http.post(`${this.apiUrl}/auth/forgot-username`, { email });
+    }
+
     // ============================================================================
     // Dashboard & Stats
     // ============================================================================
@@ -408,5 +432,16 @@ export class ApiService {
             return of({ success: true, data: [] });
         }
         return this.http.get(`${this.apiUrl}/projects/archived`);
+    }
+
+    // ============================================================================
+    // Newsletter
+    // ============================================================================
+
+    subscribeNewsletter(email: string): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Newsletter subscription successful (Mock)' });
+        }
+        return this.http.post(`${this.apiUrl}/newsletter/subscribe`, { email });
     }
 }

@@ -40,7 +40,7 @@ if (connectionString.Contains("Database="))
 }
 
 
-// Initialize database on startup (non-blocking)
+// Initialize database on startup (synchronous to ensure tables exist before server starts)
 if (string.IsNullOrEmpty(connectionString))
 {
     Console.WriteLine("⚠️ WARNING: No database connection string found!");
@@ -53,24 +53,37 @@ else
     {
         Console.WriteLine($"🔌 Attempting to connect to database: {dbName}");
         var dbInit = new DbInitService(connectionString, dbName);
-        // Start initialization in background to not block server startup
-        // This allows the server to start even if DB is temporarily unavailable
-        _ = Task.Run(async () => {
-            try {
-                await dbInit.InitializeDatabaseAsync();
-                Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
-            } catch (Exception ex) {
-                Console.WriteLine($"❌ Background database initialization failed: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
-                Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
-            }
-        });
+        
+        // Initialize database synchronously with timeout to ensure tables exist
+        Console.WriteLine("📦 Initializing database schema...");
+        var initTask = dbInit.InitializeDatabaseAsync();
+        
+        // Wait up to 30 seconds for initialization
+        if (initTask.Wait(TimeSpan.FromSeconds(30)))
+        {
+            Console.WriteLine($"✅ Database '{dbName}' initialized successfully");
+        }
+        else
+        {
+            Console.WriteLine("⚠️ Database initialization is taking longer than expected...");
+            Console.WriteLine("   Continuing startup, but some operations may fail if tables don't exist yet.");
+            // Continue in background
+            _ = Task.Run(async () => {
+                try {
+                    await initTask;
+                    Console.WriteLine($"✅ Database '{dbName}' initialization completed");
+                } catch (Exception ex) {
+                    Console.WriteLine($"❌ Background database initialization failed: {ex.Message}");
+                }
+            });
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Database initialization setup failed: {ex.Message}");
+        Console.WriteLine($"❌ Database initialization failed: {ex.Message}");
         Console.WriteLine($"   Stack trace: {ex.StackTrace}");
         Console.WriteLine("⚠️ The application will continue, but database operations may fail.");
+        Console.WriteLine("   Tables will be created automatically on first use if possible.");
     }
 }
 

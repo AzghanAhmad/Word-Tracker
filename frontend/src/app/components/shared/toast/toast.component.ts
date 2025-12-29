@@ -72,6 +72,10 @@ export class ToastComponent implements OnInit, OnDestroy {
 
     removeToast(id: number | undefined) {
         if (!id) return;
-        this.toasts = this.toasts.filter(t => t.id !== id);
+        // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+        setTimeout(() => {
+            this.toasts = this.toasts.filter(t => t.id !== id);
+            this.cdr.detectChanges();
+        }, 0);
     }
 }

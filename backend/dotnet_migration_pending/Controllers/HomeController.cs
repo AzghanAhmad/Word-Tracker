@@ -1,10 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
+using WordTracker.Api.Services;
 
 namespace WordTracker.Api.Controllers;
 
 [ApiController]
 public class HomeController : ControllerBase
 {
+    private readonly IDbService _db;
+
+    public HomeController(IDbService db)
+    {
+        _db = db;
+    }
+
     [HttpGet("/")]
     public IActionResult Get()
     {
@@ -41,6 +49,10 @@ public class HomeController : ControllerBase
                 dashboard = new
                 {
                     stats = "GET /dashboard/stats (requires auth)"
+                },
+                newsletter = new
+                {
+                    subscribe = "POST /newsletter/subscribe"
                 }
             },
             documentation = "See SETUP_GUIDE.md for API usage examples"

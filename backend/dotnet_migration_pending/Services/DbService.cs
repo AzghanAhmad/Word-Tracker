@@ -2995,4 +2995,144 @@ public class DbService : IDbService
             return "[]";
         }
     }
+
+    public bool SubscribeNewsletter(string email)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                _lastError = "Database connection string is not configured";
+                Console.WriteLine($"❌ Database connection string is empty");
+                return false;
+            }
+
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for SubscribeNewsletter");
+
+            // Ensure table exists (create if not exists)
+            try
+            {
+                using (var ensureTableCmd = conn.CreateCommand())
+                {
+                    ensureTableCmd.CommandText = @"CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        INDEX idx_email (email)
+                    )";
+                    ensureTableCmd.ExecuteNonQuery();
+                    Console.WriteLine($"✓ Newsletter subscriptions table ensured");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Warning: Could not ensure newsletter_subscriptions table exists: {ex.Message}");
+                // Continue anyway - table might already exist
+            }
+
+            // Check if email already exists
+            using (var checkCmd = conn.CreateCommand())
+            {
+                checkCmd.CommandText = "SELECT id FROM newsletter_subscriptions WHERE email = @email";
+                checkCmd.Parameters.AddWithValue("@email", email);
+                var existing = checkCmd.ExecuteScalar();
+                
+                if (existing != null)
+                {
+                    // Email already exists, update to active if it was inactive
+                    using var updateCmd = conn.CreateCommand();
+                    updateCmd.CommandText = @"UPDATE newsletter_subscriptions 
+                                           SET is_active = TRUE, subscribed_at = CURRENT_TIMESTAMP 
+                                           WHERE email = @email";
+                    updateCmd.Parameters.AddWithValue("@email", email);
+                    updateCmd.ExecuteNonQuery();
+                    Console.WriteLine($"✓ Newsletter subscription reactivated: {email}");
+                    return true;
+                }
+            }
+
+            // Insert new subscription
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"INSERT INTO newsletter_subscriptions (email, is_active) 
+                               VALUES (@email, TRUE)";
+            cmd.Parameters.AddWithValue("@email", email);
+            
+            var result = cmd.ExecuteNonQuery() == 1;
+            if (result)
+            {
+                Console.WriteLine($"✓ Newsletter subscription created: {email}");
+            }
+            else
+            {
+                Console.WriteLine($"✗ Failed to create newsletter subscription");
+            }
+            
+            return result;
+        }
+        catch (MySqlException ex) when (ex.Number == 1062) // Duplicate entry
+        {
+            _lastError = $"Email {email} is already subscribed";
+            Console.WriteLine($"✗ Duplicate newsletter subscription: {ex.Message}");
+            return false;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in SubscribeNewsletter: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in SubscribeNewsletter: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return false;
+        }
+    }
+
+    public bool ResetPasswordByEmail(string email, string newPasswordHash)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            Console.WriteLine($"✓ Database connection successful for ResetPasswordByEmail");
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE users SET password_hash = @hash WHERE email = @email";
+            cmd.Parameters.AddWithValue("@hash", newPasswordHash);
+            cmd.Parameters.AddWithValue("@email", email);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            if (rowsAffected > 0)
+            {
+                Console.WriteLine($"✓ Password reset for: {email}");
+                return true;
+            }
+            else
+            {
+                _lastError = "Email not found";
+                Console.WriteLine($"✗ Email not found for password reset: {email}");
+                return false;
+            }
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error in ResetPasswordByEmail: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error in ResetPasswordByEmail: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return false;
+        }
+    }
 }

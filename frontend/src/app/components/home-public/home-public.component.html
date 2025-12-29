@@ -208,9 +208,15 @@
             <h2>Join The Word Tracker Newsletter</h2>
             <p>Get writing tips, challenge updates, and product news.</p>
             <div class="subscribe-form">
-                <input type="email" placeholder="Enter your email address">
-                <button>Subscribe</button>
+                <input type="email" [(ngModel)]="newsletterEmail" name="newsletterEmail" placeholder="Enter your email address" (keyup.enter)="onSubscribe()">
+                <button (click)="onSubscribe()" [disabled]="isSubscribing">
+                    <span *ngIf="!isSubscribing">Subscribe</span>
+                    <span *ngIf="isSubscribing">
+                        <i class="fas fa-spinner fa-spin"></i> Subscribing...
+                    </span>
+                </button>
             </div>
+            <p *ngIf="subscribeMessage" [class]="subscribeMessageClass" class="subscribe-message">{{ subscribeMessage }}</p>
             <div class="social-icons">
                 <i class="fab fa-twitter"></i>
                 <i class="fab fa-facebook"></i>
