@@ -33,8 +33,11 @@ import { OrganizationComponent } from './components/organization/organization.co
 import { StatsComponent } from './components/stats/stats.component';
 import { ArchiveComponent } from './components/archive/archive';
 
+import { HomeUserComponent } from './components/home-user/home-user';
+
 export const routes: Routes = [
     { path: '', component: HomePublicComponent },
+    { path: 'home', component: HomeUserComponent, canActivate: [authGuard] },
     { path: 'login', component: LoginComponent },
     { path: 'register', component: RegisterComponent },
 

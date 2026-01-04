@@ -32,80 +32,30 @@
             <div class="card-header">
                 <h3>Cumulative Growth</h3>
                 <div class="chart-legend">
-                    <span class="dot"></span> Words Written
+                    <span class="dot"></span> Cumulative Word Count
                 </div>
             </div>
-            <div class="chart-wrapper">
-                <svg viewBox="0 0 800 200" preserveAspectRatio="none">
-                    <defs>
-                        <linearGradient id="lineGrad" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stop-color="#0D1B2A" stop-opacity="0.25" />
-                            <stop offset="90%" stop-color="#0D1B2A" stop-opacity="0" />
-                        </linearGradient>
-                    </defs>
-
-                    <!-- Grid Lines & Y-Axis Labels -->
-                    <g class="grid">
-                        <line x1="40" y1="160" x2="760" y2="160" stroke="#f1f5f9" />
-                        <line x1="40" y1="120" x2="760" y2="120" stroke="#f1f5f9" />
-                        <line x1="40" y1="80" x2="760" y2="80" stroke="#f1f5f9" />
-                        <line x1="40" y1="40" x2="760" y2="40" stroke="#f1f5f9" />
-
-                        <!-- Manual labels (simplified for demo) -->
-                        <text x="35" y="160" text-anchor="end" class="axis-label">0</text>
-                        <text x="35" y="40" text-anchor="end" class="axis-label">{{ getYLabel(1) }}</text>
-                    </g>
-
-                    <!-- Area -->
-                    <path [attr.d]="lineChartArea" fill="url(#lineGrad)"></path>
-
-                    <!-- Line -->
-                    <path [attr.d]="lineChartPoints" fill="none" stroke="#0D1B2A" stroke-width="3"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        style="filter: drop-shadow(0 4px 6px rgba(13, 27, 42, 0.3));"></path>
-
-                    <!-- Interactive Points with Tooltips -->
-                    <g class="data-points">
-                        <g *ngFor="let point of lineChartDataPoints; let i = index" class="point-group">
-                            <circle [attr.cx]="point.x" [attr.cy]="point.y" r="6" fill="#0D1B2A" stroke="white"
-                                stroke-width="2" class="chart-point" (mouseenter)="showTooltip(i)"
-                                (mouseleave)="hideTooltip()">
-                            </circle>
-                        </g>
-                    </g>
-                </svg>
-
-                <!-- Custom Tooltip -->
-                <div class="chart-tooltip" *ngIf="activeTooltip !== null" [style.left.px]="tooltipX"
-                    [style.top.px]="tooltipY">
-                    <div class="tooltip-content">
-                        <div class="tooltip-day">Day {{ lineChartDataPoints[activeTooltip]?.day }}</div>
-                        <div class="tooltip-value">{{ lineChartDataPoints[activeTooltip]?.words | number }} words</div>
-                    </div>
-                </div>
-            </div>
+            <app-output-stats-chart [data]="allDaysDataForChart"
+                [initialCount]="initialChartCount"></app-output-stats-chart>
         </div>
 
         <div class="bottom-grid">
             <!-- Last 14 Days (Bar Chart) -->
-            <div class="chart-card bar-chart-card">
-                <h3>Last 14 Days</h3>
-                <div class="bar-chart">
-                    <div class="bar-column" *ngFor="let day of activityData">
-                        <div class="bar-tooltip">{{ day.count | number }} words</div>
-                        <div class="bar-visual">
-                            <div class="bar-fill" [style.height.px]="getBarHeight(day.count)"
-                                [class.empty]="day.count === 0">
-                            </div>
-                        </div>
-                        <span class="bar-label">{{ day.date | date:'dd' }}</span>
+            <div class="chart-card">
+                <div class="card-header">
+                    <h3>Daily Activity</h3>
+                    <div class="chart-legend">
+                        <span class="dot"></span> Words per day
                     </div>
                 </div>
+                <app-daily-stats-chart [data]="activityData"></app-daily-stats-chart>
             </div>
 
             <!-- Contribution Heatmap -->
             <div class="chart-card heatmap-card">
-                <h3>Writing Frequency</h3>
+                <div class="card-header">
+                    <h3>Monthly Frequency</h3>
+                </div>
                 <div class="heatmap-grid">
                     <div class="week-col" *ngFor="let week of heatmapGrid">
                         <div class="day-cell" *ngFor="let day of week" [attr.data-level]="day.level"

@@ -204,6 +204,60 @@ $bg-color: #f8fafc;
         color: #334155;
         font-size: 1rem;
 
+        // Rich text styling
+        ::ng-deep {
+            p {
+                margin-bottom: 1rem;
+            }
+
+            ul,
+            ol {
+                margin-bottom: 1rem;
+                padding-left: 1.5rem;
+            }
+
+            ul {
+                list-style-type: disc;
+            }
+
+            ol {
+                list-style-type: decimal;
+            }
+
+            li {
+                margin-bottom: 0.25rem;
+            }
+
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                margin-top: 1.5rem;
+                margin-bottom: 0.75rem;
+                font-weight: 600;
+                color: #1e293b;
+            }
+
+            blockquote {
+                border-left: 4px solid #cbd5e1;
+                padding-left: 1rem;
+                margin-left: 0;
+                font-style: italic;
+                color: #64748b;
+            }
+
+            a {
+                color: $primary;
+                text-decoration: underline;
+
+                &:hover {
+                    text-decoration: none;
+                }
+            }
+        }
+
         .empty-state {
             color: $text-light;
             font-style: italic;
@@ -211,35 +265,33 @@ $bg-color: #f8fafc;
     }
 }
 
-// Goals Card
-.goals-card {
-    .goals-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
+// Goals & Config Grid Shared
+.goals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
 
-        .goal-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-            padding: 1rem;
-            background: $bg-color;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
+    .goal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 1rem;
+        background: $bg-color;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
 
-            .label {
-                font-size: 0.8rem;
-                font-weight: 600;
-                color: $text-light;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
+        .label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: $text-light;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-            .value {
-                font-size: 1.1rem;
-                font-weight: 700;
-                color: $text-dark;
-            }
+        .value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: $text-dark;
         }
     }
 }
@@ -326,7 +378,7 @@ $bg-color: #f8fafc;
     margin-bottom: 1.5rem;
     gap: 1rem;
 
-    > div:first-child {
+    >div:first-child {
         flex: 1;
     }
 
@@ -422,7 +474,8 @@ $bg-color: #f8fafc;
         gap: 0.75rem;
         justify-content: flex-end;
 
-        .btn-primary, .btn-secondary {
+        .btn-primary,
+        .btn-secondary {
             padding: 0.75rem 1.5rem;
             border: none;
             border-radius: 8px;
@@ -610,7 +663,10 @@ $bg-color: #f8fafc;
             }
         }
 
-        .btn-edit-small, .btn-delete-small, .btn-save-small, .btn-cancel-small {
+        .btn-edit-small,
+        .btn-delete-small,
+        .btn-save-small,
+        .btn-cancel-small {
             width: 32px;
             height: 32px;
             border: none;
@@ -808,6 +864,209 @@ $bg-color: #f8fafc;
         .divider {
             width: 100%;
             height: 1px;
+        }
+    }
+}
+
+// Visualization Card
+.visualization-card {
+    .view-toggles {
+        display: flex;
+        gap: 0.5rem;
+        background: #f1f5f9;
+        padding: 0.25rem;
+        border-radius: 8px;
+
+        button {
+            border: none;
+            background: transparent;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+
+            &:hover {
+                color: #1e293b;
+                background: rgba(255, 255, 255, 0.5);
+            }
+
+            &.active {
+                background: white;
+                color: #667eea;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+        }
+    }
+
+    .chart-container {
+        padding: 1rem 0;
+
+        .chart-wrapper {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1rem;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            position: relative; // Needed for tooltip positioning
+
+            .chart-tooltip {
+                position: absolute;
+                background: white;
+                padding: 1rem;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                border: 1px solid #e2e8f0;
+                pointer-events: none;
+                z-index: 10;
+                transform: translate(-50%, -110%); // Default centered
+                min-width: 150px;
+                transition: transform 0.1s ease-out, left 0.1s ease-out, top 0.1s ease-out;
+
+                &.tooltip-left {
+                    transform: translate(10px, -110%);
+                    /* Push slightly right of the cursor */
+                }
+
+                &.tooltip-right {
+                    transform: translate(calc(-100% - 10px), -110%);
+                    /* Push slightly left of the cursor */
+                }
+
+                .tooltip-date {
+                    font-weight: 600;
+                    color: $text-dark;
+                    margin-bottom: 0.75rem;
+                    font-size: 0.9rem;
+                    border-bottom: 1px solid #f1f5f9;
+                    padding-bottom: 0.5rem;
+                }
+
+                .tooltip-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    margin-bottom: 0.5rem;
+
+                    &:last-child {
+                        margin-bottom: 0;
+                    }
+
+                    .dot {
+                        width: 10px;
+                        height: 10px;
+                        border-radius: 50%;
+                        display: block;
+
+                        &.target {
+                            background: #cbd5e1;
+                        }
+
+                        &.actual {
+                            // Color set dynamically, default fallback
+                            background-color: #6366f1;
+                        }
+                    }
+
+                    .label {
+                        font-size: 0.75rem;
+                        color: $text-light;
+                        text-transform: uppercase;
+                        font-weight: 600;
+                    }
+
+                    .value {
+                        font-size: 0.95rem;
+                        font-weight: 700;
+                        color: $text-dark;
+                    }
+                }
+            }
+        }
+
+        .main-chart {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+        }
+
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #64748b;
+
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                display: inline-block;
+
+                &.target {
+                    background: #cbd5e1;
+                    border: 2px solid white;
+                    box-shadow: 0 0 0 1px #cbd5e1;
+                }
+            }
+        }
+    }
+
+    .table-container {
+        overflow-x: auto;
+        margin-top: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+
+            th,
+            td {
+                padding: 0.75rem 1rem;
+                text-align: left;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            th {
+                background: #f8fafc;
+                font-weight: 600;
+                color: #64748b;
+                font-size: 0.85rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                position: sticky;
+                top: 0;
+            }
+
+            td {
+                color: #1e293b;
+            }
+
+            .text-green {
+                color: #10b981;
+                font-weight: 600;
+            }
+
+            .text-red {
+                color: #ef4444;
+                font-weight: 600;
+            }
         }
     }
 }

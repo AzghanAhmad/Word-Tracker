@@ -272,5 +272,80 @@ public class UserController : ControllerBase
             return StatusCode(500, new { success = false, message = "Failed to delete account" });
         }
     }
+    /// <summary>
+    /// Upload user avatar
+    /// POST /user/avatar
+    /// </summary>
+    [Authorize]
+    [HttpPost("avatar")]
+    public async Task<IActionResult> UploadAvatar(IFormFile avatar)
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📸 Avatar upload request for user {userId}");
+            
+            if (avatar == null || avatar.Length == 0)
+            {
+                return BadRequest(new { success = false, message = "No file uploaded" });
+            }
+            
+            // Validate file type
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var extension = Path.GetExtension(avatar.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                return BadRequest(new { success = false, message = "Invalid file type. Allowed: JPG, PNG, GIF, WEBP" });
+            }
+            
+            // Validate file size (max 5MB)
+            if (avatar.Length > 5 * 1024 * 1024)
+            {
+                return BadRequest(new { success = false, message = "File too large. Max 5MB allowed." });
+            }
+            
+            // Create uploads directory if it doesn't exist
+            var currentDir = Directory.GetCurrentDirectory();
+            var possibleUploadsBase = new[]
+            {
+                Path.Combine(currentDir, "wwwroot"),
+                Path.Combine(currentDir, "backend", "dotnet_migration_pending", "wwwroot")
+            };
+            
+            string wwwroot = possibleUploadsBase.FirstOrDefault(Directory.Exists) ?? Path.Combine(currentDir, "wwwroot");
+            var uploadsDir = Path.Combine(wwwroot, "uploads", "avatars");
+            
+            if (!Directory.Exists(uploadsDir))
+            {
+                Directory.CreateDirectory(uploadsDir);
+            }
+            
+            // Generate unique filename
+            var fileName = $"avatar_{userId}_{DateTime.UtcNow.Ticks}{extension}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+            
+            // Save file
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await avatar.CopyToAsync(stream);
+            }
+            
+            // Update database
+            var avatarUrl = $"/uploads/avatars/{fileName}";
+            var success = _db.UpdateUserAvatar(userId, avatarUrl);
+            
+            if (success)
+            {
+                return Ok(new { success = true, message = "Avatar uploaded successfully", avatar_url = avatarUrl });
+            }
+            
+            return StatusCode(500, new { success = false, message = "Failed to update user record" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error uploading avatar: {ex.Message}");
+            return StatusCode(500, new { success = false, message = "Failed to upload avatar" });
+        }
+    }
 }
 

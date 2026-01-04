@@ -14,7 +14,7 @@ import { filter } from 'rxjs/operators';
 })
 export class CreateChecklistComponent implements OnInit {
     checklistName: string = '';
-    items: { text: string; is_done: boolean }[] = [];
+    items: { id?: number; text: string; checked: boolean }[] = [];
     newItemText: string = '';
     planId: number | null = null;
     isLoading: boolean = false;
@@ -40,7 +40,7 @@ export class CreateChecklistComponent implements OnInit {
 
         // Load checklist immediately
         this.checkAndLoadChecklist();
-        
+
         // Reload on navigation back to this page
         this.router.events.pipe(
             filter(event => event instanceof NavigationEnd)
@@ -54,12 +54,12 @@ export class CreateChecklistComponent implements OnInit {
     checkAndLoadChecklist() {
         // Check for route param ID (e.g., /create-checklist/:id)
         const routeId = this.route.snapshot.paramMap.get('id');
-        
+
         // Check for query param ID (e.g., /create-checklist?edit=id)
         const queryId = this.route.snapshot.queryParamMap.get('edit');
-        
+
         const id = routeId || queryId;
-        
+
         if (id) {
             this.isEditMode = true;
             this.checklistId = Number(id);
@@ -77,22 +77,26 @@ export class CreateChecklistComponent implements OnInit {
     }
 
     loadChecklist(id: number) {
-        setTimeout(() => {
-            this.isLoadingData = true;
-            this.cdr.detectChanges();
-        }, 0);
-        
+        this.isLoadingData = true;
+        this.cdr.detectChanges();
+
         this.apiService.getChecklist(id).subscribe({
             next: (response) => {
-                console.log('Checklist response:', response);
+                // console.log('Checklist response:', response);
                 if (response.success && response.data) {
                     const checklist = response.data;
                     this.checklistName = checklist.name || checklist.title || '';
                     this.planId = checklist.plan_id || null;
-                    this.items = checklist.items ? checklist.items.map((i: any) => ({
-                        text: i.text || i.content || '',
-                        is_done: i.is_done || false
-                    })) : [];
+                    this.items = checklist.items ? checklist.items.map((i: any) => {
+                        // Support both checked, is_done, and is_completed for maximum compatibility
+                        const isDone = i.checked !== undefined ? i.checked :
+                            (i.is_done !== undefined ? i.is_done : i.is_completed);
+                        return {
+                            id: i.id,
+                            text: i.text || i.content || '',
+                            checked: !!isDone
+                        };
+                    }) : [];
 
                     // Ensure at least one empty item if list is empty
                     if (this.items.length === 0) this.addItem();
@@ -100,23 +104,20 @@ export class CreateChecklistComponent implements OnInit {
                     console.error('Checklist not found');
                     this.router.navigate(['/my-checklists']);
                 }
-                setTimeout(() => {
-                    this.isLoadingData = false;
-                    this.cdr.detectChanges();
-                }, 0);
+                this.isLoadingData = false;
+                this.cdr.detectChanges();
             },
             error: (err) => {
                 console.error('Error loading checklist:', err);
-                setTimeout(() => {
-                    this.isLoadingData = false;
-                    this.cdr.detectChanges();
-                }, 0);
+                this.isLoadingData = false;
+                this.cdr.detectChanges();
             }
         });
     }
 
     addItem() {
-        this.items.push({ text: '', is_done: false });
+        this.items.push({ text: '', checked: false });
+        this.cdr.detectChanges();
     }
 
     removeItem(index: number) {
@@ -139,6 +140,32 @@ export class CreateChecklistComponent implements OnInit {
         }
     }
 
+    toggleItemStatus(item: any) {
+        // Toggle locally first (optimistic UI)
+        item.checked = !item.checked;
+        this.cdr.detectChanges();
+
+        // If in Edit Mode and item has an ID, save immediately to backend
+        if (this.isEditMode && item.id) {
+            this.apiService.updateChecklistItem(item.id, item.checked).subscribe({
+                next: (response) => {
+                    if (!response.success) {
+                        // Revert on failure
+                        item.checked = !item.checked;
+                        console.error('Failed to update item status');
+                        this.cdr.detectChanges();
+                    }
+                },
+                error: (err) => {
+                    // Revert on error
+                    item.checked = !item.checked;
+                    console.error('Error updating item status:', err);
+                    this.cdr.detectChanges();
+                }
+            });
+        }
+    }
+
     saveChecklist() {
         if (!this.checklistName) {
             alert('Please enter a checklist name.');
@@ -146,24 +173,29 @@ export class CreateChecklistComponent implements OnInit {
         }
 
         // Filter out empty items
-        const validItems = this.items.filter(item => item.text.trim() !== '');
+        const validItems = this.items.filter(item => item && item.text && item.text.trim() !== '');
 
         if (validItems.length === 0) {
             alert('Please add at least one item to the checklist.');
             return;
         }
 
-        setTimeout(() => {
-            this.isLoading = true;
-            this.cdr.detectChanges();
-        }, 0);
-        
+        this.isLoading = true;
+        this.cdr.detectChanges();
+
         const payload = {
             plan_id: this.planId,
             name: this.checklistName,
-            items: validItems.map(it => ({ text: it.text }))
-            // Note: C Backend update endpoint might differ, usually we need separate Update API logic
-            // Assuming we reuse create logic or if there is an update endpoint
+            items: validItems.map(it => ({
+                id: it.id || null,
+                text: it.text,
+                checked: !!it.checked
+            })),
+            tasks: validItems.map(it => ({
+                id: it.id || null,
+                text: it.text,
+                checked: !!it.checked
+            }))
         };
 
         if (this.isEditMode && this.checklistId) {
@@ -175,18 +207,14 @@ export class CreateChecklistComponent implements OnInit {
                     } else {
                         alert('Error updating checklist: ' + response.message);
                     }
-                    setTimeout(() => {
-                        this.isLoading = false;
-                        this.cdr.detectChanges();
-                    }, 0);
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
                 },
                 error: (err) => {
                     console.error('Error updating checklist:', err);
                     alert('An error occurred while updating the checklist.');
-                    setTimeout(() => {
-                        this.isLoading = false;
-                        this.cdr.detectChanges();
-                    }, 0);
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
                 }
             });
             return;
@@ -199,18 +227,14 @@ export class CreateChecklistComponent implements OnInit {
                 } else {
                     alert('Error creating checklist: ' + response.message);
                 }
-                setTimeout(() => {
-                    this.isLoading = false;
-                    this.cdr.detectChanges();
-                }, 0);
+                this.isLoading = false;
+                this.cdr.detectChanges();
             },
             error: (err) => {
                 console.error('Error creating checklist:', err);
                 alert('An error occurred while creating the checklist.');
-                setTimeout(() => {
-                    this.isLoading = false;
-                    this.cdr.detectChanges();
-                }, 0);
+                this.isLoading = false;
+                this.cdr.detectChanges();
             }
         });
     }

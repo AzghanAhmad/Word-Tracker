@@ -4,6 +4,8 @@ import { Router, NavigationEnd } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { ApiService } from '../../services/api.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
+import { OutputStatsChartComponent } from './output-stats-chart/output-stats-chart.component';
+import { DailyStatsChartComponent } from './daily-stats-chart/daily-stats-chart.component';
 import { filter } from 'rxjs/operators';
 
 interface DayStat {
@@ -20,7 +22,7 @@ interface ActivityDay {
 @Component({
     selector: 'app-stats',
     standalone: true,
-    imports: [CommonModule, NavbarComponent, ContentLoaderComponent],
+    imports: [CommonModule, NavbarComponent, ContentLoaderComponent, OutputStatsChartComponent, DailyStatsChartComponent],
     templateUrl: './stats.component.html',
     styleUrls: ['./stats.component.scss']
 })
@@ -35,6 +37,8 @@ export class StatsComponent implements OnInit {
 
     // Chart Data
     activityData: DayStat[] = []; // Last 14 days
+    allDaysDataForChart: DayStat[] = [];
+    initialChartCount: number = 0;
     heatmapGrid: ActivityDay[][] = []; // Weeks x Days
 
     // Line Chart (Cumulative)
@@ -77,7 +81,7 @@ export class StatsComponent implements OnInit {
         }
 
         this.loadStats();
-        
+
         // Reload on navigation back to this page
         this.router.events.pipe(
             filter(event => event instanceof NavigationEnd)
@@ -97,25 +101,74 @@ export class StatsComponent implements OnInit {
                 console.log('Stats response:', response);
                 if (response.success && response.data) {
                     const data = response.data;
-                    
+
                     // Set metrics
                     this.totalWords = data.totalWords || 0;
                     this.weeklyAvg = data.weeklyAvg || 0;
                     this.bestDay = data.bestDay || 0;
                     this.currentStreak = data.currentStreak || 0;
-                    
+
                     // Process activity data
-                    const allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => ({
+                    let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => ({
                         date: d.date,
                         count: d.count || 0
                     }));
-                    
+
+                    // Calculate initial offset (Total Words - Sum of Fetched Period)
+                    const fetchedTotal = allDaysData.reduce((sum, d) => sum + d.count, 0);
+                    this.initialChartCount = Math.max(0, this.totalWords - fetchedTotal);
+
+                    // Sort strict by date
+                    allDaysData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                    // Use ALL data points (start from the very first recorded day, active or not)
+                    if (allDaysData.length > 0) {
+                        const filledData: DayStat[] = [];
+
+                        // Parse start date safely as local date
+                        const startParts = allDaysData[0].date.split('-');
+                        const startDate = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]));
+                        const endDate = new Date(); // Today
+
+                        // Normalize to midnight
+                        startDate.setHours(0, 0, 0, 0);
+                        endDate.setHours(0, 0, 0, 0);
+
+                        // Helper for YYYY-MM-DD in local time
+                        const toLocalISOString = (date: Date) => {
+                            const y = date.getFullYear();
+                            const m = String(date.getMonth() + 1).padStart(2, '0');
+                            const d = String(date.getDate()).padStart(2, '0');
+                            return `${y}-${m}-${d}`;
+                        };
+
+                        // Safe map creation
+                        const dataMap = new Map();
+                        allDaysData.forEach(d => {
+                            dataMap.set(d.date, d.count);
+                        });
+
+                        // Iterate day by day from Start to Today
+                        const current = new Date(startDate);
+                        while (current <= endDate) {
+                            const dateStr = toLocalISOString(current);
+                            filledData.push({
+                                date: dateStr,
+                                count: dataMap.get(dateStr) || 0
+                            });
+                            current.setDate(current.getDate() + 1);
+                        }
+                        this.allDaysDataForChart = filledData;
+                    } else {
+                        this.allDaysDataForChart = [];
+                    }
+
                     // Last 14 days for bar chart
                     this.activityData = (data.activityData || []).map((d: any) => ({
                         date: d.date,
                         count: d.count || 0
                     }));
-                    
+
                     // Prepare Charts
                     this.prepareLineChart(allDaysData);
                     this.prepareHeatmap(allDaysData);
@@ -155,8 +208,6 @@ export class StatsComponent implements OnInit {
         }
         return streak;
     }
-
-    // --- SVG Charts Logic ---
 
     // --- SVG Charts Logic ---
 
@@ -252,38 +303,51 @@ export class StatsComponent implements OnInit {
     }
 
     prepareHeatmap(allData: DayStat[]) {
-        if (!allData || allData.length === 0) {
-            this.heatmapGrid = [];
-            return;
+        // Generate a 30-week grid ending at the current week
+        const totalWeeks = 30;
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
+
+        // Align to the start of the current week (Sunday)
+        const currentWeekStart = new Date(today);
+        currentWeekStart.setDate(today.getDate() - dayOfWeek);
+        currentWeekStart.setHours(0, 0, 0, 0);
+
+        // Calculate the start date of the grid (51 weeks ago)
+        const gridStartDate = new Date(currentWeekStart);
+        gridStartDate.setDate(gridStartDate.getDate() - ((totalWeeks - 1) * 7));
+
+        // Create a lookup map for data
+        const dataMap = new Map<string, number>();
+        if (allData) {
+            allData.forEach(d => {
+                // Ensure date format consistency
+                const dateKey = new Date(d.date).toISOString().split('T')[0];
+                dataMap.set(dateKey, d.count);
+            });
         }
 
-        // github style heatmap (weeks x 7 days)
-        // take last ~3 months
-        const last90 = allData.slice(-60); // simplified 2 months
-
-        // We need to group by week
-        // This logic needs to align days correctly (Sunday to Saturday)
-        // Simplified: Just 8 weeks column
-
         const weeks: ActivityDay[][] = [];
-        let currentWeek: ActivityDay[] = [];
 
-        // Fill up to start on correct day? 
-        // For simplicity, let's just show raw columns of 7 days
+        for (let w = 0; w < totalWeeks; w++) {
+            const week: ActivityDay[] = [];
+            for (let d = 0; d < 7; d++) {
+                const currentDate = new Date(gridStartDate);
+                // Calculate date: Start + (Weeks * 7) + Days
+                currentDate.setDate(gridStartDate.getDate() + (w * 7) + d);
 
-        last90.forEach((d, i) => {
-            const date = new Date(d.date);
-            const level = this.getLevel(d.count);
+                const dateKey = currentDate.toISOString().split('T')[0];
+                const count = dataMap.get(dateKey) || 0;
+                const level = this.getLevel(count);
 
-            currentWeek.push({ date, count: d.count, level });
-
-            if (currentWeek.length === 7) {
-                weeks.push(currentWeek);
-                currentWeek = [];
+                week.push({
+                    date: currentDate,
+                    count: count,
+                    level: level
+                });
             }
-        });
-
-        if (currentWeek.length > 0) weeks.push(currentWeek);
+            weeks.push(week);
+        }
 
         this.heatmapGrid = weeks;
     }

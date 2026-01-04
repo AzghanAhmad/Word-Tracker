@@ -59,11 +59,89 @@
         }
     }
 
-    /* Setting Row Layout */
     .setting-row {
         display: flex;
         gap: 3rem;
         align-items: flex-start;
+
+        &.avatar-setting {
+            .profile-pic-setup {
+                display: flex;
+                align-items: center;
+                gap: 2rem;
+
+                @media (max-width: 768px) {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 1.5rem;
+                }
+            }
+
+            .current-avatar {
+                width: 100px;
+                height: 100px;
+                flex-shrink: 0;
+
+                .settings-avatar-img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 8px;
+                    border: 1px solid #ddd;
+                }
+
+                .settings-avatar-placeholder {
+                    width: 100%;
+                    height: 100%;
+                    background: #f1f5f9;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    color: #667eea;
+                    border-radius: 8px;
+                    border: 2px dashed #cbd5e1;
+                }
+            }
+
+            .avatar-controls {
+                flex: 1;
+
+                .value-text {
+                    margin-bottom: 1rem;
+                }
+
+                .btn-secondary {
+                    background: white;
+                    border: 1px solid #ddd;
+                    padding: 0.65rem 1.25rem;
+                    border-radius: 4px;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    color: #333;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    transition: all 0.2s;
+
+                    &:hover:not(:disabled) {
+                        background: #f8f9fa;
+                        border-color: #ccc;
+                    }
+
+                    &:disabled {
+                        opacity: 0.6;
+                        cursor: not-allowed;
+                    }
+
+                    i {
+                        font-size: 0.85rem;
+                    }
+                }
+            }
+        }
 
         .setting-label {
             width: 180px;

@@ -1,13 +1,35 @@
 <div class="auth-layout">
     <!-- Auth Card Container -->
     <main class="auth-main">
-        <div class="auth-card">
-            <ng-content></ng-content>
+        <div class="auth-container">
+            <!-- Left Side: Attractive Text -->
+            <div class="auth-welcome-text">
+                <h1>Track Your<br>Writing Journey</h1>
+                <p>Analyze your progress, build consistent habits, and achieve your author goals with detailed insights
+                    and privacy-focused tracking.</p>
+
+                <div class="feature-pills">
+                    <div class="pill"><i class="fas fa-chart-line"></i> Analytics</div>
+                    <div class="pill"><i class="fas fa-calendar-check"></i> Habit Building</div>
+                    <div class="pill"><i class="fas fa-trophy"></i> Challenges</div>
+                </div>
+            </div>
+
+            <!-- Right Side: Auth Form -->
+            <div class="auth-card-container">
+                <div class="auth-card">
+                    <ng-content></ng-content>
+                </div>
+            </div>
         </div>
     </main>
 
     <!-- Footer -->
     <footer class="auth-footer">
-        <p>Word Tracker, © 2025, All Rights Reserved.</p>
+        <div class="sc-branding">
+            <span><i>AuthorFlow from</i></span> &nbsp;<span class="sc-name"> ScribeCount</span>
+
+        </div>
+        <p>&copy; 2026 ScribeCount. All rights reserved.</p>
     </footer>
 </div>

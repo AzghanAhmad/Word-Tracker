@@ -312,6 +312,7 @@ public class PlansController : ControllerBase
         };
         var frontendStatus = statusMap.ContainsKey(status) ? statusMap[status] : "In Progress";
         var totalWords = GetInt("total_word_count", 0);
+        var currentProgress = GetInt("current_progress", 0);
         var dashboardColor = GetString("dashboard_color", "#000000");
 
         return new Dictionary<string, object>
@@ -321,7 +322,7 @@ public class PlansController : ControllerBase
             ["title"] = GetString("title", ""),
             ["total_word_count"] = totalWords,
             ["target_amount"] = totalWords,
-            ["completed_amount"] = 0,
+            ["completed_amount"] = (int)Math.Round((double)totalWords * currentProgress / 100.0),
             ["start_date"] = GetString("start_date", ""),
             ["end_date"] = GetString("end_date", ""),
             ["algorithm_type"] = GetString("algorithm_type", ""),
@@ -346,8 +347,8 @@ public class PlansController : ControllerBase
             ["progress_tracking_type"] = GetString("progress_tracking_type", "Daily Goals"),
             ["activity_type"] = GetString("activity_type", "Writing"),
             ["content_type"] = GetString("content_type", "Novel"),
-            ["current_progress"] = GetInt("current_progress", 0),
-            ["progress"] = 0
+            ["current_progress"] = currentProgress,
+            ["progress"] = currentProgress
         };
     }
 

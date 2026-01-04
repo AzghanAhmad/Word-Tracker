@@ -2,7 +2,7 @@
     <div class="navbar-container">
         <!-- Logo Section -->
         <div class="nav-left">
-            <a [routerLink]="isPublic ? '/' : '/dashboard'" class="logo" (click)="closeMobileMenu()">
+            <a [routerLink]="isPublic ? '/' : '/home'" class="logo" (click)="closeMobileMenu()">
                 <img src="assets/logo-new.png" alt="ScribeCount Logo" class="logo-img">
             </a>
 
@@ -14,10 +14,14 @@
 
                 <!-- App Links -->
                 <ng-container *ngIf="!isPublic">
-                    <a routerLink="/dashboard" class="nav-link" (click)="closeMobileMenu()">Dashboard</a>
-                    <a routerLink="/my-checklists" class="nav-link" (click)="closeMobileMenu()">Checklists</a>
-                    <a routerLink="/challenges" class="nav-link" (click)="closeMobileMenu()">Challenges</a>
-                    <a routerLink="/community" class="nav-link" (click)="closeMobileMenu()">Community</a>
+                    <a routerLink="/dashboard" routerLinkActive="active" class="nav-link"
+                        (click)="closeMobileMenu()">Dashboard</a>
+                    <a routerLink="/my-checklists" routerLinkActive="active" class="nav-link"
+                        (click)="closeMobileMenu()">Checklists</a>
+                    <a routerLink="/challenges" routerLinkActive="active" class="nav-link"
+                        (click)="closeMobileMenu()">Challenges</a>
+                    <a routerLink="/community" routerLinkActive="active" class="nav-link"
+                        (click)="closeMobileMenu()">Community</a>
                 </ng-container>
             </div>
         </div>
@@ -26,14 +30,33 @@
         <div class="nav-right desktop-only">
             <!-- Public Auth -->
             <ng-container *ngIf="isPublic">
-                <a routerLink="/login" class="btn-login">Log In</a>
-                <a routerLink="/register" class="btn-signup">Sign Up</a>
+                <ng-container *ngIf="!isLoggedIn">
+                    <a routerLink="/login" class="btn-login">Log In</a>
+                    <a routerLink="/register" class="btn-signup">Sign Up</a>
+                </ng-container>
+                <ng-container *ngIf="isLoggedIn">
+                    <a routerLink="/dashboard" class="btn-login">Dashboard</a>
+                    <a routerLink="/profile" class="btn-profile" (click)="closeMobileMenu()">
+                        <div class="user-avatar-mini" *ngIf="userAvatar">
+                            <img [src]="userAvatar" alt="User Avatar">
+                        </div>
+                        <div class="user-initials-mini" *ngIf="!userAvatar">
+                            {{ userInitials }}
+                        </div>
+                        <span>Profile</span>
+                    </a>
+                </ng-container>
             </ng-container>
 
             <!-- App Controls -->
             <ng-container *ngIf="!isPublic">
                 <a routerLink="/profile" class="btn-profile" (click)="closeMobileMenu()">
-                    <i class="fas fa-user-circle"></i>
+                    <div class="user-avatar-mini" *ngIf="userAvatar">
+                        <img [src]="userAvatar" alt="User Avatar">
+                    </div>
+                    <div class="user-initials-mini" *ngIf="!userAvatar">
+                        {{ userInitials }}
+                    </div>
                     <span>Profile</span>
                 </a>
                 <button class="btn-logout" (click)="logout()">
@@ -57,19 +80,25 @@
         <div class="mobile-links">
             <!-- Public Mobile Links -->
             <ng-container *ngIf="isPublic">
-                <div class="mobile-auth">
+                <div class="mobile-auth" *ngIf="!isLoggedIn">
                     <a routerLink="/login" class="btn-login" (click)="closeMobileMenu()">Log In</a>
                     <a routerLink="/register" class="btn-signup" (click)="closeMobileMenu()">Sign Up</a>
+                </div>
+                <div class="mobile-auth" *ngIf="isLoggedIn">
+                    <a routerLink="/dashboard" class="btn-login" (click)="closeMobileMenu()">Dashboard</a>
+                    <a routerLink="/profile" class="btn-signup" (click)="closeMobileMenu()">Profile</a>
+                    <a (click)="logout(); closeMobileMenu()" class="logout-link"
+                        style="text-align: center; display: block; margin-top: 1rem;">Log Out</a>
                 </div>
             </ng-container>
 
             <!-- App Mobile Links -->
             <ng-container *ngIf="!isPublic">
-                <a routerLink="/dashboard" (click)="closeMobileMenu()">Dashboard</a>
-                <a routerLink="/my-checklists" (click)="closeMobileMenu()">Checklists</a>
-                <a routerLink="/challenges" (click)="closeMobileMenu()">Challenges</a>
-                <a routerLink="/community" (click)="closeMobileMenu()">Community</a>
-                <a routerLink="/profile" (click)="closeMobileMenu()">Profile</a>
+                <a routerLink="/dashboard" routerLinkActive="active" (click)="closeMobileMenu()">Dashboard</a>
+                <a routerLink="/my-checklists" routerLinkActive="active" (click)="closeMobileMenu()">Checklists</a>
+                <a routerLink="/challenges" routerLinkActive="active" (click)="closeMobileMenu()">Challenges</a>
+                <a routerLink="/community" routerLinkActive="active" (click)="closeMobileMenu()">Community</a>
+                <a routerLink="/profile" routerLinkActive="active" (click)="closeMobileMenu()">Profile</a>
                 <a (click)="logout()" class="logout-link">Log Out</a>
             </ng-container>
         </div>

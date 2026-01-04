@@ -12,8 +12,8 @@ public class ChecklistsController : ControllerBase
     public ChecklistsController(IDbService db) { _db = db; }
     private int UserId() => int.Parse(User.Claims.First(c => c.Type == "user_id").Value);
 
-    public record ChecklistItemRequest(string text, bool? is_done);
-    public record CreateChecklistRequest(string name, int? plan_id, ChecklistItemRequest[]? items);
+    public record ChecklistItemRequest(int? id, string text, bool? is_done, bool? is_completed, bool? @checked);
+    public record CreateChecklistRequest(string name, int? plan_id, ChecklistItemRequest[]? items, ChecklistItemRequest[]? tasks);
     public record AddItemRequest(int checklist_id, string content);
     public record ArchiveRequest(bool is_archived);
 
@@ -47,14 +47,19 @@ public class ChecklistsController : ControllerBase
             var userId = UserId();
             Console.WriteLine($"📝 Creating checklist for user {userId}: {req.name}");
 
+            // Combine items and tasks for maximum compatibility
+            var allItems = new List<ChecklistItemRequest>();
+            if (req.items != null) allItems.AddRange(req.items);
+            if (req.tasks != null) allItems.AddRange(req.tasks);
+
             // Convert items to JsonElement array for the service
             System.Text.Json.JsonElement[]? itemsArray = null;
-            if (req.items != null && req.items.Length > 0)
+            if (allItems.Count > 0)
             {
-                Console.WriteLine($"   Processing {req.items.Length} items");
+                Console.WriteLine($"   Processing {allItems.Count} items");
                 try
                 {
-                    var itemsJson = System.Text.Json.JsonSerializer.Serialize(req.items);
+                    var itemsJson = System.Text.Json.JsonSerializer.Serialize(allItems);
                     Console.WriteLine($"   Items JSON: {itemsJson}");
                     var itemsDoc = System.Text.Json.JsonDocument.Parse(itemsJson);
                     itemsArray = itemsDoc.RootElement.EnumerateArray().ToArray();
@@ -78,7 +83,9 @@ public class ChecklistsController : ControllerBase
             if (checklistId > 0)
             {
                 Console.WriteLine($"✅ Checklist created successfully with ID: {checklistId}");
-                return StatusCode(201, new { success = true, message = "Checklist created successfully", id = checklistId });
+                var savedJson = _db.GetChecklistJson(checklistId, userId);
+                var savedObj = string.IsNullOrEmpty(savedJson) ? null : System.Text.Json.JsonSerializer.Deserialize<object>(savedJson);
+                return StatusCode(201, new { success = true, message = "Checklist created successfully", id = checklistId, data = savedObj });
             }
 
             var errorMsg = _db.GetLastError();
@@ -199,12 +206,17 @@ public class ChecklistsController : ControllerBase
             var userId = UserId();
             Console.WriteLine($"   User ID: {userId}");
 
+            // Combine items and tasks for maximum compatibility
+            var allItems = new List<ChecklistItemRequest>();
+            if (req.items != null) allItems.AddRange(req.items);
+            if (req.tasks != null) allItems.AddRange(req.tasks);
+
             // Convert items to JsonElement array
             System.Text.Json.JsonElement[]? itemsArray = null;
-            if (req.items != null && req.items.Length > 0)
+            if (allItems.Count > 0)
             {
-                Console.WriteLine($"   Processing {req.items.Length} items");
-                var itemsJson = System.Text.Json.JsonSerializer.Serialize(req.items);
+                Console.WriteLine($"   Processing {allItems.Count} items");
+                var itemsJson = System.Text.Json.JsonSerializer.Serialize(allItems);
                 Console.WriteLine($"   Items JSON: {itemsJson}");
                 var itemsDoc = System.Text.Json.JsonDocument.Parse(itemsJson);
                 itemsArray = itemsDoc.RootElement.EnumerateArray().ToArray();
@@ -216,12 +228,14 @@ public class ChecklistsController : ControllerBase
             }
 
             Console.WriteLine($"   Calling UpdateChecklist...");
-            var ok = _db.UpdateChecklist(id, userId, req.name, itemsArray);
+            var ok = _db.UpdateChecklist(id, userId, req.plan_id, req.name, itemsArray);
             
             if (ok)
             {
                 Console.WriteLine($"✅ Checklist {id} updated successfully");
-                return Ok(new { success = true, message = "Checklist updated successfully" });
+                var savedJson = _db.GetChecklistJson(id, userId);
+                var savedObj = string.IsNullOrEmpty(savedJson) ? null : System.Text.Json.JsonSerializer.Deserialize<object>(savedJson);
+                return Ok(new { success = true, message = "Checklist updated successfully", data = savedObj });
             }
 
             var errorMsg = _db.GetLastError();

@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthLayoutComponent } from '../auth-layout/auth-layout.component';
 import { ApiService } from '../../services/api.service';
 import { environment } from '../../../environments/environment';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-register',
@@ -24,7 +25,8 @@ export class RegisterComponent {
 
   constructor(
     private router: Router,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private notificationService: NotificationService
   ) { }
 
   onRegister() {
@@ -49,7 +51,7 @@ export class RegisterComponent {
     }
 
     this.isLoading = true;
-    
+
     console.log('🚀 Starting registration...');
     console.log('📧 Email:', this.email);
     console.log('👤 Username:', this.username);
@@ -61,6 +63,7 @@ export class RegisterComponent {
 
         if (result.success) {
           this.successMessage = 'Account created successfully! Redirecting to login...';
+          this.notificationService.showSuccess('Account created successfully!');
 
           // Redirect after 2 seconds
           setTimeout(() => {
@@ -68,12 +71,14 @@ export class RegisterComponent {
           }, 2000);
         } else {
           this.errorMessage = result.message || 'Registration failed. Please try again.';
+          this.notificationService.showError(this.errorMessage);
         }
         this.isLoading = false;
       },
       error: (error) => {
         console.error('Register error:', error);
         this.errorMessage = error.error?.message || 'Connection error. Please check if the backend server is running.';
+        this.notificationService.showError(this.errorMessage);
         this.isLoading = false;
       }
     });

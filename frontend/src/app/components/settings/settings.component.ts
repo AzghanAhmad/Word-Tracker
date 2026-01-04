@@ -18,6 +18,7 @@ export class SettingsComponent implements OnInit {
     isSaving = false;
     username: string = '';
     email: string = '';
+    avatar_url: string = '';
 
     // Profession options
     professionOptions = [
@@ -69,7 +70,7 @@ export class SettingsComponent implements OnInit {
     errorMessage: string = '';
 
     constructor(
-        private apiService: ApiService, 
+        private apiService: ApiService,
         private router: Router,
         private cdr: ChangeDetectorRef
     ) { }
@@ -84,7 +85,7 @@ export class SettingsComponent implements OnInit {
         this.loadUserDetails();
         this.loadSettings();
         this.loadUserStats();
-        
+
         // Reload on navigation back to this page
         this.router.events.pipe(
             filter(event => event instanceof NavigationEnd)
@@ -102,15 +103,18 @@ export class SettingsComponent implements OnInit {
                 if (response.success && response.data) {
                     this.username = response.data.username || localStorage.getItem('username') || 'Guest';
                     this.email = response.data.email || localStorage.getItem('email') || 'user@example.com';
+                    this.avatar_url = response.data.avatar_url || localStorage.getItem('avatar_url') || '';
                 } else {
                     this.username = localStorage.getItem('username') || 'Guest';
                     this.email = localStorage.getItem('email') || 'user@example.com';
                 }
+                this.cdr.detectChanges();
             },
             error: (err) => {
                 console.error('Error loading user details:', err);
                 this.username = localStorage.getItem('username') || 'Guest';
                 this.email = localStorage.getItem('email') || 'user@example.com';
+                this.cdr.detectChanges();
             }
         });
     }
@@ -123,28 +127,28 @@ export class SettingsComponent implements OnInit {
             next: (response) => {
                 if (response.success && response.data) {
                     const data = response.data;
-                    
+
                     // Date & Time
                     this.dateFormat = data.date_format || 'MM/DD/YYYY';
                     this.weekStartDay = data.week_start_day || 'Monday';
-                    
+
                     // Email reminders
                     this.emailRemindersEnabled = data.email_reminders_enabled || false;
                     this.reminderTimezone = data.reminder_timezone || 'GMT +00:00';
                     this.reminderFrequency = data.reminder_frequency || 'Daily @ 8AM';
-                    
+
                     // Professions
                     let professions: string[] = [];
                     if (data.professions) {
                         try {
-                            professions = typeof data.professions === 'string' 
-                                ? JSON.parse(data.professions) 
+                            professions = typeof data.professions === 'string'
+                                ? JSON.parse(data.professions)
                                 : data.professions;
                         } catch (e) {
                             professions = [];
                         }
                     }
-                    
+
                     this.professionOptions.forEach(option => {
                         option.selected = professions.includes(option.id);
                     });
@@ -166,9 +170,11 @@ export class SettingsComponent implements OnInit {
                 if (response.success && response.data) {
                     this.activePlansCount = response.data.activePlans || 0;
                 }
+                this.cdr.detectChanges();
             },
             error: (err) => {
                 console.error('Error loading stats:', err);
+                this.cdr.detectChanges();
             }
         });
     }
@@ -363,6 +369,56 @@ export class SettingsComponent implements OnInit {
                 error: (err) => {
                     console.error('Error deleting account:', err);
                     this.errorMessage = err.error?.message || 'Failed to delete account';
+                    setTimeout(() => this.errorMessage = '', 3000);
+                    this.isSaving = false;
+                    this.cdr.detectChanges();
+                }
+            });
+        }
+    }
+
+    onFileSelected(event: any) {
+        const file: File = event.target.files[0];
+        if (file) {
+            // Validation
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                this.errorMessage = 'Invalid file type. Please upload an image (JPG, PNG, GIF, WEBP)';
+                setTimeout(() => this.errorMessage = '', 3000);
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                this.errorMessage = 'File too large. Max 5MB allowed.';
+                setTimeout(() => this.errorMessage = '', 3000);
+                return;
+            }
+
+            this.isSaving = true;
+            this.cdr.detectChanges();
+
+            this.apiService.uploadAvatar(file).subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        this.avatar_url = response.avatar_url;
+                        this.successMessage = 'Avatar updated successfully!';
+                        setTimeout(() => this.successMessage = '', 3000);
+
+                        // Update localStorage
+                        localStorage.setItem('avatar_url', response.avatar_url);
+
+                        // Notify sidebar/navbar if they show avatar
+                        this.apiService.triggerRefreshSidebar();
+                    } else {
+                        this.errorMessage = response.message || 'Failed to upload avatar';
+                        setTimeout(() => this.errorMessage = '', 3000);
+                    }
+                    this.isSaving = false;
+                    this.cdr.detectChanges();
+                },
+                error: (err) => {
+                    console.error('Error uploading avatar:', err);
+                    this.errorMessage = err.error?.message || 'An error occurred while uploading your avatar';
                     setTimeout(() => this.errorMessage = '', 3000);
                     this.isSaving = false;
                     this.cdr.detectChanges();

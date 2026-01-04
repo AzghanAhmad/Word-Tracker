@@ -1,10 +1,13 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
 import { Subscription, filter } from 'rxjs';
+import { OutputStatsChartComponent, WordEntry } from '../stats/output-stats-chart/output-stats-chart.component';
+import { DailyStatsChartComponent } from '../stats/daily-stats-chart/daily-stats-chart.component';
+import { QuillModule } from 'ngx-quill';
 
 export interface PlanDay {
     num: number;
@@ -33,11 +36,11 @@ export interface ProgressUpdate {
 @Component({
     selector: 'app-create-plan',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink],
+    imports: [CommonModule, FormsModule, RouterLink, OutputStatsChartComponent, DailyStatsChartComponent, QuillModule],
     templateUrl: './create-plan.component.html',
     styleUrls: ['./create-plan.component.scss']
 })
-export class CreatePlanComponent implements OnInit {
+export class CreatePlanComponent implements OnInit, AfterViewInit {
     planName: string = '';
     planDescription: string = '';
     targetWordCount: number = 0;
@@ -98,6 +101,14 @@ export class CreatePlanComponent implements OnInit {
     onTrackStatus: string = '';
     recentActivity: { day: string, count: number, height: number }[] = [];
 
+    get chartData(): WordEntry[] {
+        return this.planDays.map(day => ({
+            date: day.date,
+            count: day.actualWorkDone || 0,
+            target: day.workToComplete
+        }));
+    }
+
     // Chart Refinement
     hoveredDay: PlanDay | null = null;
 
@@ -105,6 +116,17 @@ export class CreatePlanComponent implements OnInit {
     planId: number | null = null;
     isEditMode: boolean = false;
     isLoading: boolean = false;
+
+    // Quill Editor Configuration
+    quillModules = {
+        toolbar: [
+            ['bold', 'italic', 'underline'],
+            [{ 'header': [1, 2, 3, false] }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            [{ 'align': [] }],
+            ['clean']
+        ]
+    };
 
     // Share dropdown
     showShareDropdown: boolean = false;
@@ -169,6 +191,9 @@ export class CreatePlanComponent implements OnInit {
         });
     }
 
+    ngAfterViewInit() {
+    }
+
     ngOnDestroy() {
         if (this.routeSubscription) {
             this.routeSubscription.unsubscribe();
@@ -176,6 +201,12 @@ export class CreatePlanComponent implements OnInit {
         if (this.navigationSubscription) {
             this.navigationSubscription.unsubscribe();
         }
+    }
+
+    setViewMode(mode: 'schedule' | 'progress' | 'stats') {
+        this.viewMode = mode;
+        this.recalculateCumulativeStats();
+        this.cdr.detectChanges();
     }
 
     loadPlanData() {
@@ -202,12 +233,13 @@ export class CreatePlanComponent implements OnInit {
         this.endDate = thirtyDaysLater.toISOString().split('T')[0];
 
         this.generatePlanData();
+        this.planDescription = '';
     }
 
     loadPlan(id: number) {
         console.log(`📥 Loading plan with ID: ${id}`);
         this.isLoading = true;
-        
+
         // Use setTimeout to avoid change detection issues
         setTimeout(() => {
             this.cdr.detectChanges();
@@ -219,7 +251,7 @@ export class CreatePlanComponent implements OnInit {
                 if (response.success && response.data) {
                     const plan = response.data;
                     console.log(`📋 Plan data:`, plan);
-                    
+
                     // Helper function to safely parse dates
                     const safeDateParse = (dateStr: any): string => {
                         if (!dateStr) return '';
@@ -239,12 +271,12 @@ export class CreatePlanComponent implements OnInit {
                     // Load all plan fields
                     this.planName = plan.plan_name || plan.title || '';
                     this.targetWordCount = plan.target_amount || plan.total_word_count || 0;
-                    
+
                     // Format dates to YYYY-MM-DD with validation
                     this.startDate = safeDateParse(plan.start_date);
                     this.endDate = safeDateParse(plan.end_date);
                     this.targetFinishDate = safeDateParse(plan.target_finish_date);
-                    
+
                     this.contentType = plan.content_type || 'Novella';
                     this.strategyType = plan.algorithm_type ? this.capitalize(plan.algorithm_type) : 'Steady';
                     this.planDescription = plan.description || '';
@@ -262,7 +294,7 @@ export class CreatePlanComponent implements OnInit {
                     this.dashboardColor = plan.dashboard_color || plan.color_code || '#000000';
                     this.showHistoricalData = plan.show_historical_data === undefined ? true : plan.show_historical_data;
                     this.progressTrackingType = plan.progress_tracking_type || 'Daily Goals';
-                    
+
                     // Handle status - backend returns db_status for raw value, status for display
                     const rawStatus = plan.db_status || plan.status || 'active';
                     this.status = rawStatus;
@@ -274,7 +306,7 @@ export class CreatePlanComponent implements OnInit {
                         else if (statusLower === 'completed') this.status = 'completed';
                         else if (statusLower === 'archived') this.status = 'archived';
                     }
-                    
+
                     // Load current progress from database - this is the manual progress percentage
                     const savedProgress = plan.current_progress || 0;
                     this.currentProgress = savedProgress;
@@ -285,18 +317,18 @@ export class CreatePlanComponent implements OnInit {
                     // Generate plan data first to populate planDays array
                     // Pass true to preserve the loaded progress value
                     this.generatePlanData(true);
-                    
+
                     // Restore the saved progress after generatePlanData (which may have overwritten it)
                     this.currentProgress = savedProgress;
                     console.log(`📊 Restored progress after generatePlanData: ${this.currentProgress}%`);
-                    
+
                     // Then load progress entries to populate the table
                     // Use setTimeout to ensure generatePlanData completes first
                     setTimeout(() => {
                         // Store the progress value before loading progress entries
                         const progressToDisplay = this.currentProgress;
                         console.log(`📊 Storing progress value before loading entries: ${progressToDisplay}%`);
-                        
+
                         this.loadPlanProgress(id, progressToDisplay);
                     }, 200);
                 } else {
@@ -324,7 +356,7 @@ export class CreatePlanComponent implements OnInit {
         console.log(`📊 Loading plan progress for plan ID: ${id}`);
         const savedProgress = progressToDisplay !== undefined ? progressToDisplay : this.currentProgress;
         console.log(`📊 Progress value to display: ${savedProgress}%`);
-        
+
         this.apiService.getPlanDays(id).subscribe({
             next: (response) => {
                 console.log(`✅ Received plan days response:`, response);
@@ -342,7 +374,7 @@ export class CreatePlanComponent implements OnInit {
                             console.error(`❌ Error parsing date ${d.date}:`, e);
                             date = new Date(); // Fallback to today
                         }
-                        
+
                         return {
                             id: date.getTime(),
                             date: date,
@@ -361,13 +393,17 @@ export class CreatePlanComponent implements OnInit {
                 // If we found entries, update the generated plan days with actual data
                 if (this.progressEntries.length > 0) {
                     console.log(`🔄 Updating plan days table with ${this.progressEntries.length} entries`);
+
+                    // Clear any pre-distributed/implied data to prevent duplication
+                    this.planDays.forEach(d => d.actualWorkDone = 0);
+
                     this.progressEntries.forEach(entry => {
                         const day = this.planDays.find(d => this.isSameDay(d.dateObj, entry.date));
                         if (day) {
                             day.actualWorkDone = entry.actualWords;
                             try {
-                                const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime()) 
-                                    ? entry.date.toISOString().split('T')[0] 
+                                const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime())
+                                    ? entry.date.toISOString().split('T')[0]
                                     : 'unknown';
                                 console.log(`  ✓ Updated day ${dateStr}: ${entry.actualWords} words`);
                             } catch (e) {
@@ -375,8 +411,8 @@ export class CreatePlanComponent implements OnInit {
                             }
                         } else {
                             try {
-                                const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime()) 
-                                    ? entry.date.toISOString().split('T')[0] 
+                                const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime())
+                                    ? entry.date.toISOString().split('T')[0]
                                     : 'unknown';
                                 console.log(`  ⚠️ Day not found in planDays for date: ${dateStr}`);
                             } catch (e) {
@@ -400,15 +436,15 @@ export class CreatePlanComponent implements OnInit {
                         console.log(`🔄 Distributing ${totalImplied} words sequentially across days`);
                         // Distribute progress sequentially across days based on their target word counts
                         let remainingToDistribute = totalImplied; // Start fresh distribution
-                        
+
                         // Reset all days first
                         this.planDays.forEach(d => d.actualWorkDone = 0);
-                        
+
                         // Then distribute sequentially
                         for (let i = 0; i < this.planDays.length && remainingToDistribute > 0; i++) {
                             const day = this.planDays[i];
                             const dayTarget = day.workToComplete || 0;
-                            
+
                             if (dayTarget > 0) {
                                 // Calculate how much to add to this day
                                 const wordsForThisDay = Math.min(dayTarget, remainingToDistribute);
@@ -422,25 +458,25 @@ export class CreatePlanComponent implements OnInit {
 
                 // Use the saved progress value that was passed in
                 const progressToShow = savedProgress;
-                
+
                 // Calculate actual progress from logged words for comparison
                 const totalLogged = this.planDays.reduce((sum, d) => sum + (d.actualWorkDone || 0), 0);
-                const calculatedProgress = this.targetWordCount > 0 
+                const calculatedProgress = this.targetWordCount > 0
                     ? Math.min(100, Math.round((totalLogged / this.targetWordCount) * 100))
                     : 0;
-                
+
                 console.log(`📊 Progress comparison: Manual (from DB) = ${progressToShow}%, Calculated (from words) = ${calculatedProgress}%`);
-                
+
                 // Recalculate all stats and cumulative values
                 // Pass true to skipProgressUpdate so we don't overwrite the manual progress
                 this.recalculateCumulativeStats(true);
-                
+
                 // Always use the manual progress from database for the text box
                 // This ensures the user sees the stored progress percentage when editing
                 this.currentProgress = progressToShow;
-                
+
                 console.log(`✅ Plan progress loading complete. Progress displayed in text box: ${this.currentProgress}%`);
-                
+
                 // Mark loading as complete and update UI
                 this.isLoading = false;
                 this.cdr.detectChanges();
@@ -465,10 +501,13 @@ export class CreatePlanComponent implements OnInit {
     }
 
     generatePlanData(skipProgressUpdate: boolean = false) {
+        // Capture current progress before regeneration if we want to preserve it
+        const progressToPreserve = this.currentProgress;
+
         if (!this.startDate || !this.endDate || this.targetWordCount <= 0) {
             this.planDays = [];
             this.totalDays = 0;
-            this.calculateStats(); // Call calculateStats even if no plan days to reset averages
+            this.calculateStats();
             return;
         }
 
@@ -538,6 +577,28 @@ export class CreatePlanComponent implements OnInit {
                 workLeft: this.targetWordCount - cumulativeTarget
             });
         }
+
+        // If we are regenerating data (e.g. changing dates/targets), we generally want to preserve
+        // the manual progress percentage, but redistribute the IMPLIED words across the new schedule.
+        if (progressToPreserve > 0) {
+            const targetTotal = Math.round((progressToPreserve / 100) * this.targetWordCount);
+            let remainingToDistribute = targetTotal;
+
+            for (let i = 0; i < this.planDays.length && remainingToDistribute > 0; i++) {
+                const day = this.planDays[i];
+                const dayTarget = day.workToComplete || 0;
+
+                if (dayTarget > 0) {
+                    const wordsForThisDay = Math.min(dayTarget, remainingToDistribute);
+                    day.actualWorkDone = wordsForThisDay;
+                    remainingToDistribute -= wordsForThisDay;
+                }
+            }
+            // Restore the progress value and tell stats invalidation to skip overwriting it
+            this.currentProgress = progressToPreserve;
+            skipProgressUpdate = true;
+        }
+
         this.recalculateCumulativeStats(skipProgressUpdate);
         this.calculateStats();
     }
@@ -587,10 +648,18 @@ export class CreatePlanComponent implements OnInit {
 
     onManualProgressChange(val: any) {
         // Ensure val is a number
-        const progress = parseFloat(val);
+        let progress = parseFloat(val);
         if (isNaN(progress) || this.targetWordCount <= 0 || progress === null) return;
 
-        // Update the model immediately just in case (though ngModel should handle it, this ensures local sync)
+        // STRICT VALIDATION: Clamp value between 0 and 100
+        // The user requested 1-100, checking for logical percentage bounds
+        if (progress > 100) {
+            progress = 100;
+        } else if (progress < 0) {
+            progress = 0;
+        }
+
+        // Update the model immediately to the clamped value logic
         this.currentProgress = progress;
 
         // Calculate expected total words based on manual %
@@ -607,7 +676,7 @@ export class CreatePlanComponent implements OnInit {
         if (diff !== 0) {
             // Reset all days to 0 first
             this.planDays.forEach(d => d.actualWorkDone = 0);
-            
+
             // Distribute progress sequentially across days based on their target word counts
             // Start from day 1 and fill each day until we reach the target total
             let remainingToDistribute = targetTotal;
@@ -616,7 +685,7 @@ export class CreatePlanComponent implements OnInit {
             for (let i = 0; i < this.planDays.length && remainingToDistribute > 0; i++) {
                 const day = this.planDays[i];
                 const dayTarget = day.workToComplete || 0;
-                
+
                 if (dayTarget > 0) {
                     // Calculate how much to add to this day
                     const wordsForThisDay = Math.min(dayTarget, remainingToDistribute);
@@ -631,36 +700,7 @@ export class CreatePlanComponent implements OnInit {
             // Force update to visual table
             this.cdr.detectChanges();
 
-            // Auto-save all updated days to backend if plan exists
-            if (this.planId) {
-                const savePromises: Promise<void>[] = [];
-                
-                // Save all days that were updated
-                this.planDays.forEach(day => {
-                    if (day.actualWorkDone !== undefined && day.actualWorkDone !== null) {
-                        const dateStr = day.dateObj.toISOString().split('T')[0];
-                        savePromises.push(
-                            new Promise<void>((resolve) => {
-                                this.apiService.logProgress(this.planId!, dateStr, day.actualWorkDone || 0, '').subscribe({
-                                    next: () => {
-                                        console.log(`Auto-saved progress for ${dateStr}`);
-                                        resolve();
-                                    },
-                                    error: (err) => {
-                                        console.error(`Failed to auto-save for ${dateStr}`, err);
-                                        resolve(); // Continue even if one fails
-                                    }
-                                });
-                            })
-                        );
-                    }
-                });
 
-                // Wait for all saves to complete
-                Promise.all(savePromises).then(() => {
-                    console.log('All progress updates saved');
-                });
-            }
         }
     }
 
@@ -679,23 +719,6 @@ export class CreatePlanComponent implements OnInit {
         }
     }
 
-    getOnTrackStroke() {
-        // Circumference of circle with r=45 is ~283 
-        // We now match the Manual Progress (%) instead of just pace
-        const circumference = 283;
-        const offset = circumference - (this.currentProgress / 100) * circumference;
-        return offset;
-    }
-
-    getTrendIcon(trend?: string) {
-        if (trend === 'up') return 'fa-arrow-trend-up text-success';
-        if (trend === 'down') return 'fa-arrow-trend-down text-danger';
-        return 'fa-minus text-muted';
-    }
-
-    getFormattedDateProgress(date: Date) {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
 
     calculateStats() {
         if (this.planDays.length === 0) {
@@ -900,9 +923,6 @@ export class CreatePlanComponent implements OnInit {
         this.generatePlanData();
     }
 
-    getMaxDailyTarget(): number {
-        return Math.max(...this.planDays.map(d => d.workToComplete), 1);
-    }
 
     getTodayTarget(): number {
         const today = new Date();
@@ -980,75 +1000,6 @@ export class CreatePlanComponent implements OnInit {
         }
     }
 
-    getLinePath(): string {
-        if (this.planDays.length < 2) return '';
-        const max = this.getMaxDailyTarget();
-        const width = 800;
-        const height = 200;
-        const step = width / (this.planDays.length - 1);
-
-        return this.planDays.map((day, i) => {
-            const x = i * step;
-            const y = height - (day.workToComplete / max) * height;
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-        }).join(' ');
-    }
-
-    getCumulativePath(): string {
-        if (this.planDays.length < 2) return '';
-        const max = this.targetWordCount;
-        const width = 800;
-        const height = 200;
-        const step = width / (this.planDays.length - 1);
-
-        return this.planDays.map((day, i) => {
-            const x = i * step;
-            const y = height - (day.expectedProgress / max) * height;
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-        }).join(' ');
-    }
-
-    getDailyPoints(): { x: number, y: number, day: PlanDay }[] {
-        if (this.planDays.length === 0) return [];
-        const max = this.getMaxDailyTarget();
-        const width = 800;
-        const height = 200;
-        const step = width / (this.planDays.length - 1 || 1);
-
-        return this.planDays.map((day, i) => ({
-            x: i * step,
-            y: height - (day.workToComplete / max) * height,
-            day: day
-        }));
-    }
-
-    getCumulativePoints(): { x: number, y: number, day: PlanDay }[] {
-        if (this.planDays.length === 0) return [];
-        const max = this.targetWordCount;
-        const width = 800;
-        const height = 200;
-        const step = width / (this.planDays.length - 1 || 1);
-
-        return this.planDays.map((day, i) => ({
-            x: i * step,
-            y: height - (day.expectedProgress / max) * height,
-            day: day
-        }));
-    }
-
-    getGridLines(max: number): number[] {
-        const lines = [];
-        const step = max / 4;
-        for (let i = 0; i <= 4; i++) {
-            lines.push(i * step);
-        }
-        return lines;
-    }
-
-    getYPos(val: number, max: number): number {
-        return 200 - (val / max) * 200;
-    }
-
     savePlan() {
         if (!this.planName) {
             this.notificationService.showError('Please enter a plan name.');
@@ -1062,34 +1013,36 @@ export class CreatePlanComponent implements OnInit {
 
         const payload = {
             title: this.planName,
-            total_word_count: this.targetWordCount,
+            total_word_count: Math.round(this.targetWordCount),
             start_date: this.startDate,
             end_date: this.endDate,
-            algorithm_type: this.strategyType.toLowerCase(),
+            algorithm_type: (this.strategyType || 'Steady').toLowerCase(),
             description: this.planDescription || '',
-            is_private: this.isPrivate,
-            starting_point: this.startingPoint,
+            is_private: !!this.isPrivate,
+            starting_point: Math.round(this.startingPoint || 0),
             measurement_unit: this.measurementUnit,
-            is_daily_target: this.isDailyTarget,
-            fixed_deadline: this.fixedDeadline,
+            is_daily_target: !!this.isDailyTarget,
+            fixed_deadline: !!this.fixedDeadline,
             target_finish_date: (this.targetFinishDate && this.fixedDeadline) ? this.targetFinishDate : null,
             strategy_intensity: this.strategyIntensity,
             weekend_approach: this.weekendApproach,
-            reserve_days: this.reserveDays,
+            reserve_days: Math.round(this.reserveDays || 0),
             display_view_type: this.displayViewType,
             week_start_day: this.weekStartDay,
             grouping_type: this.groupingType,
             dashboard_color: this.dashboardColor,
-            show_historical_data: this.showHistoricalData,
+            show_historical_data: !!this.showHistoricalData,
             progress_tracking_type: this.progressTrackingType,
-            activity_type: 'Writing', // Added missing field
+            activity_type: 'Writing',
             content_type: this.contentType,
             status: this.status || 'active',
-            current_progress: this.currentProgress || 0
+            current_progress: Math.round(this.currentProgress || 0)
         };
 
-        this.isLoading = true; // Set loading state
-        this.cdr.detectChanges(); // Ensure UI reflects loading state
+        console.log('📦 Saving Plan Payload:', payload);
+
+        this.isLoading = true;
+        this.cdr.detectChanges();
 
         const request = (this.isEditMode && this.planId)
             ? this.apiService.updatePlan(this.planId!, payload)
@@ -1098,15 +1051,23 @@ export class CreatePlanComponent implements OnInit {
         request.subscribe({
             next: (res) => {
                 if (res.success) {
-                    // Update planId if this was a new plan creation
+                    const wasNewPlan = !this.planId;
                     if (!this.planId && res.id) {
                         this.planId = res.id;
                     }
 
-                    // Save progress updates from the table (Actual Work Done)
-                    this.saveTableProgressUpdates().then(() => {
-                        this.notificationService.showSuccess(`Plan ${this.isEditMode ? 'updated' : 'created'} successfully!`);
+                    // CRITICAL FIX: Only save table progress updates for NEW plans.
+                    // For existing plans, saving all 'actualWorkDone' values again acts as an ADDITIVE operation
+                    // on the backend, doubling the progress. Existing plans update progress via
+                    // onTableProgressChange (individual cells) or implicitly via 'current_progress' field.
+                    const shouldSaveProgress = wasNewPlan;
 
+                    const savePromise = shouldSaveProgress
+                        ? this.saveTableProgressUpdates()
+                        : Promise.resolve();
+
+                    savePromise.then(() => {
+                        this.notificationService.showSuccess(`Plan ${this.isEditMode ? 'updated' : 'created'} successfully!`);
                         if (this.planId) {
                             this.router.navigate(['/plans', this.planId]);
                         } else {
@@ -1124,21 +1085,16 @@ export class CreatePlanComponent implements OnInit {
             error: (err) => {
                 console.error('Error saving plan', err);
                 let errorMessage = 'Failed to save plan. Please try again.';
-
                 if (err.error) {
-                    if (typeof err.error === 'string') {
-                        errorMessage = err.error;
-                    } else if (err.error.message) {
-                        errorMessage = err.error.message;
-                    } else if (err.error.errors) {
-                        // Handle standard ASP.NET validation errors
+                    if (typeof err.error === 'string') errorMessage = err.error;
+                    else if (err.error.message) errorMessage = err.error.message;
+                    else if (err.error.errors) {
                         const errors = err.error.errors;
                         errorMessage = Object.keys(errors)
                             .map(key => `${key}: ${errors[key].join(', ')}`)
                             .join(' | ');
                     }
                 }
-
                 this.notificationService.showError(errorMessage);
                 this.isLoading = false;
                 this.cdr.detectChanges();
@@ -1146,33 +1102,21 @@ export class CreatePlanComponent implements OnInit {
         });
     }
 
-    // Helper to save progress from table inputs
     async saveTableProgressUpdates() {
         if (!this.planId) return;
-
-        // Find days with actual work done and values > 0 (or just non-null if we allow 0)
-        // We really want to save any explicit entry.
         const updates = this.planDays
-            .filter(d => d.actualWorkDone !== undefined && d.actualWorkDone !== null)
-            ;
+            .filter(d => d.actualWorkDone !== undefined && d.actualWorkDone !== null && d.actualWorkDone > 0);
 
         const promises = updates.map(day => {
             return new Promise<void>((resolve) => {
-                // Format date as yyyy-MM-dd for backend
                 const dateStr = day.dateObj.toISOString().split('T')[0];
                 this.apiService.logProgress(this.planId!, dateStr, day.actualWorkDone, '').subscribe({
                     next: () => resolve(),
-                    error: () => resolve() // Continue even if one fails
+                    error: () => resolve()
                 });
             });
         });
-
         await Promise.all(promises);
-    }
-
-    // Placeholder to ignore for now
-    private ignore() {
-        return;
     }
 
     cancel() {
@@ -1183,7 +1127,6 @@ export class CreatePlanComponent implements OnInit {
         }
     }
 
-    // Share functionality methods
     toggleShareDropdown() {
         this.showShareDropdown = !this.showShareDropdown;
     }
@@ -1196,6 +1139,12 @@ export class CreatePlanComponent implements OnInit {
         }).catch(() => {
             this.notificationService.showError('Failed to copy link');
         });
+    }
+
+    onContentChanged(event: any) {
+        // Quill returns HTML content in event.html
+        this.planDescription = event.html || '';
+        this.cdr.detectChanges();
     }
 
     shareToTwitter() {
@@ -1219,24 +1168,130 @@ export class CreatePlanComponent implements OnInit {
         this.showShareDropdown = false;
     }
 
-    /**
-     * Counts the number of words in the description
-     * @returns The word count
-     */
     getDescriptionWordCount(): number {
-        if (!this.planDescription || !this.planDescription.trim()) {
-            return 0;
-        }
-        // Split by whitespace and filter out empty strings
-        const words = this.planDescription.trim().split(/\s+/).filter(word => word.length > 0);
-        return words.length;
+        if (!this.planDescription) return 0;
+        // Strip HTML tags and entities to get clean text for word counting
+        const cleanText = this.planDescription
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .trim();
+        if (!cleanText) return 0;
+        return cleanText.split(/\s+/).filter(word => word.length > 0).length;
     }
 
-    /**
-     * Checks if description exceeds max words
-     * @returns True if description exceeds max words
-     */
     isDescriptionOverLimit(): boolean {
         return this.getDescriptionWordCount() > this.maxDescriptionWords;
     }
+
+    // --- Custom SVG Charting Methods ---
+
+    getCumulativeTargetPath(): string {
+        if (this.planDays.length === 0) return '';
+        let path = `M 0 ${this.getCumulativeYPos(0)}`;
+        this.planDays.forEach((day, i) => {
+            const x = (i / (this.totalDays - 1 || 1)) * 1000;
+            const y = this.getCumulativeYPos(day.expectedProgress);
+            path += ` L ${x} ${y}`;
+        });
+        return path;
+    }
+
+    getCumulativeActualPath(): string {
+        if (this.planDays.length === 0) return '';
+        const lastDayWithProgress = [...this.planDays].reverse().findIndex(d => (d.actualWorkDone || 0) > 0);
+        const lastIndex = lastDayWithProgress === -1 ? 0 : this.planDays.length - 1 - lastDayWithProgress;
+
+        let path = `M 0 ${this.getCumulativeYPos(0)}`;
+        for (let i = 0; i <= lastIndex; i++) {
+            const day = this.planDays[i];
+            const x = (i / (this.totalDays - 1 || 1)) * 1000;
+            const y = this.getCumulativeYPos(day.yourActualProgress);
+            path += ` L ${x} ${y}`;
+        }
+        return path;
+    }
+
+    getActualCumulativeAreaPath(): string {
+        if (this.planDays.length === 0) return '';
+        const lastDayWithProgress = [...this.planDays].reverse().findIndex(d => (d.actualWorkDone || 0) > 0);
+        const lastIndex = lastDayWithProgress === -1 ? 0 : this.planDays.length - 1 - lastDayWithProgress;
+
+        let path = `M 0 ${this.getCumulativeYPos(0)}`;
+        for (let i = 0; i <= lastIndex; i++) {
+            const day = this.planDays[i];
+            const x = (i / (this.totalDays - 1 || 1)) * 1000;
+            const y = this.getCumulativeYPos(day.yourActualProgress);
+            path += ` L ${x} ${y}`;
+        }
+        const lastX = (lastIndex / (this.totalDays - 1 || 1)) * 1000;
+        path += ` L ${lastX} 300 L 0 300 Z`;
+        return path;
+    }
+
+    getCumulativePoints(): { x: number, y: number, day: PlanDay }[] {
+        if (this.planDays.length === 0) return [];
+        const lastDayWithProgress = [...this.planDays].reverse().findIndex(d => (d.actualWorkDone || 0) > 0);
+        const lastIndex = lastDayWithProgress === -1 ? 0 : this.planDays.length - 1 - lastDayWithProgress;
+
+        return this.planDays.slice(0, lastIndex + 1).map((day, i) => ({
+            x: (i / (this.totalDays - 1 || 1)) * 1000,
+            y: this.getCumulativeYPos(day.yourActualProgress),
+            day: day
+        }));
+    }
+
+    getCumulativeYPos(val: number): number {
+        const max = this.targetWordCount || 100;
+        const padding = 25;
+        const workableHeight = 300 - (padding * 2);
+        return 300 - padding - (val / max) * workableHeight;
+    }
+
+    // --- Daily Work Chart Methods (800x200) ---
+
+    getMaxDailyTarget(): number {
+        if (this.planDays.length === 0) return 100;
+        return Math.max(...this.planDays.map(d => d.workToComplete), 100);
+    }
+
+    getGridLines(max: number): number[] {
+        const lines = [];
+        const step = max / 4;
+        for (let i = 0; i <= 4; i++) {
+            lines.push(i * step);
+        }
+        return lines;
+    }
+
+    getLinePath(): string {
+        if (this.planDays.length === 0) return '';
+        const max = this.getMaxDailyTarget();
+        let path = `M 0 ${this.getYPos(this.planDays[0].workToComplete, max)}`;
+        this.planDays.forEach((day, i) => {
+            const x = (i / (this.totalDays - 1 || 1)) * 800;
+            const y = this.getYPos(day.workToComplete, max);
+            path += ` L ${x} ${y}`;
+        });
+        return path;
+    }
+
+    getDailyPoints(): { x: number, y: number, day: PlanDay }[] {
+        const max = this.getMaxDailyTarget();
+        if (this.planDays.length === 0) return [];
+        return this.planDays.map((day, i) => ({
+            x: (i / (this.totalDays - 1 || 1)) * 800,
+            y: this.getYPos(day.workToComplete, max),
+            day: day
+        }));
+    }
+
+    getYPos(val: number, max: number): number {
+        const height = 200;
+        const padding = 20;
+        const workableHeight = height - (padding * 2);
+        return height - padding - (val / (max || 1)) * workableHeight;
+    }
+
+    updateGrowthChart() { }
+    initGrowthChart() { }
 }

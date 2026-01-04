@@ -788,7 +788,7 @@
 
             &:focus {
                 outline: none;
-                border-color: #3b82f6;
+                border-color: #1C2E4A;
             }
         }
     }
@@ -811,8 +811,8 @@
 
             &:hover:not(:disabled) {
                 background: #f8fafc;
-                border-color: #3b82f6;
-                color: #3b82f6;
+                border-color: #1C2E4A;
+                color: #1C2E4A;
             }
 
             &:disabled {
@@ -826,6 +826,198 @@
             color: #64748b;
             font-size: 0.9rem;
             font-weight: 500;
+        }
+    }
+}
+
+// Guide Modal Specific Styles
+.guide-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+
+    .guide-modal {
+        background: white;
+        width: 95%;
+        max-width: 500px !important;
+        max-height: 90vh; // Ensure it doesn't exceed viewport height
+        border-radius: 20px;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        display: flex;
+        flex-direction: column;
+        animation: slideUp 0.3s ease;
+
+        .modal-header {
+            flex-shrink: 0; // Don't shrink the header
+            background: linear-gradient(135deg, #1C2E4A 0%, #2a4a75 100%);
+            padding: 2.5rem 2rem 1.5rem;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            border-bottom: none;
+
+            .header-icon {
+                width: 60px;
+                height: 60px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.75rem;
+                margin-bottom: 1rem;
+                backdrop-filter: blur(10px);
+            }
+
+            h2 {
+                margin: 0;
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: white;
+            }
+
+            .close-btn {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 1.5rem;
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0;
+                line-height: 1;
+
+                &:hover {
+                    color: white;
+                }
+            }
+        }
+
+        .modal-body {
+            padding: 2rem;
+            background: white;
+            overflow-y: auto; // Make body scrollable
+            flex: 1 1 auto;
+
+            .guide-intro {
+                text-align: center;
+                color: #475569;
+                font-size: 1rem;
+                line-height: 1.6;
+                margin-bottom: 2rem;
+            }
+
+            .guide-steps {
+                display: flex;
+                flex-direction: column;
+                gap: 1.25rem;
+
+                .guide-step {
+                    display: flex;
+                    gap: 1rem;
+                    align-items: flex-start;
+
+                    .step-num {
+                        width: 28px;
+                        height: 28px;
+                        background: #1C2E4A;
+                        color: white;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 0.85rem;
+                        font-weight: 700;
+                        flex-shrink: 0;
+                        margin-top: 2px;
+                    }
+
+                    .step-content {
+                        h4 {
+                            margin: 0 0 0.25rem 0;
+                            color: #1e293b;
+                            font-size: 1rem;
+                            font-weight: 600;
+                        }
+
+                        p {
+                            margin: 0;
+                            color: #64748b;
+                            font-size: 0.9rem;
+                            line-height: 1.5;
+                            text-align: left;
+                        }
+                    }
+                }
+            }
+
+            .guide-pro-tip {
+                margin-top: 2rem;
+                background: #f8fafc;
+                padding: 1rem;
+                border-radius: 12px;
+                border-left: 4px solid #f59e0b;
+                display: flex;
+                gap: 0.75rem;
+                align-items: center;
+
+                i {
+                    color: #f59e0b;
+                    font-size: 1.1rem;
+                }
+
+                span {
+                    font-size: 0.85rem;
+                    color: #475569;
+                    line-height: 1.4;
+                    text-align: left;
+
+                    strong {
+                        color: #1e293b;
+                    }
+                }
+            }
+        }
+
+        .modal-footer {
+            padding: 0 2rem 2.5rem;
+            border-top: none;
+            justify-content: center;
+            background: white;
+            flex-shrink: 0; // Ensure footer stays at the bottom
+
+            .btn-primary {
+                width: 100%;
+                padding: 0.875rem;
+                border-radius: 12px;
+                font-weight: 600;
+                letter-spacing: 0.01em;
+                background: #1C2E4A;
+                color: white;
+                border: none;
+                cursor: pointer;
+                transition: all 0.2s;
+
+                &:hover {
+                    background: #2a4a75;
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(28, 46, 74, 0.3);
+                }
+            }
         }
     }
 }

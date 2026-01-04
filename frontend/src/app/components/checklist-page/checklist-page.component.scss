@@ -43,8 +43,8 @@
                     border-bottom: 2px solid transparent;
 
                     &.active {
-                        color: #3b82f6;
-                        border-bottom-color: #3b82f6;
+                        color: #1C2E4A;
+                        border-bottom-color: #1C2E4A;
                     }
                 }
             }
@@ -73,12 +73,12 @@
             }
 
             .btn-primary {
-                background: #3b82f6;
-                border: 1px solid #3b82f6;
+                background: #1C2E4A;
+                border: 1px solid #1C2E4A;
                 color: #fff;
 
                 &:hover {
-                    background: #2563eb;
+                    background: #1C2E4A;
                 }
             }
 
@@ -306,7 +306,7 @@
 
                     button {
                         padding: 0.5rem 1rem;
-                        background: #3b82f6;
+                        background: #1C2E4A;
                         color: #fff;
                         border: none;
                         border-radius: 6px;
@@ -366,7 +366,7 @@
                             cursor: pointer;
 
                             &.active {
-                                background: #3b82f6;
+                                background: #1C2E4A;
                                 color: #fff;
                             }
                         }
@@ -410,7 +410,7 @@
                                 background: #eff6ff;
 
                                 .day-date {
-                                    color: #3b82f6;
+                                    color: #1C2E4A;
                                 }
                             }
                         }

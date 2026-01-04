@@ -16,6 +16,7 @@ import { forkJoin } from 'rxjs';
 })
 export class GroupChallengesComponent implements OnInit {
   showModal = false;
+  showGuideModal = false;
   isSubmitting = false;
   loading = true;
   activeChallenges: any[] = [];
@@ -44,6 +45,13 @@ export class GroupChallengesComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     private notificationService: NotificationService
   ) { }
+
+  scrollToFeatures() {
+    const element = document.getElementById('challenge-features');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 
   ngOnInit() {
     this.loadActiveChallenges();
@@ -116,6 +124,14 @@ export class GroupChallengesComponent implements OnInit {
 
   closeModal() {
     this.showModal = false;
+  }
+
+  openGuideModal() {
+    this.showGuideModal = true;
+  }
+
+  closeGuideModal() {
+    this.showGuideModal = false;
   }
 
   joinByCode() {

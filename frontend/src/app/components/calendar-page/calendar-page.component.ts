@@ -1,3 +1,4 @@
+// Calendar Page Component for Word Tracker
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
@@ -30,12 +31,31 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
 
   // View State
   viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
+  calendarView: 'weekly' | 'monthly' | 'yearly' = 'monthly';
   timeFilter: 'future' | 'all' = 'all';
   private routeSubscription?: Subscription;
   private navigationSubscription?: Subscription;
 
   get monthName(): string {
+    if (this.calendarView === 'yearly') {
+      return this.currentDate.getFullYear().toString();
+    }
+    if (this.calendarView === 'weekly') {
+      const start = this.getStartOfWeek(this.currentDate);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return `${start.toLocaleDateString('default', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
     return this.currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  }
+
+  private getStartOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
 
   constructor(
@@ -164,24 +184,37 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  setViewType(type: string) {
+    console.log('Switching view to:', type);
+    this.calendarView = type as any;
+    this.fetchPlanDays();
+  }
+
   nextMonth() {
-    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 1);
+    if (this.calendarView === 'yearly') {
+      this.currentDate = new Date(this.currentDate.getFullYear() + 1, 0, 1);
+    } else if (this.calendarView === 'weekly') {
+      this.currentDate = new Date(this.currentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    } else {
+      this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 1);
+    }
     this.fetchPlanDays();
   }
 
   prevMonth() {
-    this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
+    if (this.calendarView === 'yearly') {
+      this.currentDate = new Date(this.currentDate.getFullYear() - 1, 0, 1);
+    } else if (this.calendarView === 'weekly') {
+      this.currentDate = new Date(this.currentDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else {
+      this.currentDate = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 1);
+    }
     this.fetchPlanDays();
   }
 
   goToday() {
     this.currentDate = new Date();
     this.fetchPlanDays();
-  }
-
-  setViewType(type: string) {
-    console.log('Switching view to:', type);
-    // You could implement weekly/yearly logic here
   }
 
   setViewMode(mode: 'daily-total' | 'progress-vs-plan') {
@@ -232,7 +265,10 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           if (response.success && response.data) {
             const logs: { [key: string]: number } = {};
             response.data.forEach((d: any) => {
-              logs[d.date] = d.actual_count;
+              // Ensure date is formatted as YYYY-MM-DD for the key
+              const dateObj = new Date(d.date);
+              const dateKey = this.formatDateKey(dateObj);
+              logs[dateKey] = d.actual_count;
             });
             this.dailyLogs = logs;
           }
@@ -249,6 +285,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
     }
 
     // Otherwise, fetch all plans for calendar view
+    // Otherwise, fetch all plans for calendar view
     this.apiService.getPlans().subscribe({
       next: (response) => {
         if (response.success && response.data) {
@@ -257,14 +294,41 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           this.targets = this.generateTargetsFromPlans(response.data);
           this.deadlines = this.generateDeadlinesFromPlans(response.data);
           this.plansByDate = this.generatePlansByDate(response.data);
+
+          // FETCH ACTUAL STATS for global view
+          this.apiService.getStats().subscribe({
+            next: (statsResponse) => {
+              if (statsResponse.success && statsResponse.data && statsResponse.data.allDaysData) {
+                const logs: { [key: string]: number } = {};
+                // Determine format of allDaysData. It might be [{date: '2023-01-01', count: 100}, ...]
+                statsResponse.data.allDaysData.forEach((d: any) => {
+                  if (d.date && d.count !== undefined) {
+                    const dateObj = new Date(d.date);
+                    const dateKey = this.formatDateKey(dateObj);
+                    logs[dateKey] = d.count;
+                  }
+                });
+                this.dailyLogs = logs;
+                console.log('Global daily logs loaded:', this.dailyLogs);
+              }
+              this.isLoading = false;
+              this.cdr.detectChanges();
+            },
+            error: (err) => {
+              console.error('Error fetching global stats for calendar:', err);
+              this.isLoading = false;
+              this.cdr.detectChanges();
+            }
+          });
+
         } else {
           this.targets = {};
           this.deadlines = {};
           this.plansByDate = {};
           this.allPlans = [];
+          this.isLoading = false;
+          this.cdr.detectChanges();
         }
-        this.isLoading = false;
-        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error fetching plans for calendar:', error);

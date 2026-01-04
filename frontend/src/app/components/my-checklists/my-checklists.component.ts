@@ -27,6 +27,7 @@ interface Checklist {
 })
 export class MyChecklistsComponent implements OnInit {
     checklists: Checklist[] = [];
+    username: string = 'User';
     isLoading = true;
 
     // Pagination
@@ -41,6 +42,7 @@ export class MyChecklistsComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        this.username = localStorage.getItem('username') || 'User';
         this.loadChecklists();
     }
 
@@ -51,7 +53,15 @@ export class MyChecklistsComponent implements OnInit {
         this.apiService.getChecklists().subscribe({
             next: (response) => {
                 if (response.success && response.data) {
-                    const allChecklists = response.data;
+                    const allChecklists = response.data.map((list: any) => ({
+                        ...list,
+                        items: list.items ? list.items.map((item: any) => ({
+                            ...item,
+                            is_done: item.is_done !== undefined ? item.is_done :
+                                (item.checked !== undefined ? item.checked :
+                                    (item.is_completed !== undefined ? item.is_completed : false))
+                        })) : []
+                    }));
                     this.checklists = allChecklists.slice((this.currentPage - 1) * this.itemsPerPage, this.currentPage * this.itemsPerPage);
                     this.totalItems = allChecklists.length;
                     this.totalPages = Math.ceil(allChecklists.length / this.itemsPerPage);
@@ -102,18 +112,24 @@ export class MyChecklistsComponent implements OnInit {
     }
 
     toggleItem(listId: number, item: ChecklistItem) {
-        const newStatus = !item.is_done;
-        this.apiService.updateChecklistItem(item.id, newStatus).subscribe({
+        // Optimistic update
+        const originalStatus = item.is_done;
+        item.is_done = !originalStatus;
+        this.cdr.detectChanges();
+
+        this.apiService.updateChecklistItem(item.id, item.is_done).subscribe({
             next: (response) => {
-                if (response.success) {
-                    item.is_done = newStatus;
-                    const list = this.checklists.find(l => l.id === listId);
-                    if (list) {
-                        this.cdr.detectChanges();
-                    }
+                if (!response.success) {
+                    // Rollback on server error
+                    item.is_done = originalStatus;
+                    this.cdr.detectChanges();
+                    console.error('Failed to update item on server');
                 }
             },
             error: (err) => {
+                // Rollback on connection/API error
+                item.is_done = originalStatus;
+                this.cdr.detectChanges();
                 console.error('Error updating checklist item:', err);
             }
         });

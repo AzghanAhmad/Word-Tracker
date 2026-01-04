@@ -113,7 +113,7 @@ import { RouterLink } from '@angular/router';
           position: relative;
 
           &:hover {
-            color: #3b82f6;
+            color: #1C2E4A;
           }
 
           &::after {
@@ -123,7 +123,7 @@ import { RouterLink } from '@angular/router';
             left: 0;
             width: 0;
             height: 2px;
-            background: #3b82f6;
+            background: #1C2E4A;
             transition: width 0.3s;
           }
 
@@ -158,7 +158,7 @@ import { RouterLink } from '@angular/router';
       }
 
       .btn-signup {
-        background: #3b82f6;
+        background: #1C2E4A;
         color: white;
         text-decoration: none;
         padding: 0.6rem 1.5rem;
@@ -169,7 +169,7 @@ import { RouterLink } from '@angular/router';
         box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
 
         &:hover {
-          background: #2563eb;
+          background: #1C2E4A;
           box-shadow: 0 4px 6px rgba(59, 130, 246, 0.4);
           transform: translateY(-1px);
         }
@@ -253,7 +253,7 @@ import { RouterLink } from '@angular/router';
 
           &:hover {
             background: #f3f4f6;
-            color: #3b82f6;
+            color: #1C2E4A;
           }
         }
       }
@@ -286,12 +286,12 @@ import { RouterLink } from '@angular/router';
         }
 
         .btn-signup {
-          background: #3b82f6;
+          background: #1C2E4A;
           color: white;
           box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
 
           &:hover {
-            background: #2563eb;
+            background: #1C2E4A;
           }
         }
       }

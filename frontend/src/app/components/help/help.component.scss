@@ -1,4 +1,4 @@
-$primary-color: #3b82f6;
+$primary-color: #1C2E4A;
 $text-dark: #1e293b;
 $text-light: #64748b;
 $bg-light: #f8fafc;
@@ -91,7 +91,7 @@ $card-bg: #ffffff;
 
                     &.blue {
                         background: #dbeafe;
-                        color: #2563eb;
+                        color: #1C2E4A;
                     }
 
                     &.purple {
@@ -182,7 +182,7 @@ $card-bg: #ffffff;
         }
 
         .contact-banner {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #1C2E4A 0%, #1C2E4A 100%);
             border-radius: 16px;
             padding: 2.5rem;
             display: flex;
@@ -199,6 +199,8 @@ $card-bg: #ffffff;
                 h2 {
                     font-size: 1.5rem;
                     margin-bottom: 0.5rem;
+                    color: white;
+                    font-weight: 800;
                 }
 
                 p {

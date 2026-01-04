@@ -16,7 +16,7 @@ public interface IDbService
     int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items);
     string GetChecklistsJson(int userId);
     string? GetChecklistJson(int id, int userId);
-    bool UpdateChecklist(int id, int userId, string name, System.Text.Json.JsonElement[]? items);
+    bool UpdateChecklist(int id, int userId, int? planId, string name, System.Text.Json.JsonElement[]? items);
     bool ArchiveChecklist(int id, int userId, bool isArchived);
     bool ArchivePlan(int id, int userId, bool isArchived);
     bool DeleteChecklist(int id, int userId);
@@ -37,6 +37,7 @@ public interface IDbService
     string GetPublicPlansJson(int userId);
     string? GetUserProfileJson(int userId);
     bool UpdateUserProfile(int userId, string username, string email, string? bio);
+    bool UpdateUserAvatar(int userId, string avatarUrl);
     bool UpdateUserPassword(int userId, string currentPasswordHash, string newPasswordHash);
     string? GetUserSettingsJson(int userId);
     bool UpdateUserSettings(int userId, string? dateFormat, string? weekStartDay, bool? emailRemindersEnabled, string? reminderTimezone, string? reminderFrequency, string? professionsJson);

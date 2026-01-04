@@ -11,7 +11,7 @@ System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeM
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Kestrel to use Railway's PORT before building
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5200";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 Console.WriteLine($"🔧 Setting Kestrel to listen on port: {port}");
 
@@ -20,15 +20,20 @@ builder.Services.AddEndpointsApiExplorer();
 
 // Get configuration with environment variable PRIORITY (for Railway deployment)
 // Environment variables take precedence over appsettings.json
-var secret = Environment.GetEnvironmentVariable("JWT_SECRET") 
-    ?? builder.Configuration["Jwt:Secret"] 
-    ?? "dev_secret";
+var jwtSecretEnv = Environment.GetEnvironmentVariable("JWT_SECRET");
+var jwtSecretConfig = builder.Configuration["Jwt:Secret"];
+var secret = jwtSecretEnv 
+    ?? jwtSecretConfig 
+    ?? "dev_secret_must_be_at_least_32_bytes_long_for_hs256_security_algorithm"; // Fallback must be long enough
+
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION") 
     ?? builder.Configuration.GetConnectionString("Default") 
     ?? "";
 
 Console.WriteLine($"🔍 DB_CONNECTION env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DB_CONNECTION"))}");
-Console.WriteLine($"🔍 JWT_SECRET env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET"))}");
+Console.WriteLine($"🔍 JWT_SECRET env var exists: {!string.IsNullOrEmpty(jwtSecretEnv)}");
+Console.WriteLine($"🔍 AppSettings Jwt:Secret found: {!string.IsNullOrEmpty(jwtSecretConfig)}");
+Console.WriteLine($"🔑 Using JWT Secret with length: {secret.Length} bytes");
 
 // Extract database name from connection string for initialization
 var dbName = "word_tracker";
@@ -117,10 +122,14 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+// ALWAYS enable developer exception page (temporarily for debugging 500 errors)
+app.UseDeveloperExceptionPage();
+/*
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
+*/
 
 // Serve static files from frontend dist folder (for production deployment)
 // Check multiple possible paths for frontend files
@@ -160,7 +169,33 @@ if (frontendPath != null)
         FileProvider = fileProvider,
         RequestPath = ""
     });
-    
+}
+
+// Ensure uploads directory is served even if frontend dist is missing
+var currentDir = Directory.GetCurrentDirectory();
+var uploadsPossiblePaths = new[]
+{
+    Path.Combine(currentDir, "wwwroot", "uploads"),
+    Path.Combine(currentDir, "backend", "dotnet_migration_pending", "wwwroot", "uploads"),
+    Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads")
+};
+
+foreach (var uploadsPath in uploadsPossiblePaths)
+{
+    if (Directory.Exists(uploadsPath))
+    {
+        Console.WriteLine($"📂 Serving uploads from: {uploadsPath}");
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+            RequestPath = "/uploads"
+        });
+        break; // Stop at first found
+    }
+}
+
+if (frontendPath != null)
+{
     Console.WriteLine($"📁 Serving static files from: {frontendPath}");
 }
 else
@@ -208,7 +243,7 @@ if (frontendPath != null)
 }
 
 // Log the final listening URL (already configured above via UseUrls)
-var finalPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var finalPort = Environment.GetEnvironmentVariable("PORT") ?? "5200";
 var url = $"http://0.0.0.0:{finalPort}";
 
 Console.WriteLine($"🚀 Word Tracker API starting on {url}");

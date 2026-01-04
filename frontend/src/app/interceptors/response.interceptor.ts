@@ -28,7 +28,7 @@ export const responseInterceptor: HttpInterceptorFn = (req, next) => {
             let errorMessage = 'An unexpected error occurred';
 
             if (error.status === 0) {
-                errorMessage = `Connection error: Cannot reach backend at ${req.url}. Please ensure the backend server is running on port 8080.`;
+                errorMessage = `Connection error: Cannot reach backend at ${req.url}. Please ensure the backend server is running on port 5200.`;
             } else {
                 errorMessage = `Error ${error.status} (${error.statusText})`;
 

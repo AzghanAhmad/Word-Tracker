@@ -21,64 +21,109 @@ export interface CalendarCell {
   imports: [CommonModule, CalendarDayComponent],
   template: `
     <div class="calendar-container">
-      <!-- Weekday Headers -->
-      <div class="weekdays-row">
-        <div class="weekday" *ngFor="let day of weekDays">{{ day }}</div>
-      </div>
-
-      <!-- Days Grid -->
-      <div class="days-grid">
-        <app-calendar-day
-          *ngFor="let cell of cells"
-          [dayNumber]="cell.dayNumber"
-          [isCurrentMonth]="cell.isCurrentMonth"
-          [isToday]="cell.isToday"
-          [isSelected]="cell.isSelected"
-          [target]="cell.target"
-          [actual]="cell.actual"
-          [events]="cell.events"
-          [isDeadline]="cell.isDeadline"
-          [plans]="cell.plans"
-          [viewMode]="viewMode"
-          [class.past-date]="timeFilter === 'future' && isPastDate(cell.date)"
-          (click)="selectDate(cell.date)"
-        ></app-calendar-day>
+      <div class="scroll-wrapper">
+        <div class="calendar-grid-layout" [class.yearly-view]="calendarView === 'yearly'">
+          <!-- Headers -->
+          <ng-container *ngIf="calendarView !== 'yearly'">
+            <div class="weekday" *ngFor="let day of weekDays">{{ day }}</div>
+          </ng-container>
+           
+           <!-- Content Cells -->
+           <app-calendar-day
+            *ngFor="let cell of cells"
+            [dayNumber]="cell.dayNumber"
+            [isCurrentMonth]="cell.isCurrentMonth"
+            [isToday]="cell.isToday"
+            [isSelected]="cell.isSelected"
+            [target]="cell.target"
+            [actual]="cell.actual"
+            [events]="cell.events"
+            [isDeadline]="cell.isDeadline"
+            [plans]="cell.plans"
+            [viewMode]="viewMode"
+            [class.past-date-dimmed]="timeFilter === 'future' && isPastDate(cell.date)"
+            (click)="selectDate(cell.date)"
+          ></app-calendar-day>
+        </div>
       </div>
     </div>
   `,
   styles: [`
     .calendar-container {
-      background: #fff;
-      border: 1px solid #ccc;
+      background: white;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .scroll-wrapper {
       overflow-x: auto;
-    }
-
-    .weekdays-row {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      border-bottom: 2px solid #ccc;
-      background: #fff;
-      min-width: 700px;
-    }
-
-    .weekday {
-      text-align: center;
-      font-weight: 700;
-      color: #31b0d5; // Cyan color from image
-      font-size: 0.9rem;
-      padding: 10px 0;
-      border-right: 1px solid #ddd;
-      
-      &:last-child {
-        border-right: none;
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+      &::-webkit-scrollbar {
+        height: 6px;
+      }
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
       }
     }
 
-    .days-grid {
+    .calendar-grid-layout {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      background: #fff;
-      min-width: 700px; // Match header
+      grid-template-columns: repeat(7, minmax(140px, 1fr));
+      background: #eef2f6;
+      gap: 1px;
+      min-width: 100%;
+    }
+
+    .calendar-grid-layout.yearly-view {
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      max-height: 70vh;
+      overflow-y: auto;
+      padding: 10px;
+      background: white;
+      gap: 4px;
+    }
+
+    .weekday {
+      background: #ffffff;
+      text-align: center;
+      font-weight: 700;
+      color: #1e293b;
+      font-size: 0.75rem;
+      padding: 1rem 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid #eef2f6;
+    }
+
+    ::ng-deep app-calendar-day {
+      background: white;
+      min-height: 140px;
+      display: block;
+    }
+
+    @media (max-width: 1024px) {
+      .calendar-grid-layout:not(.yearly-view) {
+        grid-template-columns: repeat(7, minmax(100px, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .calendar-grid-layout:not(.yearly-view) {
+        grid-template-columns: repeat(7, minmax(80px, 1fr));
+      }
+      ::ng-deep app-calendar-day {
+        min-height: 100px;
+      }
+      .weekday {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.65rem;
+      }
     }
   `]
 })
@@ -90,13 +135,14 @@ export class CalendarGridComponent implements OnChanges {
   @Input() plansByDate: { [key: string]: any[] } = {};
   @Input() viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
   @Input() timeFilter: 'future' | 'all' = 'all';
+  @Input() calendarView: 'weekly' | 'monthly' | 'yearly' = 'monthly';
 
   weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   cells: CalendarCell[] = [];
   selectedDate: Date | null = null;
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['currentDate'] || changes['targets'] || changes['dailyLogs'] || changes['deadlines'] || changes['plansByDate'] || changes['viewMode'] || changes['timeFilter']) {
+    if (changes['currentDate'] || changes['targets'] || changes['dailyLogs'] || changes['deadlines'] || changes['plansByDate'] || changes['viewMode'] || changes['timeFilter'] || changes['calendarView']) {
       this.generateGrid();
     }
   }
@@ -113,32 +159,60 @@ export class CalendarGridComponent implements OnChanges {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const firstDayOfMonth = new Date(year, month, 1);
-    let startDayOfWeek = firstDayOfMonth.getDay() - 1;
-    if (startDayOfWeek === -1) startDayOfWeek = 6;
+    if (this.calendarView === 'weekly') {
+      const startOfWeek = this.getStartOfWeek(this.currentDate);
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(startOfWeek);
+        date.setDate(startOfWeek.getDate() + i);
+        this.cells.push(this.createCell(date, date.getDate(), true, today));
+      }
+    } else if (this.calendarView === 'monthly') {
+      const firstDayOfMonth = new Date(year, month, 1);
+      let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+      if (startDayOfWeek === -1) startDayOfWeek = 6;
 
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-    // Previous Month Padding
-    for (let i = 0; i < startDayOfWeek; i++) {
-      const dayNum = daysInPrevMonth - startDayOfWeek + 1 + i;
-      const date = new Date(year, month - 1, dayNum);
-      this.cells.push(this.createCell(date, dayNum, false, today));
+      // Previous Month Padding
+      for (let i = 0; i < startDayOfWeek; i++) {
+        const dayNum = daysInPrevMonth - startDayOfWeek + 1 + i;
+        const date = new Date(year, month - 1, dayNum);
+        this.cells.push(this.createCell(date, dayNum, false, today));
+      }
+
+      // Current Month
+      for (let i = 1; i <= daysInMonth; i++) {
+        const date = new Date(year, month, i);
+        this.cells.push(this.createCell(date, i, true, today));
+      }
+
+      // Next Month Padding
+      const remainingCells = 42 - this.cells.length;
+      for (let i = 1; i <= remainingCells; i++) {
+        const date = new Date(year, month + 1, i);
+        this.cells.push(this.createCell(date, i, false, today));
+      }
+    } else if (this.calendarView === 'yearly') {
+      // For yearly, we'll show every day of the year in a long list, 
+      // grouped by month for visual clarity
+      for (let m = 0; m < 12; m++) {
+        const daysInMonth = new Date(year, m + 1, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const date = new Date(year, m, d);
+          this.cells.push(this.createCell(date, d, true, today));
+        }
+      }
     }
+  }
 
-    // Current Month
-    for (let i = 1; i <= daysInMonth; i++) {
-      const date = new Date(year, month, i);
-      this.cells.push(this.createCell(date, i, true, today));
-    }
-
-    // Next Month Padding
-    const remainingCells = 42 - this.cells.length;
-    for (let i = 1; i <= remainingCells; i++) {
-      const date = new Date(year, month + 1, i);
-      this.cells.push(this.createCell(date, i, false, today));
-    }
+  private getStartOfWeek(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const start = new Date(d.setDate(diff));
+    start.setHours(0, 0, 0, 0);
+    return start;
   }
 
   createCell(date: Date, dayNumber: number, isCurrentMonth: boolean, today: Date): CalendarCell {
@@ -160,6 +234,11 @@ export class CalendarGridComponent implements OnChanges {
   }
 
   getActualForDate(date: Date): number {
+    // If filtering for future, and date is in the past (before today), return 0
+    if (this.timeFilter === 'future' && this.isPastDate(date)) {
+      return 0;
+    }
+
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -168,6 +247,11 @@ export class CalendarGridComponent implements OnChanges {
   }
 
   getPlansForDate(date: Date): any[] {
+    // If filtering for future, and date is in the past (before today), return empty
+    if (this.timeFilter === 'future' && this.isPastDate(date)) {
+      return [];
+    }
+
     // Format YYYY-MM-DD manually to avoid timezone issues
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');

@@ -45,10 +45,20 @@
 
             <div class="form-group row">
                 <label class="col-label">Privacy</label>
-                <div class="col-input checkbox-container">
-                    <i class="fas fa-lock lock-icon"></i>
-                    <input type="checkbox" id="privacyCheck" [(ngModel)]="newProject.is_private">
-                    <label for="privacyCheck">Make this project private</label>
+                <div class="col-input">
+                    <div class="privacy-toggle-modern" (click)="newProject.is_private = !newProject.is_private">
+                        <div class="toggle-switch" [class.active]="newProject.is_private">
+                            <div class="slider"></div>
+                        </div>
+                        <div class="toggle-info">
+                            <span class="toggle-label">
+                                <i class="fas" [ngClass]="newProject.is_private ? 'fa-lock' : 'fa-globe-americas'"></i>
+                                {{ newProject.is_private ? 'Private Project' : 'Public Project' }}
+                            </span>
+                            <span class="toggle-sublabel">{{ newProject.is_private ? 'Visible only to organization
+                                members' : 'Visible to everyone' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -95,10 +105,22 @@
 
             <div class="form-group row">
                 <label class="col-label">Privacy</label>
-                <div class="col-input checkbox-container">
-                    <i class="fas fa-lock lock-icon"></i>
-                    <input type="checkbox" id="editPrivacyCheck" [(ngModel)]="selectedProject.is_private">
-                    <label for="editPrivacyCheck">Make this project private</label>
+                <div class="col-input">
+                    <div class="privacy-toggle-modern"
+                        (click)="selectedProject.is_private = !selectedProject.is_private">
+                        <div class="toggle-switch" [class.active]="selectedProject.is_private">
+                            <div class="slider"></div>
+                        </div>
+                        <div class="toggle-info">
+                            <span class="toggle-label">
+                                <i class="fas"
+                                    [ngClass]="selectedProject.is_private ? 'fa-lock' : 'fa-globe-americas'"></i>
+                                {{ selectedProject.is_private ? 'Private Project' : 'Public Project' }}
+                            </span>
+                            <span class="toggle-sublabel">{{ selectedProject.is_private ? 'Visible only to organization
+                                members' : 'Visible to everyone' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

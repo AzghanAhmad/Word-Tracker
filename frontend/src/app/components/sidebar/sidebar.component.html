@@ -10,9 +10,7 @@
             <div class="progress-header" (click)="toggleProgress()" style="cursor: pointer;">
                 <i class="fas fa-chart-line"></i>
                 <span>Latest Progress</span>
-                <span class="badge" *ngIf="activeChallengesCount > 0">{{ activeChallengesCount }}</span>
-                <i class="fas" [class.fa-chevron-down]="!isProgressExpanded" [class.fa-chevron-up]="isProgressExpanded"
-                    style="margin-left: auto; font-size: 0.8rem; opacity: 0.6;"></i>
+                <span class="badge" *ngIf="pendingPlansCount > 0">{{ pendingPlansCount }}</span>
             </div>
 
             <div class="progress-list" *ngIf="isProgressExpanded">
@@ -51,6 +49,7 @@
         <a routerLink="/my-checklists" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
             <i class="fas fa-tasks"></i>
             <span *ngIf="!isCollapsed">My Checklist</span>
+            <span class="badge" *ngIf="!isCollapsed && checklistCount > 0">{{ checklistCount }}</span>
         </a>
         <a routerLink="/archive" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
             <i class="fas fa-archive"></i>
@@ -89,8 +88,13 @@
         <div class="divider"></div>
 
         <!-- Group 5 - Bottom Settings -->
-        <a routerLink="/profile" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
-            <i class="fas fa-user-circle"></i>
+        <a routerLink="/profile" routerLinkActive="active" class="nav-item profile-nav-item" (click)="onNavItemClick()">
+            <div class="user-avatar-mini" *ngIf="userAvatar">
+                <img [src]="userAvatar" alt="User Avatar">
+            </div>
+            <div class="user-initials-mini" *ngIf="!userAvatar">
+                {{ userInitials }}
+            </div>
             <span *ngIf="!isCollapsed">Profile</span>
         </a>
         <a routerLink="/settings" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
@@ -105,5 +109,11 @@
             <i class="fas fa-sign-out-alt"></i>
             <span *ngIf="!isCollapsed">Logout</span>
         </a>
+
+        <!-- ScribeCount Branding -->
+        <div class="scribecount-brand" *ngIf="!isCollapsed">
+            <span class="brand-text">A product of</span>
+            <span class="brand-name">ScribeCount</span>
+        </div>
     </nav>
 </aside>

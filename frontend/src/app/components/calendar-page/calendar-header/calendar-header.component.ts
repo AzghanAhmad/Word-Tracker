@@ -34,15 +34,17 @@ import { CommonModule } from '@angular/common';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 0 1rem 0;
+      padding: 0 0 1.5rem 0;
       background: transparent;
+      gap: 1.5rem;
     }
 
     .month-title {
-      font-size: 1.8rem;
-      font-weight: 400;
-      color: #666;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #1e293b;
       margin: 0;
+      letter-spacing: -0.02em;
     }
 
     .header-controls {
@@ -52,43 +54,46 @@ import { CommonModule } from '@angular/common';
     }
 
     .control-btn {
-      background: #7a869a;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
+      background: #ffffff;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      padding: 0.6rem 1.25rem;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 500;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
       
       &:hover {
-        background: #6b778c;
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
       }
     }
 
     .nav-group {
       display: flex;
-      background: #2c3e50;
-      border-radius: 4px;
-      overflow: hidden;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 8px;
+      gap: 2px;
 
       .nav-btn {
         background: transparent;
         border: none;
-        color: white;
-        padding: 0.5rem 0.8rem;
+        color: #64748b;
+        padding: 0.5rem 1rem;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-right: 1px solid #34495e;
-
-        &:last-child {
-          border-right: none;
-        }
+        border-radius: 6px;
+        transition: all 0.2s ease;
 
         &:hover {
-          background: #34495e;
+          background: rgba(255,255,255,0.5);
+          color: #1C2E4A;
         }
 
         i {
@@ -99,67 +104,69 @@ import { CommonModule } from '@angular/common';
 
     .view-group {
       display: flex;
-      background: #2c3e50;
-      border-radius: 4px;
-      overflow: hidden;
+      background: #e2e8f0;
+      padding: 4px;
+      border-radius: 8px;
+      gap: 4px;
 
-      .view-btn {
-        background: transparent;
-        border: none;
-        color: #95a5a6;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        font-size: 0.85rem;
-        font-weight: 500;
-        border-right: 1px solid #34495e;
+        .view-btn {
+          background: transparent;
+          border: none;
+          color: #64748b;
+          padding: 0.5rem 1.25rem;
+          cursor: pointer;
+          font-size: 0.85rem;
+          font-weight: 600;
+          border-radius: 6px;
+          transition: all 0.2s ease;
 
-        &:last-child {
-          border-right: none;
-        }
+          &:hover {
+            color: #1C2E4A;
+            background: rgba(255,255,255,0.5);
+          }
 
-        &:hover {
-          color: white;
-          background: #34495e;
-        }
-
-        &.active {
-          background: #1a252f;
-          color: white;
+          &.active {
+            background: #1C2E4A;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
         }
       }
-    }
 
-    @media (max-width: 1024px) {
+    @media (max-width: 768px) {
       .calendar-header-container {
         flex-direction: column;
-        gap: 1.5rem;
-        align-items: center;
+        align-items: flex-start;
+        gap: 1.25rem;
+        padding-bottom: 1rem;
       }
       
-      .header-controls {
-        width: 100%;
-        display: flex;
-        flex-wrap: wrap; // Allow wrapping
-        justify-content: center; // Center everything
-        align-items: center;
-        gap: 1rem;
+      .month-title {
+        font-size: 1.5rem;
       }
 
-      // Force view group to be on a new line for a cleaner stacked look
+      .header-controls {
+        width: 100%;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
       .view-group {
-        order: 3; // Ensure it comes last
-        width: 100%; // Take full width to force new line
-        justify-content: center; // Center the buttons inside
-        margin-top: 0.5rem;
-        display: flex; /* Ensure it's displayed */
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        order: 3;
+        
+        .view-btn {
+          flex: 1;
+          padding: 0.5rem 0.5rem;
+          font-size: 0.75rem;
+        }
       }
-      
-      .control-btn.today-btn {
-        order: 1;
-      }
-      
-      .nav-group {
-        order: 2;
+
+      .control-btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
       }
     }
   `]

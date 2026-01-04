@@ -1,5 +1,5 @@
 // Copyright (c) 2004-2013 Sergey Lyubka
-// Copyright (c) 2013-2025 Cesanta Software Limited
+// Copyright (c) 2013-2026 Cesanta Software Limited
 // All rights reserved
 //
 // This software is dual-licensed: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ extern "C" {
 #define MG_ARCH_ARMCGT 15       // Texas Semi ARM-CGT
 #define MG_ARCH_CUBE 16	        // STM32Cube environment
 
-#define MG_ARCH_NEWLIB MG_ARCH_ARMGCC  // Alias, deprecate in 2025
+#define MG_ARCH_NEWLIB MG_ARCH_ARMGCC  // Alias, deprecate in 2026
 
 #if !defined(MG_ARCH)
 #if defined(__unix__) || defined(__APPLE__)

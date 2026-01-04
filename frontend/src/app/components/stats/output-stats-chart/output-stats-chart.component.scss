@@ -1,0 +1,35 @@
+.chart-wrapper {
+    width: 100%;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-sizing: border-box;
+}
+
+.chart-container {
+    position: relative;
+    height: 350px; // Default height for desktop
+    width: 100%;
+
+    canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+}
+
+// Media Queries for responsiveness
+@media (max-width: 768px) {
+    .chart-container {
+        height: 250px;
+    }
+
+    .chart-wrapper {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container {
+        height: 200px;
+    }
+}

@@ -16,6 +16,14 @@ export class ApiService {
         return this._refreshSidebar.asObservable();
     }
 
+    getApiUrl() {
+        return this.apiUrl;
+    }
+
+    triggerRefreshSidebar() {
+        this._refreshSidebar.next();
+    }
+
     private get useMock(): boolean {
         return (environment as any).useMockData === true;
     }
@@ -262,18 +270,24 @@ export class ApiService {
         if (this.useMock) {
             return of({ success: true, message: 'Checklist created (Mock)', id: Math.floor(Math.random() * 1000) });
         }
-        return this.http.post(`${this.apiUrl}/checklists`, checklist);
+        return this.http.post(`${this.apiUrl}/checklists`, checklist).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     updateChecklist(id: number, checklist: any): Observable<any> {
-        return this.http.put(`${this.apiUrl}/checklists/${id}`, checklist);
+        return this.http.put(`${this.apiUrl}/checklists/${id}`, checklist).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     updateChecklistItem(itemId: number, isDone: boolean): Observable<any> {
         if (this.useMock) {
             return of({ success: true, message: 'Item updated (Mock)' });
         }
-        return this.http.patch(`${this.apiUrl}/checklists/items/${itemId}`, { is_done: isDone });
+        return this.http.patch(`${this.apiUrl}/checklists/items/${itemId}`, { is_done: isDone }).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     logProgress(planId: number, date: string, actualCount: number, notes: string): Observable<any> {
@@ -286,7 +300,9 @@ export class ApiService {
         if (this.useMock) {
             return of({ success: true, message: 'Checklist archived (Mock)' });
         }
-        return this.http.patch(`${this.apiUrl}/checklists/${checklistId}/archive`, { is_archived: isArchived });
+        return this.http.patch(`${this.apiUrl}/checklists/${checklistId}/archive`, { is_archived: isArchived }).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     getArchivedChecklists(): Observable<any> {
@@ -307,7 +323,9 @@ export class ApiService {
         if (this.useMock) {
             return of({ success: true, message: 'Checklist deleted (Mock)' });
         }
-        return this.http.delete(`${this.apiUrl}/checklists/${checklistId}`);
+        return this.http.delete(`${this.apiUrl}/checklists/${checklistId}`).pipe(
+            tap(() => this._refreshSidebar.next())
+        );
     }
 
     // ============================================================================
@@ -326,6 +344,15 @@ export class ApiService {
             return of({ success: true, message: 'Profile updated (Mock)' });
         }
         return this.http.put(`${this.apiUrl}/user/profile`, profile);
+    }
+
+    uploadAvatar(file: File): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, message: 'Avatar uploaded (Mock)', avatar_url: 'https://via.placeholder.com/150' });
+        }
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return this.http.post(`${this.apiUrl}/user/avatar`, formData);
     }
 
     changePassword(currentPassword: string, newPassword: string, confirmPassword: string): Observable<any> {

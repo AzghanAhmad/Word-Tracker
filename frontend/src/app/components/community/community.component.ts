@@ -34,7 +34,7 @@ export class CommunityComponent implements OnInit {
   ngOnInit() {
     // Initial fetch from backend
     this.fetchCommunityPlans();
-    
+
     // Reload on navigation back to this page
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
@@ -48,7 +48,7 @@ export class CommunityComponent implements OnInit {
   fetchCommunityPlans() {
     this.isLoading = true;
     this.cdr.detectChanges();
-    
+
     const userType = localStorage.getItem('user_type');
 
     // Use mock data for demo users
@@ -82,6 +82,13 @@ export class CommunityComponent implements OnInit {
             status: plan.status,
             graph_data: plan.graph_data || [0, 0, 0, 0, 0]
           }));
+
+          // Pre-calculate graph points and paths for performance
+          this.plans.forEach(plan => {
+            plan.graph_points = this.calculateGraphPoints(plan.graph_data);
+            plan.graph_path = this.generatePathFromPoints(plan.graph_points);
+          });
+
         } else {
           this.plans = [];
         }
@@ -115,21 +122,30 @@ export class CommunityComponent implements OnInit {
     this.router.navigate(['/plan', planId]);
   }
 
-  getSparklinePath(data: number[]): string {
-    if (!data || data.length === 0) return '';
+  private calculateGraphPoints(data: number[]): any[] {
+    if (!data || data.length === 0) return [];
     const width = 280;
     const height = 60;
-    // For visual variety, scale data
     const max = Math.max(...data, 10);
     const min = 0;
 
-    const points = data.map((val, index) => {
-      const x = (index / (data.length - 1)) * width;
+    return data.map((val, index) => {
+      const x = data.length > 1
+        ? (index / (data.length - 1)) * width
+        : width / 2;
       const y = height - ((val - min) / (max - min)) * height;
-      // Add slight padding to avoid cutting off stroke
-      return `${x},${Math.min(Math.max(y, 2), height - 2)}`;
+      // Clamp y to keep inside view
+      return {
+        x,
+        y: Math.min(Math.max(y, 4), height - 4),
+        value: val
+      };
     });
+  }
 
-    return `M ${points.join(' L ')}`;
+  private generatePathFromPoints(points: any[]): string {
+    if (!points || points.length === 0) return '';
+    const pathPoints = points.map(p => `${p.x},${p.y}`);
+    return `M ${pathPoints.join(' L ')}`;
   }
 }

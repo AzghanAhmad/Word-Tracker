@@ -30,29 +30,42 @@ import { RouterLink } from '@angular/router';
           </div>
         </div>
 
-        <form (ngSubmit)="onSubmit()" class="contact-form">
+        <form #form="ngForm" (ngSubmit)="onSubmit(form)" class="contact-form">
           <div class="form-group">
             <label for="name">Name</label>
-            <input type="text" id="name" [(ngModel)]="contactForm.name" name="name" required placeholder="Your Name">
+            <input type="text" id="name" [(ngModel)]="contactForm.name" name="name" #name="ngModel" required placeholder="Your Name">
+            <div *ngIf="name.invalid && (name.dirty || name.touched)" class="error-text">
+                Name is required.
+            </div>
           </div>
           <div class="form-group">
             <label for="email">Email</label>
-            <input type="email" id="email" [(ngModel)]="contactForm.email" name="email" required placeholder="Your Email">
+            <input type="email" id="email" [(ngModel)]="contactForm.email" name="email" #email="ngModel" required email placeholder="Your Email">
+            <div *ngIf="email.invalid && (email.dirty || email.touched)" class="error-text">
+                <span *ngIf="email.errors?.['required']">Email is required.</span>
+                <span *ngIf="email.errors?.['email']">Please enter a valid email.</span>
+            </div>
           </div>
           <div class="form-group">
             <label for="subject">Subject</label>
-            <select id="subject" [(ngModel)]="contactForm.subject" name="subject" required>
+            <select id="subject" [(ngModel)]="contactForm.subject" name="subject" #subject="ngModel" required>
               <option value="">Select a topic</option>
               <option value="technical">Technical Issue</option>
               <option value="feature">Feature Request</option>
               <option value="other">Other</option>
             </select>
+             <div *ngIf="subject.invalid && (subject.dirty || subject.touched)" class="error-text">
+                Subject is required.
+            </div>
           </div>
           <div class="form-group">
             <label for="message">Message</label>
-            <textarea id="message" [(ngModel)]="contactForm.message" name="message" required placeholder="How can we help?" rows="5"></textarea>
+            <textarea id="message" [(ngModel)]="contactForm.message" name="message" #message="ngModel" required placeholder="How can we help?" rows="5"></textarea>
+            <div *ngIf="message.invalid && (message.dirty || message.touched)" class="error-text">
+                Message is required.
+            </div>
           </div>
-          <button type="submit" class="btn-submit">Send Message</button>
+          <button type="submit" class="btn-submit" [disabled]="!form.valid">Send Message</button>
           
           <div *ngIf="submitted" class="success-message">
             <i class="fas fa-check-circle"></i>
@@ -100,7 +113,7 @@ import { RouterLink } from '@angular/router';
     }
     .info-card i {
       font-size: 2rem;
-      color: #3b82f6;
+      color: #1C2E4A;
       margin-bottom: 1rem;
     }
     .info-card h3 {
@@ -108,7 +121,7 @@ import { RouterLink } from '@angular/router';
       color: #1e293b;
     }
     .info-card p {
-      color: #3b82f6;
+      color: #1C2E4A;
       font-weight: 600;
       margin-bottom: 0.25rem;
     }
@@ -138,10 +151,15 @@ import { RouterLink } from '@angular/router';
       border-radius: 8px;
       font-size: 1rem;
     }
+    .form-group input.ng-invalid.ng-touched, 
+    .form-group select.ng-invalid.ng-touched, 
+    .form-group textarea.ng-invalid.ng-touched {
+        border-color: #dc2626;
+    }
     .btn-submit {
       width: 100%;
       padding: 1rem;
-      background: #3b82f6;
+      background: #1C2E4A;
       color: white;
       border: none;
       border-radius: 8px;
@@ -151,7 +169,12 @@ import { RouterLink } from '@angular/router';
       transition: background 0.2s;
     }
     .btn-submit:hover {
-      background: #2563eb;
+      background: #1C2E4A;
+    }
+    .btn-submit:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+        opacity: 0.7;
     }
     .success-message {
       margin-top: 1.5rem;
@@ -162,6 +185,14 @@ import { RouterLink } from '@angular/router';
       background: #ecfdf5;
       padding: 1rem;
       border-radius: 8px;
+    }
+    .text-danger {
+        color: #dc2626;
+    }
+    .error-text {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
     }
     @media (max-width: 768px) {
       .contact-grid {
@@ -179,13 +210,16 @@ export class ContactComponent {
   };
   submitted = false;
 
-  onSubmit() {
-    console.log('Form Submitted:', this.contactForm);
-    this.submitted = true;
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      this.submitted = false;
-      this.contactForm = { name: '', email: '', subject: '', message: '' };
-    }, 3000);
+  onSubmit(form: any) {
+    if (form.valid) {
+      console.log('Form Submitted:', this.contactForm);
+      this.submitted = true;
+      // Reset form after 3 seconds
+      setTimeout(() => {
+        this.submitted = false;
+        form.resetForm();
+        this.contactForm = { name: '', email: '', subject: '', message: '' };
+      }, 3000);
+    }
   }
 }

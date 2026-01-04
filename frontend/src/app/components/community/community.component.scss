@@ -1,3 +1,14 @@
+:host {
+    --primary-color: #1C2E4A;
+    --bg-primary: #ffffff;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+}
+
 .community-container {
     padding: 2rem;
     max-width: 1400px;
@@ -41,7 +52,7 @@
 
                     &:focus {
                         outline: none;
-                        border-color: #3b82f6;
+                        border-color: #1C2E4A;
                         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
                     }
                 }
@@ -55,24 +66,23 @@
         gap: 1.5rem;
 
         .plan-card {
-            background: #fff;
-            border: 1px solid #eef2ff;
-            border-radius: 4px; // Sharp-ish corners
+            background: var(--bg-secondary, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
-            cursor: pointer;
-            transition: box-shadow 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-height: 200px;
 
             &:hover {
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-
-                // Optional: Tooltip effect on graph logic? 
+                transform: translateY(-4px);
+                box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
             }
 
             .card-header {
-                background-color: #e0f2fe; // Light Blue
+                background-color: var(--bg-tertiary, #f1f5f9);
                 padding: 0.75rem 1rem;
                 display: flex;
                 justify-content: space-between;
@@ -80,7 +90,7 @@
 
                 span {
                     font-size: 0.85rem;
-                    color: #0ea5e9; // Blue 500
+                    color: var(--text-secondary, #334155);
                     font-weight: 500;
                 }
             }
@@ -100,32 +110,47 @@
                     path {
                         stroke: #7dd3fc; // Blue 300
                     }
+
+                    .visible-dot {
+                        fill: #0ea5e9;
+                        opacity: 0;
+                        transition: opacity 0.15s ease-in-out;
+                        pointer-events: none;
+                    }
+
+                    .tooltip-box {
+                        opacity: 0;
+                        transition: opacity 0.15s ease-in-out;
+                        pointer-events: none;
+                    }
+
+                    .data-point-group:hover {
+                        .visible-dot {
+                            opacity: 1;
+                        }
+
+                        .tooltip-box {
+                            opacity: 1;
+                        }
+                    }
                 }
             }
 
             .card-footer {
                 padding: 1rem;
                 text-align: center;
-                border-top: 1px solid transparent; // Clean footer
+                border-top: 1px solid var(--border-color, #e2e8f0);
 
                 .plan-name {
-                    color: #0ea5e9; // Link Blue
+                    color: var(--text-primary, #0f172a);
                     font-size: 0.95rem;
                     margin-bottom: 0.5rem;
-                    font-weight: 500;
-
-                    &:hover {
-                        text-decoration: underline;
-                    }
+                    font-weight: 600;
                 }
 
                 .author-info {
-                    color: #0ea5e9; // Link Blue
+                    color: var(--text-secondary, #334155);
                     font-size: 0.85rem;
-
-                    &:hover {
-                        text-decoration: underline;
-                    }
                 }
             }
         }

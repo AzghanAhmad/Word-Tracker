@@ -1,14 +1,17 @@
 <div class="checklists-page">
-    <!-- Top Nav Tabs -->
+    <!-- Hero Branding Section -->
 
 
     <div class="container fade-in">
-        <div class="header">
-            <h1>My Checklists</h1>
-            <a routerLink="/create-checklist" class="btn-primary">
+        <header class="page-header">
+            <div class="welcome-section">
+                <h1>Welcome to <span>AuthorFlow</span></h1>
+                <p>Track your progress and stay organized Checklists</p>
+            </div>
+            <a routerLink="/create-checklist" class="btn-create-new">
                 <i class="fas fa-plus"></i> Create New
             </a>
-        </div>
+        </header>
 
         <app-content-loader *ngIf="isLoading"></app-content-loader>
 
@@ -38,6 +41,7 @@
                     </div>
                 </div>
 
+                <div class="task-status-label">Task Status</div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" [style.width.%]="getCompletionPercentage(list)"></div>
                 </div>
@@ -48,7 +52,7 @@
                 <div class="items-preview">
                     <div class="item" *ngFor="let item of list.items | slice:0:3" (click)="toggleItem(list.id, item)"
                         style="cursor: pointer;">
-                        <i class="fas" [ngClass]="item.is_done ? 'fa-check-square' : 'fa-square'"></i>
+                        <i [ngClass]="item.is_done ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
                         <span [class.done]="item.is_done">{{ item.text }}</span>
                     </div>
                     <div class="more-items" *ngIf="(list.items?.length || 0) > 3">
@@ -65,6 +69,7 @@
                 </div>
             </div>
         </div>
+
         <div class="pagination-controls" *ngIf="totalPages > 1 && !isLoading">
             <div class="page-size">
                 <label>Show:</label>
@@ -81,4 +86,3 @@
             </div>
         </div>
     </div>
-</div>

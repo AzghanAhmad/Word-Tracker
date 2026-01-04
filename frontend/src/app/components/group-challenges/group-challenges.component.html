@@ -22,7 +22,7 @@
         <p class="subheading">Join forces with fellow writers. Compete, encourage, and achieve your goals together.</p>
 
         <div class="action-buttons">
-            <button class="btn btn-learn">
+            <button class="btn btn-learn" (click)="openGuideModal()">
                 <i class="fas fa-info-circle"></i>
                 Learn About Challenges
             </button>
@@ -34,7 +34,7 @@
     </div>
 
     <!-- Features Section -->
-    <div class="features-section">
+    <div class="features-section" id="challenge-features">
         <div class="feature-card">
             <div class="feature-icon">📊</div>
             <h3>Track Progress</h3>
@@ -55,17 +55,11 @@
                 <h3>Have an Invite Code?</h3>
                 <p>Join a private challenge instantly.</p>
                 <div class="invite-form">
-                    <input type="text" 
-                           [(ngModel)]="inviteCodeInput" 
-                           placeholder="Enter 6-digit code" 
-                           maxlength="6"
-                           [disabled]="isSubmitting"
-                           (keyup.enter)="joinByCode()"
-                           (input)="inviteCodeInput = inviteCodeInput.toUpperCase()"
-                           class="invite-code-input">
-                    <button class="btn-primary" 
-                            (click)="joinByCode()" 
-                            [disabled]="!inviteCodeInput.trim() || isSubmitting">
+                    <input type="text" [(ngModel)]="inviteCodeInput" placeholder="Enter 6-digit code" maxlength="6"
+                        [disabled]="isSubmitting" (keyup.enter)="joinByCode()"
+                        (input)="inviteCodeInput = inviteCodeInput.toUpperCase()" class="invite-code-input">
+                    <button class="btn-primary" (click)="joinByCode()"
+                        [disabled]="!inviteCodeInput.trim() || isSubmitting">
                         <span *ngIf="!isSubmitting">Join</span>
                         <span *ngIf="isSubmitting">
                             <i class="fas fa-spinner fa-spin"></i> Joining...
@@ -149,7 +143,7 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label>Challenge Name *</label>
-                    <input type="text" [(ngModel)]="newChallenge.name" placeholder="e.g. NaNoWriMo 2025">
+                    <input type="text" [(ngModel)]="newChallenge.name" placeholder="e.g. NaNoWriMo 2026">
                 </div>
 
                 <div class="form-group">
@@ -196,6 +190,58 @@
                 <button class="btn-primary" (click)="createChallenge()" [disabled]="isSubmitting">
                     {{ isSubmitting ? 'Creating...' : 'Create Challenge' }}
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guide Modal -->
+    <div class="modal-overlay guide-modal-overlay" *ngIf="showGuideModal" (click)="closeGuideModal()">
+        <div class="modal-dialog guide-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+                <div class="header-icon">
+                    <i class="fas fa-lightbulb"></i>
+                </div>
+                <h2>Understanding Challenges</h2>
+                <button class="close-btn" (click)="closeGuideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="guide-intro">
+                    <p>Challenges are timed writing events where authors work toward specific goals together. It's the
+                        ultimate way to boost your productivity!</p>
+                </div>
+                <div class="guide-steps">
+                    <div class="guide-step">
+                        <div class="step-num">1</div>
+                        <div class="step-content">
+                            <h4>Find or Create</h4>
+                            <p>Browse public challenges or create a private one for your writing group with a unique
+                                invite code.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="step-num">2</div>
+                        <div class="step-content">
+                            <h4>Set Your Target</h4>
+                            <p>Choose between total word counts, daily averages, or time-based goals. Define your start
+                                and end dates.</p>
+                        </div>
+                    </div>
+                    <div class="guide-step">
+                        <div class="step-num">3</div>
+                        <div class="step-content">
+                            <h4>Compete & Track</h4>
+                            <p>Log your progress daily. Watch your position on the leaderboard and cheer on your fellow
+                                writers.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="guide-pro-tip">
+                    <i class="fas fa-star"></i>
+                    <span><strong>Pro Tip:</strong> Private challenges are perfect for accountability partners!</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" (click)="closeGuideModal()">Got it, thanks!</button>
             </div>
         </div>
     </div>

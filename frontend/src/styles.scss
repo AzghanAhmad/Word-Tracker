@@ -2,6 +2,9 @@
    WORD TRACKER - Global Styles (Fully Responsive)
    =========================================== */
 
+@import "quill/dist/quill.snow.css";
+@import "quill/dist/quill.bubble.css";
+
 /* ==========================================
    CSS VARIABLES - Design Tokens
    ========================================== */
@@ -14,7 +17,7 @@
     /* Background Colors */
     --bg-light: #f9fafb;
     --bg-card: #ffffff;
-    --bg-dark: #0D1B2A;
+    --bg-dark: #1C2E4A;
 
     /* Text Colors */
     --text-primary: #1c2e4a;
@@ -171,7 +174,8 @@ select {
 
     &::placeholder {
         color: #999999;
-        opacity: 1; /* Firefox */
+        opacity: 1;
+        /* Firefox */
     }
 }
 
@@ -626,4 +630,15 @@ select {
     button {
         display: none !important;
     }
+}
+
+/* User Requested Overrides - Step 786 & 800 */
+input {
+    color: black !important;
+}
+
+input::placeholder {
+    color: black !important;
+    opacity: 1;
+    /* Firefox overrides */
 }

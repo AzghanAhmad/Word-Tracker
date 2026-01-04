@@ -44,11 +44,10 @@
         <!-- Main Progress Column -->
         <div class="main-column">
             <!-- Description Card -->
-            <div class="card description-card">
+            <div class="card description-card" *ngIf="hasDescription">
                 <h2><i class="fas fa-align-left"></i> Plan Description</h2>
                 <div class="description-content">
-                    <p *ngIf="plan.description">{{ plan.description }}</p>
-                    <p *ngIf="!plan.description" class="empty-state">No description provided for this plan.</p>
+                    <div [innerHTML]="plan.description"></div>
                 </div>
             </div>
 
@@ -78,7 +77,8 @@
                     </div>
                     <div class="goal-item">
                         <span class="label">Target Finish Date</span>
-                        <span class="value">{{ plan.fixed_deadline ? getFormattedDate(plan.end_date) : 'Flexible'
+                        <span class="value">{{ plan.fixed_deadline ? getFormattedDate(plan.end_date) : 'Adaptive
+                            Scheduling'
                             }}</span>
                     </div>
                     <div class="goal-item">
@@ -103,6 +103,42 @@
                             [style.background-color]="plan.dashboard_color || plan.color_code || '#000000'"
                             style="width: 20px; height: 20px; border-radius: 50%; display: inline-block; vertical-align: middle; border: 1px solid #ddd;">
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Card (New) -->
+            <div class="card config-card">
+                <h2><i class="fas fa-sliders-h"></i> Configuration</h2>
+                <div class="goals-grid">
+                    <div class="goal-item">
+                        <span class="label">Strategy</span>
+                        <span class="value" style="text-transform: capitalize;">{{ plan.algorithm_type || 'Steady'
+                            }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Intensity</span>
+                        <span class="value">{{ plan.strategy_intensity || 'Average' }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Weekend Approach</span>
+                        <span class="value">{{ plan.weekend_approach || 'The Usual' }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Reserve Days</span>
+                        <span class="value">{{ plan.reserve_days || 0 }} days</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Week Starts</span>
+                        <span class="value">{{ plan.week_start_day || 'Mondays' }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Grouping</span>
+                        <span class="value">{{ plan.grouping_type || 'Day' }}</span>
+                    </div>
+                    <div class="goal-item">
+                        <span class="label">Visibility</span>
+                        <span class="value">{{ plan.is_private ? 'Private' : 'Public' }}</span>
                     </div>
                 </div>
             </div>
@@ -138,6 +174,120 @@
                 </div>
             </div>
 
+            <!-- Visualization Card -->
+            <div class="card visualization-card">
+                <div class="card-header-with-action">
+                    <h2><i class="fas fa-chart-line"></i> Plan Trajectory</h2>
+                    <div class="view-toggles">
+                        <button [class.active]="activeView === 'Graph'" (click)="activeView = 'Graph'"><i
+                                class="fas fa-chart-area"></i> Graph</button>
+                        <button [class.active]="activeView === 'Table'" (click)="activeView = 'Table'"><i
+                                class="fas fa-table"></i> Table</button>
+                    </div>
+                </div>
+
+                <!-- Graph View -->
+                <div class="chart-container" *ngIf="activeView === 'Graph'">
+                    <div class="chart-wrapper">
+                        <svg viewBox="0 0 800 300" preserveAspectRatio="none" class="main-chart"
+                            (mouseleave)="hoveredPoint = null">
+                            <!-- Background Grid -->
+                            <line x1="0" y1="75" x2="800" y2="75" stroke="#f1f5f9" stroke-width="1"></line>
+                            <line x1="0" y1="150" x2="800" y2="150" stroke="#f1f5f9" stroke-width="1"></line>
+                            <line x1="0" y1="225" x2="800" y2="225" stroke="#f1f5f9" stroke-width="1"></line>
+
+                            <!-- Target Path (Dotted) -->
+                            <path [attr.d]="chartData.target" fill="none" stroke="#cbd5e1" stroke-width="2"
+                                stroke-dasharray="8,4"></path>
+
+                            <!-- Actual Path (Solid Color) -->
+                            <path [attr.d]="chartData.actual" fill="none"
+                                [attr.stroke]="plan.dashboard_color || '#6366f1'" stroke-width="3"
+                                stroke-linecap="round" stroke-linejoin="round"></path>
+
+                            <!-- Interaction Layer -->
+                            <g *ngFor="let point of chartPoints" (mouseenter)="hoveredPoint = point"
+                                style="cursor: pointer;">
+                                <!-- Invisible Hit Area -->
+                                <rect [attr.x]="point.x - 20" y="0" width="40" height="300" fill="transparent"></rect>
+
+                                <!-- Active State Elements -->
+                                <g *ngIf="hoveredPoint === point">
+                                    <!-- Vertical Guide Line -->
+                                    <line [attr.x1]="point.x" y1="0" [attr.x2]="point.x" y2="300" stroke="#94a3b8"
+                                        stroke-width="1" stroke-dasharray="4,4"></line>
+
+                                    <!-- Target Point -->
+                                    <circle [attr.cx]="point.x" [attr.cy]="point.yTarget" r="6" fill="#cbd5e1"
+                                        stroke="white" stroke-width="2"></circle>
+
+                                    <!-- Actual Point -->
+                                    <circle [attr.cx]="point.x" [attr.cy]="point.yActual" r="6"
+                                        [attr.fill]="plan.dashboard_color || '#6366f1'" stroke="white" stroke-width="2">
+                                    </circle>
+                                </g>
+                            </g>
+                        </svg>
+
+                        <!-- Tooltip Overlay -->
+                        <div class="chart-tooltip" *ngIf="hoveredPoint" [style.left.%]="(hoveredPoint.x / 800) * 100"
+                            [style.top.%]="(hoveredPoint.yActual / 300) * 100"
+                            [class.tooltip-left]="hoveredPoint.x < 150" [class.tooltip-right]="hoveredPoint.x > 650">
+                            <div class="tooltip-date">{{ hoveredPoint.data.date | date:'mediumDate' }}</div>
+                            <div class="tooltip-row">
+                                <span class="dot actual"
+                                    [style.background-color]="plan.dashboard_color || '#6366f1'"></span>
+                                <div>
+                                    <div class="label">Actual</div>
+                                    <div class="value">{{ hoveredPoint.data.cumActual | number }}</div>
+                                </div>
+                            </div>
+                            <div class="tooltip-row">
+                                <span class="dot target"></span>
+                                <div>
+                                    <div class="label">Target</div>
+                                    <div class="value">{{ hoveredPoint.data.cumTarget | number }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="dot target"></span> Target Path</span>
+                        <span class="legend-item"><span class="dot actual"
+                                [style.background-color]="plan.dashboard_color || '#6366f1'"></span> Actual
+                            Progress</span>
+                    </div>
+                </div>
+
+                <!-- Table View -->
+                <div class="table-container" *ngIf="activeView === 'Table'">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Target</th>
+                                <th>Actual</th>
+                                <th>Diff</th>
+                                <th>Cum. Actual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let point of chartPoints.slice().reverse()">
+                                <td>{{ point.data.date | date:'MMM d' }}</td>
+                                <td>{{ point.data.dayTarget | number }}</td>
+                                <td>{{ point.data.dayActual | number }}</td>
+                                <td [class.text-green]="(point.data.dayActual - point.data.dayTarget) >= 0"
+                                    [class.text-red]="(point.data.dayActual - point.data.dayTarget) < 0">
+                                    {{ (point.data.dayActual - point.data.dayTarget) > 0 ? '+' : ''}}{{
+                                    (point.data.dayActual - point.data.dayTarget) | number }}
+                                </td>
+                                <td>{{ point.data.cumActual | number }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Recent Activity -->
             <div class="card activity-card">
                 <div class="card-header-with-action">
@@ -145,7 +295,7 @@
                         <h2><i class="fas fa-history"></i> Recent Sessions</h2>
                         <p class="section-description">Last 10 work days with progress</p>
                     </div>
-                    <button class="btn-add-session" (click)="showAddSessionForm = !showAddSessionForm" 
+                    <button class="btn-add-session" (click)="showAddSessionForm = !showAddSessionForm"
                         [class.active]="showAddSessionForm" title="Add new session">
                         <i class="fas" [class.fa-plus]="!showAddSessionForm" [class.fa-times]="showAddSessionForm"></i>
                         <span>{{ showAddSessionForm ? 'Cancel' : 'Add Session' }}</span>
@@ -161,11 +311,13 @@
                         </div>
                         <div class="form-group">
                             <label>Words</label>
-                            <input type="number" [(ngModel)]="newSessionWords" min="0" placeholder="0" class="form-input">
+                            <input type="number" [(ngModel)]="newSessionWords" min="0" placeholder="0"
+                                class="form-input">
                         </div>
                     </div>
                     <div class="form-actions">
-                        <button class="btn-primary" (click)="addNewSession()" [disabled]="!newSessionDate || !newSessionWords || newSessionWords <= 0">
+                        <button class="btn-primary" (click)="addNewSession()"
+                            [disabled]="!newSessionDate || !newSessionWords || newSessionWords <= 0">
                             <i class="fas fa-save"></i> Save Session
                         </button>
                         <button class="btn-secondary" (click)="showAddSessionForm = false">
@@ -173,9 +325,10 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="log-list" *ngIf="activityLogs.length > 0">
-                    <div class="log-item" *ngFor="let log of activityLogs" [class.editing]="editingSessionId === log.id">
+                    <div class="log-item" *ngFor="let log of activityLogs"
+                        [class.editing]="editingSessionId === log.id">
                         <div class="log-icon">
                             <i class="fas fa-pen-fancy"></i>
                         </div>
@@ -188,11 +341,11 @@
                         </div>
                         <div class="log-words" *ngIf="editingSessionId !== log.id">
                             <div class="words-info">
-                                <span class="words-display" [class.met-target]="log.words >= log.target" 
+                                <span class="words-display" [class.met-target]="log.words >= log.target"
                                     [class.below-target]="log.words < log.target && log.target > 0">
                                     {{ log.words | number }} words
                                 </span>
-                                <span class="progress-badge" *ngIf="log.target > 0" 
+                                <span class="progress-badge" *ngIf="log.target > 0"
                                     [class.met-target]="log.words >= log.target"
                                     [class.below-target]="log.words < log.target">
                                     {{ (log.words / log.target * 100) | number:'1.0-0' }}%
@@ -208,8 +361,8 @@
                             </div>
                         </div>
                         <div class="log-words-edit" *ngIf="editingSessionId === log.id">
-                            <input type="number" [(ngModel)]="editingSessionValue" min="0" 
-                                class="words-input" placeholder="Words" (keyup.enter)="saveSession(log)"
+                            <input type="number" [(ngModel)]="editingSessionValue" min="0" class="words-input"
+                                placeholder="Words" (keyup.enter)="saveSession(log)"
                                 (keyup.escape)="cancelEditingSession()" #editInput>
                             <span class="words-label">words</span>
                             <div class="edit-actions">

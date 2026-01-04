@@ -38,7 +38,7 @@ $token = $login.token
 if (-not $token) { Write-Host "No Token!"; exit }
 
 # 2. Plans CRUD
-$p = Test-Endpoint "POST" "$baseUrl/plans" @{title = "My Novel"; total_word_count = 50000; start_date = "2025-01-01"; end_date = "2025-12-31"; algorithm_type = "linear" } $token
+$p = Test-Endpoint "POST" "$baseUrl/plans" @{title = "My Novel"; total_word_count = 50000; start_date = "2026-01-01"; end_date = "2026-12-31"; algorithm_type = "linear" } $token
 $pid = $p.id
 Write-Host "Created Plan ID: $pid"
 
@@ -60,7 +60,7 @@ $listCL = Test-Endpoint "GET" "$baseUrl/checklists" $null $token
 if ($listCL.Count -ge 1) { Write-Host "List Checklists Passed" -ForegroundColor Green }
 
 # 4. Challenges
-$c = Test-Endpoint "POST" "$baseUrl/challenges" @{title = "NaNoWriMo"; type = "month"; goal_count = 50000; start_date = "2025-11-01" } $token
+$c = Test-Endpoint "POST" "$baseUrl/challenges" @{title = "NaNoWriMo"; type = "month"; goal_count = 50000; start_date = "2026-11-01" } $token
 $cid = $c.id
 $listC = Test-Endpoint "GET" "$baseUrl/challenges" $null $token
 if ($listC.Count -ge 1) { Write-Host "Challenges Listed" -ForegroundColor Green }

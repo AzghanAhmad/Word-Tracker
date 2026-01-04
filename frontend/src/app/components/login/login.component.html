@@ -1,7 +1,7 @@
 <app-auth-layout>
     <div class="login-content">
         <!-- Header -->
-        <h1 class="auth-title">Welcome to Word Tracker!</h1>
+        <h1 class="auth-title">Welcome to AuthorFlow!</h1>
         <p class="auth-subtext">
             By continuing you agree to our
             <a routerLink="/terms">Terms of Service</a> and
@@ -11,13 +11,13 @@
         <!-- Login Form -->
         <form (ngSubmit)="onLogin()" class="auth-form">
             <div class="form-group">
-                <input type="text" [(ngModel)]="email" name="email" placeholder="Username or Email" class="form-input"
-                    required />
+                <input type="text" [(ngModel)]="email" name="email" placeholder="Enter your username or email"
+                    class="form-input" required />
             </div>
 
             <div class="form-group">
-                <input type="password" [(ngModel)]="password" name="password" placeholder="Password" class="form-input"
-                    required />
+                <input type="password" [(ngModel)]="password" name="password" placeholder="Enter your password"
+                    class="form-input" required />
             </div>
 
             <button type="submit" class="btn-login" [disabled]="isLoading">
@@ -46,6 +46,7 @@
         </button>
 
         <!-- Error Message -->
+        <p *ngIf="successMessage" class="success-message">{{ successMessage }}</p>
         <p *ngIf="errorMessage" class="error-message">{{ errorMessage }}</p>
     </div>
 </app-auth-layout>

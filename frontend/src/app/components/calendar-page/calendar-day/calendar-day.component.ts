@@ -16,26 +16,32 @@ import { CommonModule } from '@angular/common';
       </div>
       
       <div class="content-area">
-        <div *ngFor="let event of events" class="event-bar" [class.deadline]="event.isDeadline">
-          {{ event.title }}: {{ event.value }}
+        <div *ngFor="let event of events" class="event-pill" [class.deadline]="event.isDeadline">
+          <span class="dot"></span> {{ event.title }}
         </div>
 
-        <!-- Progress vs Plan Mode: Show individual plan boxes -->
+        <!-- Progress vs Plan Mode -->
         <div *ngIf="viewMode === 'progress-vs-plan'" class="plans-container">
-          <div *ngFor="let plan of plans" class="plan-box-black">
-            <div class="plan-name">{{ plan.title || plan.plan_name }}</div>
-            <div class="plan-words">{{ plan.dailyTarget | number }} words</div>
+          <div *ngFor="let plan of plans" class="plan-pill">
+             <div class="pill-color" [style.background-color]="plan.color_code || '#6366f1'"></div>
+             <span class="name">{{ plan.title }}</span>
+             <span class="count">{{ plan.dailyTarget | number }}w</span>
           </div>
         </div>
 
-        <!-- Daily Total Mode: Show total word count -->
-        <div *ngIf="viewMode === 'daily-total'">
-          <div class="deadline-box" *ngIf="isDeadline">
-            Deadline: FINAL
-          </div>
+        <!-- Daily Total Mode -->
+        <div *ngIf="viewMode === 'daily-total'" class="daily-mode-wrapper">
+          <div class="deadline-badge" *ngIf="isDeadline">DEADLINE</div>
 
-          <div class="word-count-box" *ngIf="target > 0 && !isDeadline">
-            {{ actual > 0 ? (actual | number) + ' / ' : '' }}{{ target | number }} words
+          <div class="stats-row" *ngIf="target > 0 && !isDeadline">
+             <div class="stat-group">
+                <span class="label">Target</span>
+                <span class="val">{{ target | number }}</span>
+             </div>
+             <div class="stat-group" [class.success]="actual >= target">
+                <span class="label">Actual</span>
+                <span class="val">{{ actual | number }}</span>
+             </div>
           </div>
         </div>
       </div>
@@ -44,153 +50,192 @@ import { CommonModule } from '@angular/common';
   styles: [`
     .day-cell {
       background: #fff;
-      border-right: 1px solid #ddd;
-      border-bottom: 1px solid #ddd;
-      height: 140px;
-      padding: 5px;
+      height: 100%;
+      min-height: 140px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       position: relative;
       cursor: pointer;
-      transition: background-color 0.1s ease;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid transparent;
 
       &:hover {
-        background-color: #f9f9f9;
+        background-color: #f8fafc;
+        border-color: #e2e8f0;
+        z-index: 10;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
       }
 
       &.other-month {
-        background-color: #fff; // Keep white like image
+        background-color: #fafbfc;
         
         .day-number {
-          color: #ccc;
+          color: #cbd5e1;
         }
       }
 
       &.today {
-        background-color: #fff9db; // Light yellow background from image
+        background-color: #f0f9ff;
+        .day-number {
+          background: #0ea5e9;
+          color: white;
+          width: 26px;
+          height: 26px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
+        }
       }
 
       &.selected {
-        outline: 2px solid #31b0d5;
-        outline-offset: -2px;
-        z-index: 1;
+        background-color: #f8fafc;
+        box-shadow: inset 0 0 0 2px #0ea5e9;
+        z-index: 20;
       }
     }
 
     .day-header {
       display: flex;
       justify-content: flex-end;
-      padding: 2px;
+      margin-bottom: 8px;
     }
 
     .day-number {
-      font-size: 0.95rem;
-      font-weight: 400;
-      color: #31b0d5; // Blue number from image
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #334155;
+      transition: all 0.2s;
     }
 
     .content-area {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      padding-top: 4px;
-      justify-content: space-between;
+      gap: 6px;
     }
 
-    .event-bar {
-      background-color: #444; // Dark grey background
-      color: white;
-      font-size: 0.75rem;
-      padding: 3px 6px;
-      border-radius: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 500;
-      border: 1px solid #222;
-
-      &.deadline {
-        background-color: #000;
-        font-weight: 700;
-      }
+    /* Daily Mode Styles */
+    .daily-mode-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: auto;
     }
 
-    .word-count-box {
-      background-color: #000;
-      color: #fff;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 6px 8px;
-      border-radius: 4px;
-      text-align: center;
-      margin-top: auto;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      box-sizing: border-box;
+    .stats-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: #f1f5f9;
+        border-radius: 8px;
+        padding: 6px 8px;
     }
 
-    .deadline-box {
-      background-color: #000;
-      color: #fff;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 6px 8px;
-      border-radius: 4px;
-      text-align: center;
-      margin-top: auto;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      box-sizing: border-box;
-      text-transform: uppercase;
+    .stat-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+
+        .label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .val {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        &.success .val {
+            color: #059669;
+        }
     }
 
+    .deadline-badge {
+        background: #ef4444;
+        color: white;
+        text-align: center;
+        font-size: 0.6rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 6px;
+        letter-spacing: 0.05em;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Plan Pills */
     .plans-container {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
 
-    .plan-box-black {
-      background-color: #000;
-      color: #fff;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 6px 8px;
-      border-radius: 4px;
-      text-align: center;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+    .plan-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #ffffff;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        border: 1px solid #e2e8f0;
+        transition: transform 0.1s;
+
+        &:hover {
+            transform: translateX(2px);
+        }
+        
+        .pill-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .count {
+            font-weight: 700;
+            color: #1e293b;
+        }
     }
 
-    .plan-name {
-      font-weight: 600;
-      font-size: 0.7rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .plan-words {
-      font-weight: 500;
-      font-size: 0.65rem;
-      opacity: 0.9;
-    }
-
-    @media (max-width: 768px) {
+    @media (max-width: 640px) {
       .day-cell {
-        height: 100px;
+        min-height: 100px;
+        padding: 6px;
+      }
+      
+      .day-number {
+        font-size: 0.75rem;
+      }
+
+      .stats-row {
+          padding: 4px;
+      }
+      
+      .stat-group {
+          .label { font-size: 0.55rem; }
+          .val { font-size: 0.65rem; }
+      }
+
+      .plan-pill {
+          padding: 2px 4px;
+          gap: 4px;
+          .pill-color { width: 6px; height: 6px; }
       }
     }
   `]

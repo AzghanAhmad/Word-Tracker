@@ -18,6 +18,7 @@ export class LoginComponent {
   password = '';
   isLoading = false;
   errorMessage = '';
+  successMessage = '';
 
   constructor(
     private router: Router,
@@ -27,6 +28,7 @@ export class LoginComponent {
   onLogin() {
     console.log('🚀 onLogin called');
     this.errorMessage = '';
+    this.successMessage = '';
 
     if (!this.email || !this.password) {
       this.errorMessage = 'Please fill in all fields.';
@@ -49,12 +51,16 @@ export class LoginComponent {
           localStorage.setItem('email', this.email);
           localStorage.setItem('token', result.token);
           localStorage.removeItem('user_type');
-          this.router.navigate(['/dashboard']);
+
+          this.successMessage = 'Login successful! Redirecting...';
+          setTimeout(() => {
+            this.router.navigate(['/dashboard']);
+          }, 1500);
         } else {
           console.warn('⚠️ Login Failed according to server logic:', result);
           this.errorMessage = result.message || 'Login failed. Please check your credentials.';
+          this.isLoading = false;
         }
-        this.isLoading = false;
       },
       error: (error) => {
         console.error('❌ Login Error Event:', error);
@@ -63,7 +69,10 @@ export class LoginComponent {
       },
       complete: () => {
         console.log('🏁 Login request completed');
-        this.isLoading = false;
+        // Do not set isLoading to false on success to prevent button re-enabling during redirect delay
+        if (!this.successMessage) {
+          this.isLoading = false;
+        }
       }
     });
   }

@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 @Component({
-    selector: 'app-footer',
-    standalone: true,
-    imports: [CommonModule, RouterLink],
-    template: `
+  selector: 'app-footer',
+  standalone: true,
+  imports: [CommonModule, RouterLink],
+  template: `
     <footer class="app-footer">
       <div class="footer-links">
         <a routerLink="/help">Help</a>
@@ -15,10 +15,10 @@ import { RouterLink } from '@angular/router';
         <a routerLink="/privacy">Privacy</a>
         <a routerLink="/terms">Terms</a>
       </div>
-      <p style="margin-top: 0.5rem;">&copy; 2025 Word Tracker. All rights reserved.</p>
+      <p style="margin-top: 0.5rem;">&copy; 2026 ScribeCount. All rights reserved.</p>
     </footer>
   `,
-    styles: [`
+  styles: [`
     .app-footer {
       padding: 1.5rem;
       text-align: center;

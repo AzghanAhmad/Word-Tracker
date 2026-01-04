@@ -7,42 +7,22 @@
             <p class="subtitle">{{ contentType }} Drafting</p>
         </div>
         <div class="header-actions">
-            <button class="btn-done" (click)="cancel()">
-                <i class="fas fa-chart-bar"></i> Done Editing
+            <button class="btn-done" (click)="savePlan()" [disabled]="isLoading">
+                <i class="fas fa-check"></i> Done Editing
             </button>
             <button class="btn-save" (click)="savePlan()" [disabled]="isLoading">
                 <i class="fas" [ngClass]="isLoading ? 'fa-spinner fa-spin' : 'fa-save'"></i> {{ isLoading ? 'Saving...'
                 : 'Save' }}
             </button>
-            <div class="share-dropdown">
-                <button class="btn-share" (click)="toggleShareDropdown()">
-                    Share <i class="fas fa-caret-down"></i>
-                </button>
-                <div class="share-menu" *ngIf="showShareDropdown">
-                    <button (click)="copyPlanLink()" class="share-option">
-                        <i class="fas fa-link"></i> Copy Link
-                    </button>
-                    <button (click)="shareToTwitter()" class="share-option">
-                        <i class="fab fa-twitter"></i> Share to Twitter
-                    </button>
-                    <button (click)="shareToFacebook()" class="share-option">
-                        <i class="fab fa-facebook"></i> Share to Facebook
-                    </button>
-                    <div class="share-divider"></div>
-                    <button (click)="togglePlanVisibility()" class="share-option">
-                        <i class="fas" [ngClass]="isPrivate ? 'fa-lock' : 'fa-globe'"></i>
-                        {{ isPrivate ? 'Make Public' : 'Make Private' }}
-                    </button>
-                </div>
-            </div>
+
         </div>
     </header>
 
     <!-- Tabs Navigation -->
     <nav class="plan-tabs">
-        <button [class.active]="viewMode === 'schedule'" (click)="viewMode = 'schedule'">Schedule</button>
-        <button [class.active]="viewMode === 'progress'" (click)="viewMode = 'progress'">Progress</button>
-        <button [class.active]="viewMode === 'stats'" (click)="viewMode = 'stats'">Stats</button>
+        <button [class.active]="viewMode === 'schedule'" (click)="setViewMode('schedule')">Schedule</button>
+        <button [class.active]="viewMode === 'progress'" (click)="setViewMode('progress')">Progress</button>
+        <button [class.active]="viewMode === 'stats'" (click)="setViewMode('stats')">Stats</button>
     </nav>
 
     <div class="plan-content">
@@ -90,24 +70,50 @@
             </div>
 
             <!-- Plan Description -->
-            <div class="sidebar-card">
+            <div class="sidebar-card description-card">
                 <div class="card-header">
                     <h3>Plan Description</h3>
-                    <i class="fas fa-arrows-alt-v"></i>
+                    <i class="fas fa-pen-fancy"></i>
                 </div>
                 <div class="card-body">
-                    <div class="privacy-toggle">
-                        <i class="fas fa-lock"></i>
-                        <input type="checkbox" [(ngModel)]="isPrivate">
-                        <span>Make this plan private</span>
+                    <!-- Privacy Option -->
+                    <div class="privacy-section mb-3">
+                        <div class="checkbox-item">
+                            <label class="i-checks d-flex align-items-center">
+                                <input type="checkbox" [(ngModel)]="isPrivate">
+                                <i class="checkbox-box"></i>
+                                <span class="ml-2">
+                                    <i class="fas fa-lock text-muted mr-1" title="Make this plan private"></i>
+                                    Make this plan private
+                                </span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="description-stats" [class.over-limit]="isDescriptionOverLimit()">
-                        <span [class.text-warning]="isDescriptionOverLimit()">
-                            {{ getDescriptionWordCount() }} words / <b>Max {{ maxDescriptionWords }} words</b>
-                        </span>
+
+                    <!-- Word Count Label -->
+                    <div class="description-header mb-2">
+                        <label class="d-flex align-items-center gap-1" style="font-size: 0.85rem; color: #475569;">
+                            <span [class.text-danger]="isDescriptionOverLimit()">
+                                <strong>{{ getDescriptionWordCount() }} {{ getDescriptionWordCount() === 1 ? 'word' :
+                                    'words' }}</strong>
+                            </span>
+                            <span class="text-slate-400">/</span>
+                            <span>Max 300 words</span>
+                        </label>
                     </div>
-                    <textarea #descriptionInput [(ngModel)]="planDescription" placeholder="Enter a description"
-                        [class.over-limit]="isDescriptionOverLimit()"></textarea>
+
+                    <div class="quill-editor-wrapper" [class.over-limit]="isDescriptionOverLimit()">
+                        <quill-editor [(ngModel)]="planDescription" [modules]="quillModules"
+                            (onContentChanged)="onContentChanged($event)"
+                            placeholder="Enter a description for your plan..." theme="snow">
+                        </quill-editor>
+                    </div>
+
+                    <!-- Premium Offer (Hidden by default) -->
+                    <div class="premium-prompt mt-3" style="display: none; font-size: 0.85rem; color: #64748b;">
+                        Sign up for <a href="/premium" style="color: #6366f1; font-weight: 500;">Pacemaker Premium</a>
+                        to use these settings.
+                    </div>
                 </div>
             </div>
 
@@ -170,35 +176,134 @@
 
 
 
-            <!-- Display Settings -->
+            <!-- Strategy (NEW) -->
             <div class="sidebar-card">
                 <div class="card-header">
-                    <h3>Display Settings</h3>
-                    <i class="fas fa-arrows-alt-v"></i>
+                    <h3>Strategy</h3>
+                    <i class="fas fa-chess-knight"></i>
                 </div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label>Dashboard Color</label>
+                        <label>Pace Algorithm</label>
+                        <select [(ngModel)]="strategyType" (change)="onStrategyChange()">
+                            <option value="Steady">Steady</option>
+                            <option value="Back-load">Rising (Back-load)</option>
+                            <option value="Front-load">Front-load</option>
+                            <option value="Mountain">Mountain</option>
+                            <option value="Valley">Valley</option>
+                            <option value="Oscillating">Oscillating</option>
+                        </select>
+                        <p class="hint mt-1" style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">How your
+                            daily goal changes over time.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Intensity</label>
+                        <select [(ngModel)]="strategyIntensity" (change)="onStrategyChange()">
+                            <option value="Low">Low</option>
+                            <option value="Average">Average</option>
+                            <option value="High">High</option>
+                            <option value="Extreme">Extreme</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customizations (NEW) -->
+            <div class="sidebar-card">
+                <div class="card-header">
+                    <h3>Customizations</h3>
+                    <i class="fas fa-sliders-h"></i>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Weekend Approach</label>
+                        <select [(ngModel)]="weekendApproach">
+                            <option value="The Usual">The Usual</option>
+                            <option value="Lighter">Lighter</option>
+                            <option value="Heavier">Heavier</option>
+                            <option value="None">None (Days Off)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Reserve Days</label>
+                        <input type="number" [(ngModel)]="reserveDays" min="0" max="10">
+                        <p class="hint mt-1" style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Emergency
+                            buffer days.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display -->
+            <div class="sidebar-card">
+                <div class="card-header">
+                    <h3>Display</h3>
+                    <i class="fas fa-desktop"></i>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Theme Color</label>
                         <div class="color-picker-row">
                             <input type="color" [(ngModel)]="dashboardColor" class="dashboard-color-input">
-                            <span>{{ dashboardColor }}</span>
+                            <span class="color-value">{{ dashboardColor }}</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label>Week Starts</label>
+                            <select [(ngModel)]="weekStartDay">
+                                <option value="Mondays">Monday</option>
+                                <option value="Sundays">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="form-group half">
+                            <label>Grouping</label>
+                            <select [(ngModel)]="groupingType">
+                                <option value="Day">Day</option>
+                                <option value="Week">Week</option>
+                                <option value="Month">Month</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr class="separator-line">
+
+                    <div class="form-group">
+                        <label>Privacy</label>
+                        <div class="privacy-toggle-modern" (click)="togglePlanVisibility()">
+                            <div class="toggle-switch" [class.active]="isPrivate">
+                                <div class="slider"></div>
+                            </div>
+                            <span class="toggle-label">{{ isPrivate ? 'Private Plan' : 'Public Plan' }}</span>
+                            <span class="toggle-sublabel">{{ isPrivate ? 'Visible only to you' : 'Visible to everyone'
+                                }}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Progress Section -->
+            <!-- Progress -->
             <div class="sidebar-card">
                 <div class="card-header">
                     <h3>Progress</h3>
-                    <i class="fas fa-arrows-alt-v"></i>
+                    <i class="fas fa-tasks"></i>
                 </div>
                 <div class="card-body">
+                    <div class="form-group">
+                        <label>Tracking Type</label>
+                        <select [(ngModel)]="progressTrackingType">
+                            <option value="Daily Goals">Daily Goals</option>
+                            <option value="Total Count">Total Count</option>
+                        </select>
+                    </div>
+
+
                     <div class="form-group">
                         <label>Manual Progress (%)</label>
                         <input type="number" [(ngModel)]="currentProgress"
                             (ngModelChange)="onManualProgressChange($event)" min="0" max="100" placeholder="0 - 100">
-                        <p class="hint mt-1">Enter a number 1-100 to update plan progress.</p>
+                        <p class="hint mt-1" style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Enter 1-100
+                            to update.</p>
                     </div>
                 </div>
             </div>
@@ -318,7 +423,8 @@
                                     [style.left.px]="(planDays.indexOf(hoveredDay) * (800 / (planDays.length - 1 || 1))) - 60"
                                     [style.bottom.px]="150">
                                     <div class="tooltip-header">{{ hoveredDay.dateObj | date:'MM/dd/yyyy' }}</div>
-                                    <div class="tooltip-row green">Work you logged on this day: -</div>
+                                    <div class="tooltip-row green">Work you logged on this day: {{
+                                        hoveredDay.actualWorkDone || 0 | number }}</div>
                                     <div class="tooltip-row blue">Target Quota For This Day: {{
                                         hoveredDay.workToComplete }}</div>
                                 </div>
@@ -337,7 +443,7 @@
                                         [attr.y1]="getYPos(line, targetWordCount)" x2="800"
                                         [attr.y2]="getYPos(line, targetWordCount)" class="grid-line"></line>
 
-                                    <path [attr.d]="getCumulativePath()" fill="none" class="progress-path"></path>
+                                    <path [attr.d]="getCumulativeTargetPath()" fill="none" class="progress-path"></path>
 
                                     <!-- Data Dots -->
                                     <circle *ngFor="let pt of getCumulativePoints()" [attr.cx]="pt.x" [attr.cy]="pt.y"
@@ -393,7 +499,12 @@
             <div *ngIf="viewMode === 'progress'" class="progress-view-content">
                 <div class="progress-overview-banner">
                     <div class="overview-left">
-                        <h2>Overall Completion</h2>
+                        <div class="badge-row">
+                            <span class="status-pill active">Overall Completion</span>
+                            <span class="status-pill streak" *ngIf="currentStreak > 0">
+                                <i class="fas fa-fire"></i> {{ currentStreak }} Day Streak
+                            </span>
+                        </div>
                         <div class="big-progress-container">
                             <div class="progress-info">
                                 <span class="percent-text">{{ currentProgress }}%</span>
@@ -405,10 +516,38 @@
                             </div>
                         </div>
                     </div>
-                    <div class="overview-right">
-                        <!-- <button class="btn-save-progress" (click)="saveProgress()">
-                            <i class="fas fa-save"></i> Back up to cloud
-                        </button> -->
+                </div>
+                <div class="progress-list-section mt-6">
+                    <div class="section-header">
+                        <h3>Daily Updates</h3>
+                        <p>Your recent writing history</p>
+                    </div>
+
+                    <div class="progress-grid" *ngIf="progressEntries.length > 0">
+                        <div class="progress-update-card" *ngFor="let entry of progressEntries">
+                            <div class="card-left">
+                                <div class="entry-date">{{ entry.date | date:'EEE, MMM d' }}</div>
+                                <div class="entry-target" style="font-size: 0.8rem; color: #94a3b8;">Target: {{
+                                    entry.targetWords | number }}</div>
+                            </div>
+                            <div class="card-right">
+                                <div class="entry-words" [class.over]="entry.actualWords >= entry.targetWords">
+                                    {{ entry.actualWords | number }}
+                                    <span class="unit">words</span>
+                                </div>
+                                <div class="entry-trend" [ngSwitch]="entry.trend">
+                                    <i *ngSwitchCase="'up'" class="fas fa-caret-up text-success"></i>
+                                    <i *ngSwitchCase="'down'" class="fas fa-caret-down text-danger"></i>
+                                    <i *ngSwitchCase="'steady'" class="fas fa-minus text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="empty-state" *ngIf="progressEntries.length === 0">
+                        <i class="fas fa-pencil-alt"></i>
+                        <p>No writing history logged yet.</p>
+                        <p class="sub">Update your progress using the table or chart to see your history here.</p>
                     </div>
                 </div>
 
@@ -416,111 +555,105 @@
 
             <!-- Stats Tab View -->
             <div *ngIf="viewMode === 'stats'" class="stats-view-content">
-                <div class="stats-dashboard-grid">
-                    <!-- Main Gauge Card -->
-                    <div class="stats-main-card">
-                        <div class="gauge-container">
-                            <svg viewBox="0 0 100 100" class="on-track-gauge">
-                                <circle cx="50" cy="50" r="45" class="gauge-bg"></circle>
-                                <circle cx="50" cy="50" r="45" class="gauge-fill"
-                                    [style.strokeDashoffset]="getOnTrackStroke()"></circle>
+                <!-- Performance Overview Visual -->
+                <div class="performance-visual-row">
+                    <!-- Completion Donut -->
+                    <div class="visual-card completion-card">
+                        <div class="card-title">Project Completion</div>
+                        <div class="donut-wrapper">
+                            <svg viewBox="0 0 100 100" class="donut-svg">
+                                <circle cx="50" cy="50" r="40" class="donut-track"></circle>
+                                <circle cx="50" cy="50" r="40" class="donut-fill"
+                                    [style.stroke-dashoffset]="251.2 * (1 - currentProgress / 100)"></circle>
                             </svg>
-                            <div class="gauge-center">
-                                <span class="gauge-value">{{ currentProgress }}%</span>
-                                <span class="gauge-label">Completion</span>
+                            <div class="donut-content">
+                                <span class="percent">{{ currentProgress }}%</span>
+                                <span class="label">Done</span>
                             </div>
                         </div>
-                        <div class="gauge-details">
-                            <h3>Goal Status</h3>
-                            <p class="status-badge" [ngClass]="{
-                                'ahead': onTrackStatus === 'Ahead of Schedule',
-                                'on-track': onTrackStatus === 'On Track',
-                                'behind': onTrackStatus === 'Behind Schedule'
-                            }">{{ onTrackStatus }}</p>
-                            <p *ngIf="onTrackPercent >= 100">You are exceeding your goals! Keep the momentum.</p>
-                            <p *ngIf="onTrackPercent < 100 && onTrackPercent >= 80">You're slightly behind, but well
-                                within reach.</p>
-                            <p *ngIf="onTrackPercent < 80">Time to pick up the pace to hit your deadline.</p>
-                            <div class="streak-mini-badge">
-                                <i class="fas fa-fire"></i> {{ currentStreak }} Day Streak
+                        <div class="completion-stats">
+                            <div class="stat">
+                                <span class="val">{{ totalWordsLogged | number }}</span>
+                                <span class="lbl">Words Logged</span>
+                            </div>
+                            <div class="stat">
+                                <span class="val">{{ wordsRemaining | number }}</span>
+                                <span class="lbl">Words Left</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right Column: Quick Stats -->
-                    <div class="stats-quick-grid">
-                        <div class="quick-stat-tile">
-                            <div class="icon-box blue"><i class="fas fa-pen-nib"></i></div>
-                            <div class="tile-info">
-                                <span class="label">Total Words</span>
-                                <span class="value">{{ totalWordsLogged | number }}</span>
+                    <!-- Highlight Metrics -->
+                    <div class="metrics-column">
+                        <div class="metric-mini-card">
+                            <div class="top">
+                                <i class="fas fa-bullseye"></i>
+                                <span>Daily Target</span>
                             </div>
+                            <div class="value">{{ dailyAvg | number }}</div>
                         </div>
-                        <div class="quick-stat-tile">
-                            <div class="icon-box green"><i class="fas fa-check-circle"></i></div>
-                            <div class="tile-info">
-                                <span class="label">Words Left</span>
-                                <span class="value">{{ wordsRemaining | number }}</span>
+                        <div class="metric-mini-card">
+                            <div class="top">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>On Track Status</span>
                             </div>
+                            <div class="value">{{ onTrackStatus }}</div>
+                            <div class="subtext">{{ onTrackPercent }}% performance</div>
                         </div>
-                        <div class="quick-stat-tile">
-                            <div class="icon-box purple"><i class="fas fa-trophy"></i></div>
-                            <div class="tile-info" *ngIf="bestDay">
-                                <span class="label">Best Session</span>
-                                <span class="value">{{ bestDay.count | number }}</span>
-                                <span class="sub-label">{{ bestDay.date }}</span>
+                        <div class="metric-mini-card">
+                            <div class="top">
+                                <i class="fas fa-trophy"></i>
+                                <span>Best Day</span>
                             </div>
-                        </div>
-                        <div class="quick-stat-tile">
-                            <div class="icon-box orange"><i class="fas fa-stopwatch"></i></div>
-                            <div class="tile-info">
-                                <span class="label">Plan Days</span>
-                                <span class="value">{{ totalDays }}</span>
-                                <span class="sub-label">{{ daysLeft }} remaining</span>
-                            </div>
+                            <div class="value" *ngIf="bestDay">{{ bestDay.count | number }}</div>
+                            <div class="value" *ngIf="!bestDay">0</div>
+                            <div class="subtext">{{ bestDay?.date || 'No data' }}</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Recent Activity Chart -->
-                <div class="stats-activity-chart-section">
-                    <h3>Recent Activity</h3>
-                    <div class="chart-container">
-                        <div class="bar-chart">
-                            <div *ngFor="let item of recentActivity" class="chart-column">
-                                <div class="bar-container">
-                                    <div class="bar-fill" [style.height.%]="item.height"
-                                        [title]="item.count + ' words'">
-                                        <span class="bar-value" *ngIf="item.height > 15">{{ item.count | number
-                                            }}</span>
-                                    </div>
-                                </div>
-                                <div class="column-label">{{ item.day }}</div>
-                            </div>
+                <!-- Daily comparison Chart -->
+                <div class="chart-card daily-performance-chart mt-6">
+                    <div class="card-header">
+                        <div class="title-group">
+                            <h3>Daily Quota vs. Actual</h3>
+                            <p>How your daily performance stacks up against your target</p>
                         </div>
                     </div>
+                    <app-daily-stats-chart [data]="chartData" [useSlicing]="false"></app-daily-stats-chart>
                 </div>
 
-                <div class="stats-averages-section">
-                    <h3>Writing Efficiency</h3>
+                <!-- Secondary Stats Grid -->
+                <div class="stats-averages-section mt-6">
                     <div class="averages-grid">
-                        <div class="avg-card">
-                            <label>Overall Daily Average</label>
-                            <div class="avg-value">{{ dailyAvg | number }} <span>words/day</span></div>
+                        <div class="avg-item">
+                            <span class="label">Weekly Goal</span>
+                            <span class="value">{{ weeklyAvg | number }}</span>
                         </div>
-                        <div class="avg-card">
-                            <label>Weekly Target</label>
-                            <div class="avg-value">{{ weeklyAvg | number }} <span>words/week</span></div>
+                        <div class="avg-item">
+                            <span class="label">Weekday Target</span>
+                            <span class="value">{{ weekdayAvg | number }}</span>
                         </div>
-                        <div class="avg-card">
-                            <label>Weekdays</label>
-                            <div class="avg-value">{{ weekdayAvg | number }} <span>avg words</span></div>
+                        <div class="avg-item">
+                            <span class="label">Weekend Target</span>
+                            <span class="value">{{ weekendAvg | number }}</span>
                         </div>
-                        <div class="avg-card">
-                            <label>Weekends</label>
-                            <div class="avg-value">{{ weekendAvg | number }} <span>avg words</span></div>
+                        <div class="avg-item">
+                            <span class="label">Projected Days</span>
+                            <span class="value">{{ totalDays }}</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Cumulative Chart for Plan -->
+                <div class="chart-card plan-growth-chart">
+                    <div class="card-header">
+                        <h3>Plan Cumulative Growth</h3>
+                        <div class="chart-legend">
+                            <span class="dot"></span> Cumulative Progress
+                        </div>
+                    </div>
+                    <app-output-stats-chart [data]="chartData" [totalTarget]="targetWordCount"></app-output-stats-chart>
                 </div>
             </div>
         </main>

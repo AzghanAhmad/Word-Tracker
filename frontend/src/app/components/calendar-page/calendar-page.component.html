@@ -10,8 +10,8 @@
                 <span class="brand-star">★</span>
             </div>
             <div class="header-actions">
-                <button class="action-btn cyan">Account Settings</button>
-                <button class="action-btn cyan">Your Stats</button>
+                <button class="action-btn cyan" routerLink="/settings">Account Settings</button>
+                <button class="action-btn cyan" routerLink="/stats">Your Stats</button>
             </div>
         </header>
 
@@ -41,12 +41,12 @@
         </div>
 
         <div class="calendar-wrapper">
-            <app-calendar-header [monthName]="monthName" (next)="nextMonth()" (prev)="prevMonth()" (today)="goToday()"
-                (viewChange)="setViewType($event)"></app-calendar-header>
+            <app-calendar-header [monthName]="monthName" [currentView]="calendarView" (next)="nextMonth()"
+                (prev)="prevMonth()" (today)="goToday()" (viewChange)="setViewType($event)"></app-calendar-header>
 
             <app-calendar-grid [currentDate]="currentDate" [targets]="targets" [deadlines]="deadlines"
                 [plansByDate]="plansByDate" [viewMode]="viewMode" [timeFilter]="timeFilter"
-                [dailyLogs]="dailyLogs"></app-calendar-grid>
+                [calendarView]="calendarView" [dailyLogs]="dailyLogs"></app-calendar-grid>
         </div>
     </ng-container>
 </div>

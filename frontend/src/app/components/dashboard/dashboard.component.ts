@@ -116,7 +116,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 const color = (p.dashboard_color || p.color_code || '#6366f1').trim();
                 const validColor = color && color.length > 0 && color.startsWith('#') ? color : '#6366f1';
                 const progress = p.current_progress || (p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0);
-                
+
                 // Normalize status for display
                 let displayStatus = p.status || 'In Progress';
                 if (displayStatus.toLowerCase() === 'active') {
@@ -124,7 +124,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 } else if (displayStatus.toLowerCase() === 'completed') {
                   displayStatus = 'Completed';
                 }
-                
+
                 return {
                   ...p,
                   plan_name: p.title || p.plan_name || 'Untitled Plan',

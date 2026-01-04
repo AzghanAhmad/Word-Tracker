@@ -24,6 +24,7 @@ export class ProfileComponent implements OnInit {
         username: '',
         email: '',
         bio: '',
+        avatar_url: '',
         created_at: '',
         initials: ''
     };
@@ -39,12 +40,14 @@ export class ProfileComponent implements OnInit {
     successMessage = '';
 
     // Stats
+    // Stats
     totalPlans = 0;
     totalWords = 0;
     memberSince = '';
+    currentStreak = 0;
 
     constructor(
-        private apiService: ApiService, 
+        private apiService: ApiService,
         private router: Router,
         private cdr: ChangeDetectorRef
     ) { }
@@ -58,7 +61,7 @@ export class ProfileComponent implements OnInit {
 
         this.loadUserProfile();
         this.loadUserStats();
-        
+
         // Reload on navigation back to this page
         this.router.events.pipe(
             filter(event => event instanceof NavigationEnd)
@@ -84,11 +87,12 @@ export class ProfileComponent implements OnInit {
                         username: data.username || 'User',
                         email: data.email || 'user@example.com',
                         bio: data.bio || '',
+                        avatar_url: data.avatar_url || '',
                         created_at: data.created_at || new Date().toISOString(),
                         initials: this.getInitials(data.username || 'User')
                     };
                     this.memberSince = this.formatMemberSince(data.created_at || new Date().toISOString());
-                    
+
                     // Update localStorage
                     localStorage.setItem('username', this.user.username);
                     localStorage.setItem('email', this.user.email);
@@ -97,11 +101,12 @@ export class ProfileComponent implements OnInit {
                     const userId = localStorage.getItem('user_id');
                     this.user = {
                         id: userId || '',
-                        username: localStorage.getItem('username') || 'User',
+                        username: localStorage.getItem('username') || 'Guest',
                         email: localStorage.getItem('email') || 'user@example.com',
                         bio: '',
+                        avatar_url: localStorage.getItem('avatar_url') || '',
                         created_at: new Date().toISOString(),
-                        initials: this.getInitials(localStorage.getItem('username') || 'User')
+                        initials: this.getInitials(localStorage.getItem('username') || 'Guest')
                     };
                     this.memberSince = this.formatMemberSince(new Date().toISOString());
                 }
@@ -114,11 +119,12 @@ export class ProfileComponent implements OnInit {
                 const userId = localStorage.getItem('user_id');
                 this.user = {
                     id: userId || '',
-                    username: localStorage.getItem('username') || 'User',
+                    username: localStorage.getItem('username') || 'Guest',
                     email: localStorage.getItem('email') || 'user@example.com',
                     bio: '',
+                    avatar_url: localStorage.getItem('avatar_url') || '',
                     created_at: new Date().toISOString(),
-                    initials: this.getInitials(localStorage.getItem('username') || 'User')
+                    initials: this.getInitials(localStorage.getItem('username') || 'Guest')
                 };
                 this.memberSince = this.formatMemberSince(new Date().toISOString());
                 this.isLoading = false;
@@ -128,15 +134,30 @@ export class ProfileComponent implements OnInit {
     }
 
     loadUserStats() {
+        // Fetch dashboard stats (Plans, Total Words)
         this.apiService.getDashboardStats().subscribe({
             next: (response) => {
                 if (response.success && response.data) {
                     this.totalPlans = response.data.totalPlans || 0;
                     this.totalWords = response.data.totalWords || 0;
+                    this.cdr.detectChanges();
                 }
             },
             error: (err) => {
-                console.error('Error loading stats:', err);
+                console.error('Error loading dashboard stats:', err);
+            }
+        });
+
+        // Fetch detailed stats (Streak)
+        this.apiService.getStats().subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    this.currentStreak = response.data.currentStreak || 0;
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (err) => {
+                console.error('Error loading detailed stats:', err);
             }
         });
     }
@@ -214,11 +235,11 @@ export class ProfileComponent implements OnInit {
                     this.user.email = this.editForm.email.trim();
                     this.user.bio = this.editForm.bio?.trim() || '';
                     this.user.initials = this.getInitials(this.editForm.username.trim());
-                    
+
                     // Update localStorage
                     localStorage.setItem('username', this.user.username);
                     localStorage.setItem('email', this.user.email);
-                    
+
                     this.successMessage = 'Profile updated successfully!';
                     this.isEditing = false;
                 } else {
@@ -238,5 +259,50 @@ export class ProfileComponent implements OnInit {
 
     goToSettings() {
         this.router.navigate(['/settings']);
+    }
+
+    onFileSelected(event: any) {
+        const file: File = event.target.files[0];
+        if (file) {
+            // Validation
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                this.errorMessage = 'Invalid file type. Please upload an image (JPG, PNG, GIF, WEBP)';
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                this.errorMessage = 'File too large. Max 5MB allowed.';
+                return;
+            }
+
+            this.isSaving = true;
+            this.cdr.detectChanges();
+
+            this.apiService.uploadAvatar(file).subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        this.user.avatar_url = response.avatar_url;
+                        this.successMessage = 'Avatar updated successfully!';
+
+                        // Update localStorage
+                        localStorage.setItem('avatar_url', response.avatar_url);
+
+                        // Notify sidebar/navbar if they show avatar
+                        this.apiService.triggerRefreshSidebar();
+                    } else {
+                        this.errorMessage = response.message || 'Failed to upload avatar';
+                    }
+                    this.isSaving = false;
+                    this.cdr.detectChanges();
+                },
+                error: (err) => {
+                    console.error('Error uploading avatar:', err);
+                    this.errorMessage = err.error?.message || 'An error occurred while uploading your avatar';
+                    this.isSaving = false;
+                    this.cdr.detectChanges();
+                }
+            });
+        }
     }
 }

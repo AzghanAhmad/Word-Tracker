@@ -1,21 +1,32 @@
 <div class="profile-container" *ngIf="!isLoading">
     <!-- Split Layout Container -->
     <div class="profile-grid">
-        
+
         <!-- Left Column: Profile Card -->
         <div class="profile-card">
             <div class="cover-bg"></div>
             <div class="avatar-wrapper">
-                <div class="profile-avatar">
-                    {{ user.initials }}
+                <div class="profile-avatar-container">
+                    <div class="profile-avatar" [class.has-image]="user.avatar_url">
+                        <img *ngIf="user.avatar_url" [src]="user.avatar_url" alt="Avatar" class="avatar-img">
+                        <span *ngIf="!user.avatar_url">{{ user.initials }}</span>
+                        <!-- Removed camera overlay for direct click -->
+                    </div>
+                    <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*"
+                        style="display: none;">
                 </div>
             </div>
-            
+
             <div class="profile-main-info">
                 <h1>{{ user.username }}</h1>
                 <p class="email">{{ user.email }}</p>
                 <div class="badge-row">
                     <span class="badge">Member since {{ memberSince }}</span>
+                </div>
+                <div class="avatar-action-row" *ngIf="isEditing" style="margin-top: 1rem;">
+                    <button class="btn-secondary btn-sm" (click)="fileInput.click()">
+                        <i class="fas fa-image"></i> Change Avatar
+                    </button>
                 </div>
             </div>
 
@@ -31,7 +42,7 @@
 
         <!-- Right Column: Details & Stats -->
         <div class="profile-details-column">
-            
+
             <!-- Stats Row -->
             <div class="stats-row">
                 <div class="stat-box">
@@ -43,7 +54,7 @@
                         <span>Total Plans</span>
                     </div>
                 </div>
-                
+
                 <div class="stat-box">
                     <div class="icon-circle purple-bg">
                         <i class="fas fa-pen-fancy"></i>
@@ -59,14 +70,14 @@
                         <i class="fas fa-fire"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>12</h3>
+                        <h3>{{ currentStreak }}</h3>
                         <span>Day Streak</span>
                     </div>
                 </div>
             </div>
 
             <!-- Bio / About Section -->
-             <div class="details-card" *ngIf="!isEditing">
+            <div class="details-card" *ngIf="!isEditing">
                 <div class="section-header">
                     <h2>About Me</h2>
                 </div>
@@ -81,21 +92,26 @@
             <!-- Edit Form (Replaces Bio when editing) -->
             <div class="details-card edit-mode" *ngIf="isEditing">
                 <h2>Edit Profile</h2>
-                
+
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Username</label>
-                        <input type="text" [(ngModel)]="editForm.username" class="form-input" placeholder="Enter your username">
+                        <input type="text" [(ngModel)]="editForm.username" class="form-input"
+                            placeholder="Enter your username">
                     </div>
 
                     <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" [(ngModel)]="editForm.email" class="form-input" placeholder="Enter your email">
+                        <label>Email <i class="fas fa-lock"
+                                style="font-size: 0.7rem; opacity: 0.5; margin-left: 0.5rem;"
+                                title="Email cannot be changed"></i></label>
+                        <input type="email" [value]="user.email" class="form-input readonly-input" readonly
+                            title="Email address is used for login and cannot be modified.">
                     </div>
 
                     <div class="form-group full-width">
                         <label>Bio</label>
-                        <textarea [(ngModel)]="editForm.bio" class="form-textarea" placeholder="Tell us about yourself..." rows="5"></textarea>
+                        <textarea [(ngModel)]="editForm.bio" class="form-textarea"
+                            placeholder="Tell us about yourself..." rows="5"></textarea>
                         <span class="helper-text">{{ editForm.bio.length }}/500 characters</span>
                     </div>
                 </div>
@@ -109,7 +125,7 @@
                 </div>
             </div>
 
-             <!-- Alerts -->
+            <!-- Alerts -->
             <div class="alert-wrapper" *ngIf="successMessage || errorMessage">
                 <div class="alert alert-success" *ngIf="successMessage">
                     <i class="fas fa-check-circle"></i> {{ successMessage }}

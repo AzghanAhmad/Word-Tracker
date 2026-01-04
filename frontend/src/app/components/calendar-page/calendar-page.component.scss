@@ -11,116 +11,141 @@
         justify-content: space-between;
         align-items: center;
         padding: 1.5rem 2rem;
-        background: transparent;
+        background: white;
+        border-bottom: 1px solid #e2e8f0;
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
 
             .brand-text {
-                font-size: 2rem;
-                color: #444;
-                font-weight: 300;
+                font-size: 1.75rem;
+                color: #1e293b;
+                font-weight: 800;
+                letter-spacing: -0.02em;
             }
 
             .brand-star {
-                color: #d4af37; // Gold star
-                font-size: 1.2rem;
-                margin-top: -10px;
+                color: #eab308;
+                font-size: 1rem;
+                margin-top: -12px;
             }
         }
 
         .header-actions {
             display: flex;
-            gap: 1.5rem;
+            gap: 1rem;
 
             .action-btn {
-                padding: 0.6rem 1.2rem;
-                border-radius: 4px;
+                padding: 0.6rem 1.25rem;
+                border-radius: 10px;
                 border: none;
-                font-weight: 500;
+                font-weight: 700;
                 font-size: 0.85rem;
                 cursor: pointer;
-                transition: opacity 0.2s;
+                transition: all 0.2s;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 
                 &.cyan {
-                    background-color: #31b0d5;
+                    background-color: #0ea5e9;
                     color: white;
-                }
 
-                &:hover {
-                    opacity: 0.9;
+                    &:hover {
+                        background-color: #0284c7;
+                        transform: translateY(-1px);
+                    }
                 }
             }
         }
     }
 
     .main-tabs.redesign {
-        background: transparent;
-        border-bottom: 2px solid #d0d7de;
-        margin-bottom: 2rem;
+        background: white;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1.5rem;
         padding: 0 2rem;
+        display: flex;
         justify-content: flex-start;
-        gap: 3rem;
+        gap: 2rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
 
         .tab-link {
-            color: #31b0d5;
-            font-size: 0.95rem;
+            color: #64748b;
+            font-size: 0.875rem;
             padding: 1rem 0;
-            border-bottom: 3px solid transparent;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
 
             i {
-                font-size: 1.1rem;
+                font-size: 1rem;
+                margin-right: 6px;
             }
 
             &.active {
-                color: #555;
-                font-weight: 500;
-                border-bottom: 3px solid #31b0d5;
+                color: #0ea5e9;
+                border-bottom: 2px solid #0ea5e9;
+            }
+
+            &:hover:not(.active) {
+                color: #1e293b;
             }
         }
     }
 
     .view-controls-bar {
         display: flex;
+        margin-top: 2rem; // Added spacing per user request
         justify-content: space-between;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
         padding: 0 2rem;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 1.5rem;
 
         .btn-group {
             display: inline-flex;
-            background: #fff;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #ccc;
-            overflow: hidden;
+            background: #f1f5f9;
+            padding: 6px;
+            border-radius: 14px;
+            gap: 6px;
+            border: 1px solid #e2e8f0;
 
-            .control-btn {
-                background: #f8f9fa;
-                border: none;
-                border-right: 1px solid #ddd;
-                padding: 0.5rem 1rem;
-                font-size: 0.85rem;
-                color: #31b0d5;
+            button.control-btn {
+                background-color: #1C2E4A !important;
+                color: #ffffff !important;
+                border: 1px solid transparent !important;
+                padding: 0.75rem 1.75rem !important;
+                font-size: 0.875rem !important;
                 cursor: pointer;
-                transition: all 0.2s;
-                font-weight: 400;
-
-                &:last-child {
-                    border-right: none;
-                }
+                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                font-weight: 600 !important;
+                border-radius: 10px !important;
+                white-space: normal !important; // Allow wrapping if text is long
+                max-width: 300px;
+                line-height: 1.3;
+                text-align: center;
+                opacity: 0.8;
+                box-shadow: none !important;
 
                 &.active {
-                    background-color: #ffffff;
-                    color: #555;
-                    font-weight: 500;
+                    background-color: #000000 !important;
+                    color: #ffffff !important;
+                    opacity: 1;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+                    transform: translateY(-1px);
+                    border-color: rgba(255, 255, 255, 0.1) !important;
                 }
 
                 &:hover:not(.active) {
-                    background-color: #eee;
+                    opacity: 1;
+                    background-color: #1a2a3a !important;
                 }
             }
         }
@@ -128,27 +153,66 @@
 
     .calendar-wrapper {
         margin: 0 2rem 2rem;
-        background: transparent;
-        border-radius: 0;
-        box-shadow: none;
-        overflow: visible;
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+
+        @media (max-width: 1024px) {
+            margin: 0 1rem 1rem;
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            margin: 0 0.5rem 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+        }
     }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
     .calendar-page-container {
-        padding: 1rem;
+        padding: 0;
 
-        .view-controls {
+        .top-header {
             flex-direction: column;
-            align-items: stretch;
-            gap: 0.5rem;
+            padding: 1rem;
+            gap: 1rem;
+            text-align: center;
 
-            .control-btn {
+            .brand .brand-text {
+                font-size: 1.5rem;
+            }
+
+            .header-actions {
                 width: 100%;
-                text-align: center;
-                border-radius: 8px;
-                /* Less rounded on mobile stack for better look */
+                justify-content: center;
+                gap: 0.5rem;
+
+                .action-btn {
+                    padding: 0.5rem 1rem;
+                }
+            }
+        }
+
+        .view-controls-bar {
+            padding: 0 1rem;
+            gap: 1rem;
+
+            .btn-group {
+                width: 100%;
+                flex-direction: column;
+                border-radius: 12px;
+
+                button.control-btn {
+                    width: 100% !important;
+                    max-width: none !important;
+                    padding: 0.6rem 1rem !important;
+                    font-size: 0.8rem !important;
+                }
             }
         }
     }

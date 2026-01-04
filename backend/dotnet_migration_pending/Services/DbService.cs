@@ -381,9 +381,14 @@ public class DbService : IDbService
             conn.Open();
             using var cmd = conn.CreateCommand();
             
-            // Get all plans for user, ordered by creation date (newest first)
+            // Get all plans for user, ordered by latest activity or creation date
             // Exclude archived plans
-            cmd.CommandText = "SELECT * FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived') ORDER BY id DESC";
+            cmd.CommandText = @"
+                SELECT p.*, 
+                (SELECT MAX(date) FROM plan_days WHERE plan_id = p.id) as last_activity
+                FROM plans p 
+                WHERE p.user_id=@u AND (p.status IS NULL OR p.status != 'archived') 
+                ORDER BY last_activity DESC, p.id DESC";
             cmd.Parameters.AddWithValue("@u", userId);
             
             using var reader = cmd.ExecuteReader();
@@ -739,12 +744,24 @@ public class DbService : IDbService
                         
                         if (!string.IsNullOrWhiteSpace(content))
                         {
+                            // Parse booleans robustly (Check both snake_case and PascalCase)
+                            bool isCompleted = false;
+                            Func<JsonElement, bool> parseBool = (prop) => 
+                                prop.ValueKind == JsonValueKind.True || 
+                                (prop.ValueKind == JsonValueKind.Number && prop.GetInt32() != 0) ||
+                                (prop.ValueKind == JsonValueKind.String && (prop.GetString()?.ToLower() == "true" || prop.GetString() == "1"));
+
+                            if (item.TryGetProperty("is_done", out var doneProp) || item.TryGetProperty("Is_done", out doneProp)) isCompleted |= parseBool(doneProp);
+                            if (item.TryGetProperty("is_completed", out var compProp) || item.TryGetProperty("Is_completed", out compProp)) isCompleted |= parseBool(compProp);
+                            if (item.TryGetProperty("checked", out var checkedProp) || item.TryGetProperty("Checked", out checkedProp)) isCompleted |= parseBool(checkedProp);
+
                             using var itemCmd = conn.CreateCommand();
                             itemCmd.Transaction = transaction;
-                            itemCmd.CommandText = @"INSERT INTO checklist_items (checklist_id,content,sort_order) VALUES (@c,@x,@s)";
+                            itemCmd.CommandText = @"INSERT INTO checklist_items (checklist_id,content,sort_order,is_completed) VALUES (@c,@x,@s,@d)";
                             itemCmd.Parameters.AddWithValue("@c", checklistId);
                             itemCmd.Parameters.AddWithValue("@x", content);
                             itemCmd.Parameters.AddWithValue("@s", sortOrder++);
+                            itemCmd.Parameters.AddWithValue("@d", isCompleted);
                             itemCmd.ExecuteNonQuery();
                             itemsAdded++;
                         }
@@ -806,70 +823,63 @@ public class DbService : IDbService
             using var reader = cmd.ExecuteReader();
             var checklists = new List<Dictionary<string, object>>();
             
-            while (reader.Read())
-            {
-                var checklist = new Dictionary<string, object>();
-                var checklistId = reader.GetInt32("id");
-                
-                // Add checklist fields
-                for (var i = 0; i < reader.FieldCount; i++)
+                while (reader.Read())
                 {
-                    var fieldName = reader.GetName(i);
+                    var checklist = new Dictionary<string, object>();
                     
-                    if (reader.IsDBNull(i))
+                    // Add all columns from reader
+                    for (var i = 0; i < reader.FieldCount; i++)
                     {
-                        // Explicitly set to null (not DBNull.Value) for proper JSON serialization
-                        checklist[fieldName] = null!;
-                        continue;
+                        var fieldName = reader.GetName(i);
+                        if (reader.IsDBNull(i))
+                        {
+                            checklist[fieldName] = null!;
+                            continue;
+                        }
+                        
+                        var val = reader.GetValue(i);
+                        if (val is DateTime dt) checklist[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
+                        else if (val is DateOnly do1) checklist[fieldName] = do1.ToString("yyyy-MM-dd");
+                        else checklist[fieldName] = val;
                     }
                     
-                    var val = reader.GetValue(i);
+                    int checklistId = Convert.ToInt32(reader[reader.GetOrdinal("id")]);
                     
-                    // Convert dates to strings
-                    if (val is DateTime dt)
+                    // Fetch items for this checklist
+                    using var itemsConn = new MySqlConnection(_connectionString);
+                    itemsConn.Open();
+                    using var itemsCmd = itemsConn.CreateCommand();
+                    itemsCmd.CommandText = "SELECT id, content, is_completed, sort_order FROM checklist_items WHERE checklist_id = @cid ORDER BY sort_order ASC, id ASC";
+                    itemsCmd.Parameters.AddWithValue("@cid", checklistId);
+                    
+                    using var itemsReader = itemsCmd.ExecuteReader();
+                    var items = new List<Dictionary<string, object>>();
+                    
+                    var colId = itemsReader.GetOrdinal("id");
+                    var colContent = itemsReader.GetOrdinal("content");
+                    var colCompleted = itemsReader.GetOrdinal("is_completed");
+                    var colSort = itemsReader.GetOrdinal("sort_order");
+
+                    while (itemsReader.Read())
                     {
-                        checklist[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
+                        var content = itemsReader.IsDBNull(colContent) ? "" : itemsReader.GetString(colContent);
+                        var isCompleted = itemsReader.IsDBNull(colCompleted) ? false : itemsReader.GetBoolean(colCompleted);
+                        
+                        items.Add(new Dictionary<string, object>
+                        {
+                            ["id"] = itemsReader.GetInt32(colId),
+                            ["text"] = content,
+                            ["content"] = content,
+                            ["checked"] = isCompleted,
+                            ["is_done"] = isCompleted,
+                            ["is_completed"] = isCompleted,
+                            ["sort_order"] = itemsReader.GetInt32(colSort)
+                        });
                     }
-                    else if (val is DateOnly dateOnly)
-                    {
-                        checklist[fieldName] = dateOnly.ToString("yyyy-MM-dd");
-                    }
-                    else
-                    {
-                        checklist[fieldName] = val;
-                    }
+                    
+                    checklist["items"] = items;
+                    checklists.Add(checklist);
                 }
-                
-                // Fetch items for this checklist
-                using var itemsConn = new MySqlConnection(_connectionString);
-                itemsConn.Open();
-                using var itemsCmd = itemsConn.CreateCommand();
-                itemsCmd.CommandText = @"SELECT id, content, is_completed, sort_order 
-                    FROM checklist_items 
-                    WHERE checklist_id = @cid 
-                    ORDER BY sort_order ASC, id ASC";
-                itemsCmd.Parameters.AddWithValue("@cid", checklistId);
-                
-                using var itemsReader = itemsCmd.ExecuteReader();
-                var items = new List<Dictionary<string, object>>();
-                
-                while (itemsReader.Read())
-                {
-                    var item = new Dictionary<string, object>
-                    {
-                        ["id"] = itemsReader.GetInt32("id"),
-                        ["text"] = itemsReader.GetString("content"),
-                        ["content"] = itemsReader.GetString("content"), // Keep both for compatibility
-                        ["is_done"] = itemsReader.GetBoolean("is_completed"),
-                        ["is_completed"] = itemsReader.GetBoolean("is_completed"), // Alias for frontend
-                        ["sort_order"] = itemsReader.GetInt32("sort_order")
-                    };
-                    items.Add(item);
-                }
-                
-                checklist["items"] = items;
-                checklists.Add(checklist);
-            }
             
             Console.WriteLine($"✓ Retrieved {checklists.Count} checklists with items for user {userId}");
             return JsonSerializer.Serialize(checklists);
@@ -916,68 +926,50 @@ public class DbService : IDbService
             }
             
             var checklist = new Dictionary<string, object>();
-            var checklistId = reader.GetInt32("id");
-            
-            // Add checklist fields
             for (var i = 0; i < reader.FieldCount; i++)
             {
                 var fieldName = reader.GetName(i);
-                
-                if (reader.IsDBNull(i))
-                {
-                    // Don't add null values to avoid serialization issues
-                    // Or explicitly set to null (not DBNull.Value)
-                    checklist[fieldName] = null!;
-                    continue;
-                }
-                
+                if (reader.IsDBNull(i)) { checklist[fieldName] = null!; continue; }
                 var val = reader.GetValue(i);
-                
-                // Convert dates to strings
-                if (val is DateTime dt)
-                {
-                    checklist[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
-                }
-                else if (val is DateOnly dateOnly)
-                {
-                    checklist[fieldName] = dateOnly.ToString("yyyy-MM-dd");
-                }
-                else
-                {
-                    checklist[fieldName] = val;
-                }
+                if (val is DateTime dt) checklist[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
+                else if (val is DateOnly do2) checklist[fieldName] = do2.ToString("yyyy-MM-dd");
+                else checklist[fieldName] = val;
             }
+
+            int checklistId = Convert.ToInt32(reader[reader.GetOrdinal("id")]);
             
             // Fetch items for this checklist
             using var itemsConn = new MySqlConnection(_connectionString);
             itemsConn.Open();
             using var itemsCmd = itemsConn.CreateCommand();
-            itemsCmd.CommandText = @"SELECT id, content, is_completed, sort_order 
-                FROM checklist_items 
-                WHERE checklist_id = @cid 
-                ORDER BY sort_order ASC, id ASC";
+            itemsCmd.CommandText = "SELECT id, content, is_completed, sort_order FROM checklist_items WHERE checklist_id = @cid ORDER BY sort_order ASC, id ASC";
             itemsCmd.Parameters.AddWithValue("@cid", checklistId);
             
             using var itemsReader = itemsCmd.ExecuteReader();
             var items = new List<Dictionary<string, object>>();
-            
+            var cId = itemsReader.GetOrdinal("id");
+            var cContent = itemsReader.GetOrdinal("content");
+            var cCompleted = itemsReader.GetOrdinal("is_completed");
+            var cSort = itemsReader.GetOrdinal("sort_order");
+
             while (itemsReader.Read())
             {
-                var item = new Dictionary<string, object>
+                var content = itemsReader.IsDBNull(cContent) ? "" : itemsReader.GetString(cContent);
+                var isCompleted = itemsReader.IsDBNull(cCompleted) ? false : itemsReader.GetBoolean(cCompleted);
+                
+                items.Add(new Dictionary<string, object>
                 {
-                    ["id"] = itemsReader.GetInt32("id"),
-                    ["text"] = itemsReader.GetString("content"),
-                    ["content"] = itemsReader.GetString("content"),
-                    ["is_done"] = itemsReader.GetBoolean("is_completed"),
-                    ["is_completed"] = itemsReader.GetBoolean("is_completed"),
-                    ["sort_order"] = itemsReader.GetInt32("sort_order")
-                };
-                items.Add(item);
+                    ["id"] = itemsReader.GetInt32(cId),
+                    ["text"] = content,
+                    ["content"] = content,
+                    ["checked"] = isCompleted,
+                    ["is_done"] = isCompleted,
+                    ["is_completed"] = isCompleted,
+                    ["sort_order"] = itemsReader.GetInt32(cSort)
+                });
             }
             
             checklist["items"] = items;
-            
-            Console.WriteLine($"✓ Retrieved checklist {id} with {items.Count} items");
             return JsonSerializer.Serialize(checklist);
         }
         catch (MySqlException ex)
@@ -994,12 +986,12 @@ public class DbService : IDbService
         }
     }
 
-    public bool UpdateChecklist(int id, int userId, string name, System.Text.Json.JsonElement[]? items)
+    public bool UpdateChecklist(int id, int userId, int? planId, string name, System.Text.Json.JsonElement[]? items)
     {
         _lastError = string.Empty;
         try
         {
-            Console.WriteLine($"🔌 Updating checklist {id} for user {userId}");
+            Console.WriteLine($"🔌 Updating checklist {id} for user {userId} (Plan ID: {planId})");
             
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
@@ -1008,65 +1000,138 @@ public class DbService : IDbService
             
             try
             {
-                // Update checklist name
+                // Update checklist header (name and plan_id)
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = transaction;
-                cmd.CommandText = "UPDATE checklists SET name=@n WHERE id=@id AND user_id=@u";
+                // We use id and user_id to ensure ownership
+                cmd.CommandText = "UPDATE checklists SET name=@n, plan_id=@p WHERE id=@id AND user_id=@u";
                 cmd.Parameters.AddWithValue("@n", name);
+                cmd.Parameters.AddWithValue("@p", planId ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Parameters.AddWithValue("@u", userId);
                 
                 var rowsAffected = cmd.ExecuteNonQuery();
-                if (rowsAffected != 1)
+                
+                // In MySQL, rowsAffected is 0 if nothing changed. 
+                // We need to verify if the checklist actually exists for this user.
+                if (rowsAffected == 0)
                 {
-                    transaction.Rollback();
-                    _lastError = "Checklist not found or you don't have permission to update it";
-                    Console.WriteLine($"✗ Checklist {id} not found or permission denied");
-                    return false;
+                    using var checkCmd = conn.CreateCommand();
+                    checkCmd.Transaction = transaction;
+                    checkCmd.CommandText = "SELECT COUNT(*) FROM checklists WHERE id=@id AND user_id=@u";
+                    checkCmd.Parameters.AddWithValue("@id", id);
+                    checkCmd.Parameters.AddWithValue("@u", userId);
+                    
+                    var exists = Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+                    if (!exists)
+                    {
+                        transaction.Rollback();
+                        _lastError = "Checklist not found or you don't have permission to update it";
+                        Console.WriteLine($"✗ Checklist {id} not found or permission denied for user {userId}");
+                        return false;
+                    }
+                    Console.WriteLine($"✓ Checklist {id} exists but no header changes were needed");
+                }
+                else
+                {
+                    Console.WriteLine($"✓ Updated checklist {id} header");
                 }
                 
-                Console.WriteLine($"✓ Updated checklist {id} name");
+                // Get existing item IDs to determine deletions
+                var existingIds = new HashSet<int>();
+                using (var getIdsCmd = conn.CreateCommand()) 
+                {
+                    getIdsCmd.Transaction = transaction;
+                    getIdsCmd.CommandText = "SELECT id FROM checklist_items WHERE checklist_id=@id";
+                    getIdsCmd.Parameters.AddWithValue("@id", id);
+                    using var reader = getIdsCmd.ExecuteReader();
+                    while (reader.Read()) existingIds.Add(reader.GetInt32("id"));
+                }
+
+                var processedIds = new HashSet<int>();
                 
-                // Delete existing items
-                using var deleteCmd = conn.CreateCommand();
-                deleteCmd.Transaction = transaction;
-                deleteCmd.CommandText = "DELETE FROM checklist_items WHERE checklist_id=@id";
-                deleteCmd.Parameters.AddWithValue("@id", id);
-                deleteCmd.ExecuteNonQuery();
-                Console.WriteLine($"✓ Deleted existing items for checklist {id}");
-                
-                // Add new items
+                // Process items (Upsert)
                 if (items != null && items.Length > 0)
                 {
                     int sortOrder = 0;
                     foreach (var item in items)
                     {
+                        // Parse content (Check both snake_case and PascalCase)
                         string? content = null;
-                        if (item.TryGetProperty("text", out var textProp))
-                        {
-                            content = textProp.GetString();
-                        }
-                        else if (item.TryGetProperty("content", out var contentProp))
-                        {
-                            content = contentProp.GetString();
-                        }
+                        if (item.TryGetProperty("text", out var textProp) || item.TryGetProperty("Text", out textProp)) content = textProp.GetString();
+                        else if (item.TryGetProperty("content", out var contentProp) || item.TryGetProperty("Content", out contentProp)) content = contentProp.GetString();
                         
+                        // Parse is_done/is_completed/checked (Robust check across all possible names and casings)
+                        bool isCompleted = false;
+                        Func<JsonElement, bool> parseBool = (prop) => 
+                            prop.ValueKind == JsonValueKind.True || 
+                            (prop.ValueKind == JsonValueKind.Number && prop.GetInt32() != 0) ||
+                            (prop.ValueKind == JsonValueKind.String && (prop.GetString()?.ToLower() == "true" || prop.GetString() == "1"));
+
+                        // Priority order: checked > is_done > is_completed
+                        if (item.TryGetProperty("checked", out var checkedProp) || item.TryGetProperty("Checked", out checkedProp)) 
+                            isCompleted = parseBool(checkedProp);
+                        else if (item.TryGetProperty("is_done", out var doneProp) || item.TryGetProperty("Is_done", out doneProp)) 
+                            isCompleted = parseBool(doneProp);
+                        else if (item.TryGetProperty("is_completed", out var compProp) || item.TryGetProperty("Is_completed", out compProp)) 
+                            isCompleted = parseBool(compProp);
+
+                        // Check for ID with string fallback (Check both cases)
+                        int itemId = 0;
+                        JsonElement idProp;
+                        if (item.TryGetProperty("id", out idProp) || item.TryGetProperty("Id", out idProp))
+                        {
+                            if (idProp.ValueKind == JsonValueKind.Number) itemId = idProp.GetInt32();
+                            else if (idProp.ValueKind == JsonValueKind.String && int.TryParse(idProp.GetString(), out var sid)) itemId = sid;
+                        }
+
                         if (!string.IsNullOrWhiteSpace(content))
                         {
-                            using var itemCmd = conn.CreateCommand();
-                            itemCmd.Transaction = transaction;
-                            itemCmd.CommandText = @"INSERT INTO checklist_items (checklist_id,content,sort_order) VALUES (@c,@x,@s)";
-                            itemCmd.Parameters.AddWithValue("@c", id);
-                            itemCmd.Parameters.AddWithValue("@x", content);
-                            itemCmd.Parameters.AddWithValue("@s", sortOrder++);
-                            itemCmd.ExecuteNonQuery();
+                            if (itemId > 0 && existingIds.Contains(itemId))
+                            {
+                                // Update existing
+                                using var updateCmd = conn.CreateCommand();
+                                updateCmd.Transaction = transaction;
+                                updateCmd.CommandText = "UPDATE checklist_items SET content=@x, sort_order=@s, is_completed=@d WHERE id=@id AND checklist_id=@c";
+                                updateCmd.Parameters.AddWithValue("@x", content);
+                                updateCmd.Parameters.AddWithValue("@s", sortOrder++);
+                                updateCmd.Parameters.AddWithValue("@d", isCompleted);
+                                updateCmd.Parameters.AddWithValue("@id", itemId);
+                                updateCmd.Parameters.AddWithValue("@c", id);
+                                updateCmd.ExecuteNonQuery();
+                                processedIds.Add(itemId);
+                            }
+                            else
+                            {
+                                // Insert new
+                                using var insertCmd = conn.CreateCommand();
+                                insertCmd.Transaction = transaction;
+                                insertCmd.CommandText = "INSERT INTO checklist_items (checklist_id,content,sort_order,is_completed) VALUES (@c,@x,@s,@d)";
+                                insertCmd.Parameters.AddWithValue("@c", id);
+                                insertCmd.Parameters.AddWithValue("@x", content);
+                                insertCmd.Parameters.AddWithValue("@s", sortOrder++);
+                                insertCmd.Parameters.AddWithValue("@d", isCompleted);
+                                insertCmd.ExecuteNonQuery();
+                            }
                         }
                     }
-                    Console.WriteLine($"✓ Added {items.Length} items to checklist {id}");
                 }
                 
+                // Delete removed items
+                var idsToDelete = existingIds.Where(eid => !processedIds.Contains(eid)).ToList();
+                if (idsToDelete.Any())
+                {
+                    using var delCmd = conn.CreateCommand();
+                    delCmd.Transaction = transaction;
+                    var idList = string.Join(",", idsToDelete);
+                    delCmd.CommandText = $"DELETE FROM checklist_items WHERE id IN ({idList}) AND checklist_id=@c";
+                    delCmd.Parameters.AddWithValue("@c", id);
+                    delCmd.ExecuteNonQuery();
+                    Console.WriteLine($"✓ Deleted {idsToDelete.Count} removed items");
+                }
+
                 transaction.Commit();
-                Console.WriteLine($"✓ Checklist {id} updated successfully");
+                Console.WriteLine($"✓ Checklist {id} updated successfully with Smart Sync");
                 return true;
             }
             catch
@@ -1144,6 +1209,16 @@ public class DbService : IDbService
             
             Console.WriteLine($"   Executing UPDATE checklist_items SET is_completed={isDone} WHERE id={itemId}");
             var rowsAffected = cmd.ExecuteNonQuery();
+            
+            // In MySQL, rowsAffected is 0 if nothing changed.
+            if (rowsAffected == 0)
+            {
+                using var checkCmd = conn.CreateCommand();
+                checkCmd.CommandText = "SELECT COUNT(*) FROM checklist_items WHERE id=@id";
+                checkCmd.Parameters.AddWithValue("@id", itemId);
+                return Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+            }
+            
             var result = rowsAffected == 1;
             
             if (result)
@@ -1198,6 +1273,17 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@u", userId);
             
             var rowsAffected = cmd.ExecuteNonQuery();
+            
+            // In MySQL, rowsAffected is 0 if nothing changed.
+            if (rowsAffected == 0)
+            {
+                using var checkCmd = conn.CreateCommand();
+                checkCmd.CommandText = "SELECT COUNT(*) FROM checklists WHERE id=@id AND user_id=@u";
+                checkCmd.Parameters.AddWithValue("@id", id);
+                checkCmd.Parameters.AddWithValue("@u", userId);
+                return Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+            }
+            
             var result = rowsAffected == 1;
             
             if (result)
@@ -1943,10 +2029,9 @@ public class DbService : IDbService
             cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived')";
             var totalPlans = Convert.ToInt32(cmd.ExecuteScalar());
             
-            // Active Plans - count plans that are active (exclude completed and archived)
+            // Active Plans - include active and completed plans, exclude archived
             cmd.CommandText = @"SELECT COUNT(*) FROM plans 
                                WHERE user_id=@u 
-                               AND COALESCE(status, 'active') != 'completed'
                                AND COALESCE(status, 'active') != 'archived'";
             var activePlans = Convert.ToInt32(cmd.ExecuteScalar());
             
@@ -2139,7 +2224,7 @@ public class DbService : IDbService
             conn.Open();
             
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT id, username, email, bio, created_at 
+            cmd.CommandText = @"SELECT id, username, email, bio, avatar_url, created_at 
                                 FROM users 
                                 WHERE id = @u";
             cmd.Parameters.AddWithValue("@u", userId);
@@ -2158,6 +2243,7 @@ public class DbService : IDbService
                 ["username"] = reader.GetString("username"),
                 ["email"] = reader.GetString("email"),
                 ["bio"] = reader.IsDBNull(reader.GetOrdinal("bio")) ? null! : reader.GetString("bio"),
+                ["avatar_url"] = reader.IsDBNull(reader.GetOrdinal("avatar_url")) ? null! : reader.GetString("avatar_url"),
                 ["created_at"] = reader.GetDateTime("created_at").ToString("yyyy-MM-ddTHH:mm:ss")
             };
             
@@ -2175,6 +2261,43 @@ public class DbService : IDbService
             _lastError = $"Error: {ex.Message}";
             Console.WriteLine($"✗ Error fetching user profile: {ex.Message}");
             return null;
+        }
+    }
+
+    public bool UpdateUserAvatar(int userId, string avatarUrl)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"👤 Updating avatar for user {userId}: {avatarUrl}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"UPDATE users 
+                                SET avatar_url = @v, updated_at = CURRENT_TIMESTAMP 
+                                WHERE id = @id";
+            cmd.Parameters.AddWithValue("@v", avatarUrl);
+            cmd.Parameters.AddWithValue("@id", userId);
+            
+            var rowsAffected = cmd.ExecuteNonQuery();
+            
+            if (rowsAffected == 1)
+            {
+                Console.WriteLine($"✓ Updated avatar for user {userId}");
+                return true;
+            }
+            
+            _lastError = "User not found or update failed";
+            Console.WriteLine($"✗ Failed to update avatar for user {userId}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error updating user avatar: {ex.Message}");
+            return false;
         }
     }
 
@@ -2491,7 +2614,7 @@ public class DbService : IDbService
                 FROM plan_days pd
                 INNER JOIN plans p ON pd.plan_id = p.id
                 WHERE p.user_id = @u
-                    AND pd.date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+                    AND pd.date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)
                 GROUP BY pd.date
                 ORDER BY pd.date ASC";
             cmd.Parameters.AddWithValue("@u", userId);
@@ -2518,7 +2641,7 @@ public class DbService : IDbService
             totalCmd.Parameters.AddWithValue("@u", userId);
             var totalWords = Convert.ToInt64(totalCmd.ExecuteScalar());
             
-            // Generate activity data for last 90 days (fill missing days with 0)
+            // Generate activity data for last 365 days (fill missing days with 0)
             var today = DateTime.Today;
             var activityData = new List<Dictionary<string, object>>();
             var allDaysData = new List<Dictionary<string, object>>();
@@ -2527,7 +2650,7 @@ public class DbService : IDbService
             int currentStreak = 0;
             
             // Build all days data first
-            for (int i = 89; i >= 0; i--)
+            for (int i = 364; i >= 0; i--)
             {
                 var date = today.AddDays(-i);
                 var dateKey = date.ToString("yyyy-MM-dd");

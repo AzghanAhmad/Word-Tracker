@@ -1,4 +1,4 @@
-import { Component, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, ViewChild, ViewEncapsulation, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
@@ -17,7 +17,7 @@ import { filter } from 'rxjs/operators';
       <!-- Unified Navbar -->
       <app-navbar 
         [isPublic]="isPublicPage" 
-        [isMenuOpen]="isPublicPage ? isPublicMenuOpen : (sidebarComponent ? !sidebarComponent.isCollapsed : false)"
+        [isMenuOpen]="getMenuOpenState()"
         (toggleSidebarEvent)="toggleSidebar()">
       </app-navbar>
       
@@ -91,7 +91,7 @@ import { filter } from 'rxjs/operators';
     }
   `]
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit {
   @ViewChild('sidebarComponent') sidebarComponent!: SidebarComponent;
 
   isPublicPage = true;
@@ -99,13 +99,48 @@ export class AppComponent {
   // Pages that should show the public layout (no sidebar)
   publicRoutes = ['/', '/login', '/register', '/privacy', '/terms', '/feedback', '/credits', '/forgot-password', '/forgot-username', '/contact'];
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private cdr: ChangeDetectorRef) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
-      this.isPublicPage = this.publicRoutes.includes(event.urlAfterRedirects) ||
-        event.urlAfterRedirects === '';
+      // Use setTimeout to avoid NG0100 by moving the state change to the next macrotask
+      setTimeout(() => {
+        this.isPublicPage = this.publicRoutes.includes(event.urlAfterRedirects) ||
+          event.urlAfterRedirects === '';
+        this.cdr.detectChanges();
+      }, 0);
     });
+  }
+
+  ngAfterViewInit() {
+    // Avoid NG0100 by deferring change detection
+    setTimeout(() => {
+      this.cdr.detectChanges();
+    }, 0);
+  }
+
+  // State for the menu/sidebar
+  private _isSidebarOpen = false;
+
+  getMenuOpenState(): boolean {
+    if (this.isPublicPage) {
+      return this.isPublicMenuOpen;
+    }
+    return this._isSidebarOpen;
+  }
+
+  ngAfterViewChecked() {
+    // Sync the sidebar collapsed state to our local state
+    // Use setTimeout to avoid NG0100
+    if (!this.isPublicPage && this.sidebarComponent) {
+      const isCurrentlyOpen = !this.sidebarComponent.isCollapsed;
+      if (this._isSidebarOpen !== isCurrentlyOpen) {
+        setTimeout(() => {
+          this._isSidebarOpen = isCurrentlyOpen;
+          this.cdr.detectChanges();
+        }, 0);
+      }
+    }
   }
 
   isPublicMenuOpen = false;
@@ -119,6 +154,7 @@ export class AppComponent {
       this.isPublicMenuOpen = !this.isPublicMenuOpen;
     } else if (this.sidebarComponent) {
       this.sidebarComponent.toggleSidebar();
+      // The sync will happen in AfterViewChecked
     }
   }
 }

@@ -96,13 +96,13 @@ import { ApiService } from '../../services/api.service';
     }
     .form-input:focus {
       outline: none;
-      border-color: #3b82f6;
+      border-color: #1C2E4A;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     .btn-primary {
       width: 100%;
       padding: 0.875rem;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      background: linear-gradient(135deg, #1C2E4A, #1C2E4A);
       color: white;
       border: none;
       border-radius: 8px;
@@ -124,7 +124,7 @@ import { ApiService } from '../../services/api.service';
       text-align: center; 
     }
     .auth-footer a { 
-      color: #3b82f6; 
+      color: #1C2E4A; 
       text-decoration: none; 
       font-size: 0.9rem;
       font-weight: 500;
@@ -179,7 +179,7 @@ import { ApiService } from '../../services/api.service';
     .register-link {
       display: block;
       margin-top: 0.5rem;
-      color: #3b82f6;
+      color: #1C2E4A;
       text-decoration: none;
       font-weight: 500;
     }
@@ -199,7 +199,7 @@ export class ForgotPasswordComponent {
   constructor(
     private apiService: ApiService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   onSubmit() {
     if (!this.email || !this.email.trim()) {

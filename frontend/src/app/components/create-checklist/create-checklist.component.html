@@ -1,7 +1,8 @@
 <div class="create-checklist-container">
     <div class="header">
         <h1>{{ isEditMode ? 'Edit Checklist' : 'Create a Checklist' }}</h1>
-        <p class="subtitle">{{ isEditMode ? 'Update your checklist tasks' : 'Build a task list to keep your writing project organized' }}</p>
+        <p class="subtitle">{{ isEditMode ? 'Update your checklist tasks' : 'Build a task list to keep your writing
+            project organized' }}</p>
     </div>
 
     <!-- Loading State -->
@@ -14,8 +15,7 @@
         <div class="form-group">
             <label for="checklistName">Checklist Name</label>
             <input type="text" id="checklistName" [(ngModel)]="checklistName" class="form-input"
-                placeholder="e.g., NaNoWriMo Tasks, Research Checklist" required
-                [disabled]="isLoadingData">
+                placeholder="e.g., NaNoWriMo Tasks, Research Checklist" required [disabled]="isLoadingData">
         </div>
 
         <!-- Checklist Items -->
@@ -23,19 +23,20 @@
             <h3>Tasks</h3>
             <div class="items-list">
                 <div class="item-row" *ngFor="let item of items; let i = index">
-                    <div class="item-checkbox">
-                        <input type="checkbox" [(ngModel)]="item.is_done" id="item-{{i}}">
+                    <div class="item-checkbox" (click)="toggleItemStatus(item)">
+                        <i class="check-icon"
+                            [ngClass]="item.checked ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
                     </div>
                     <div class="item-text">
                         <input type="text" [(ngModel)]="item.text" class="item-input"
                             placeholder="Enter task description" [disabled]="isLoadingData">
                     </div>
                     <div class="item-actions">
-                        <button type="button" class="btn-icon" (click)="moveUp(i)" 
-                            [disabled]="i === 0 || isLoadingData" title="Move up">
+                        <button type="button" class="btn-icon" (click)="moveUp(i)" [disabled]="i === 0 || isLoadingData"
+                            title="Move up">
                             ↑
                         </button>
-                        <button type="button" class="btn-icon" (click)="moveDown(i)" 
+                        <button type="button" class="btn-icon" (click)="moveDown(i)"
                             [disabled]="i === items.length - 1 || isLoadingData" title="Move down">
                             ↓
                         </button>
@@ -54,7 +55,8 @@
 
         <!-- Actions -->
         <div class="form-actions">
-            <button type="button" class="btn-secondary" routerLink="/my-checklists" [disabled]="isLoadingData">Cancel</button>
+            <button type="button" class="btn-secondary" routerLink="/my-checklists"
+                [disabled]="isLoadingData">Cancel</button>
             <button type="button" class="btn-primary" (click)="saveChecklist()" [disabled]="isLoading || isLoadingData">
                 <span *ngIf="isLoading"><i class="fas fa-spinner fa-spin"></i> Saving...</span>
                 <span *ngIf="!isLoading">{{ isEditMode ? 'Update Checklist' : 'Save Checklist' }}</span>

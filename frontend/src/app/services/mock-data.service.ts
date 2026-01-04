@@ -91,7 +91,7 @@ export class MockDataService {
         completed_amount: completedAmount,
         progress: progress,
         start_date: this.randomDate(new Date(2024, 0, 1), new Date()),
-        end_date: this.randomDate(new Date(), new Date(2025, 11, 31)),
+        end_date: this.randomDate(new Date(), new Date(2026, 11, 31)),
         status: this.randomElement(statuses),
         color_code: this.randomElement(colors),
         is_archived: Math.random() > 0.8,
@@ -161,7 +161,7 @@ export class MockDataService {
         participants: this.randomInt(10, 500),
         target_words: this.randomInt(10000, 100000),
         start_date: this.randomDate(new Date(2024, 0, 1), new Date()),
-        end_date: this.randomDate(new Date(), new Date(2025, 11, 31)),
+        end_date: this.randomDate(new Date(), new Date(2026, 11, 31)),
         is_active: Math.random() > 0.3
       });
     }
@@ -266,7 +266,7 @@ export class MockDataService {
         progress: Math.round((completedAmount / targetAmount) * 100),
         daily_data: dailyData,
         start_date: this.randomDate(new Date(2024, 0, 1), new Date()),
-        end_date: this.randomDate(new Date(), new Date(2025, 11, 31)),
+        end_date: this.randomDate(new Date(), new Date(2026, 11, 31)),
         is_public: true,
         created_at: this.randomDate(new Date(2024, 0, 1), new Date())
       });
@@ -282,7 +282,7 @@ export class MockDataService {
       'Mystery Collection',
       'Romance Novels',
       'Historical Fiction',
-      'Blog Posts 2025',
+      'Blog Posts 2026',
       'Short Stories Anthology',
       'Memoir Project'
     ];
@@ -358,7 +358,7 @@ export class MockDataService {
 
   generateMockChallengesDetailed(count: number = 8) {
     const challengeNames = [
-      'NaNoWriMo 2025',
+      'NaNoWriMo 2026',
       '30-Day Writing Sprint',
       'Weekly Word Count Challenge',
       '100k Words in 3 Months',
@@ -390,7 +390,7 @@ export class MockDataService {
         participants: participants,
         participant_count: participants,
         start_date: this.randomDate(new Date(2024, 0, 1), new Date()),
-        end_date: this.randomDate(new Date(), new Date(2025, 11, 31)),
+        end_date: this.randomDate(new Date(), new Date(2026, 11, 31)),
         is_public: true,
         is_active: Math.random() > 0.2,
         creator_name: 'Demo User',

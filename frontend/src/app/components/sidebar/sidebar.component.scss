@@ -1,4 +1,4 @@
-$sidebar-bg: #0D1B2A;
+$sidebar-bg: #1C2E4A;
 $text-color: #ffffff;
 $text-active: #f1f5f9;
 $divider-color: rgba(255, 255, 255, 0.1);
@@ -70,7 +70,9 @@ $hover-bg: rgba(255, 255, 255, 0.05);
                 display: none;
             }
 
-            i {
+            i,
+            .user-avatar-mini,
+            .user-initials-mini {
                 margin: 0;
             }
         }
@@ -117,8 +119,8 @@ $hover-bg: rgba(255, 255, 255, 0.05);
 
             .badge {
                 margin-left: 0.75rem; // Slightly more spacing
-                background: #8b5cf6; // Purple badge
-                color: white;
+                background: #6CD8F7; // Original light blue/cyan badge
+                color: black;
                 font-size: 0.75rem;
                 padding: 0.15rem 0.6rem; // Rounded look
                 border-radius: 6px;
@@ -162,17 +164,16 @@ $hover-bg: rgba(255, 255, 255, 0.05);
 
                 .progress-bar-container {
                     width: 100%;
-                    height: 4px; // Thinner bar
-                    background: #1e293b; // Darker slate track
-                    border-radius: 4px;
+                    height: 8px;
+                    background: rgba(13, 27, 42, 0.5); // Deep navy track
+                    border-radius: 10px;
                     overflow: hidden;
 
                     .progress-bar-fill {
                         height: 100%;
-                        background: #a855f7; // Solid purple or simpler gradient
-                        border-radius: 4px;
-                        transition: width 0.5s ease-out;
-                        min-width: 4px; // Visible dot
+                        background: linear-gradient(90deg, #8b7ff5 0%, #60a5fa 100%);
+                        border-radius: 10px;
+                        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                     }
                 }
             }
@@ -221,6 +222,39 @@ $hover-bg: rgba(255, 255, 255, 0.05);
             opacity: 0.8;
         }
 
+        .user-avatar-mini {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            margin-right: 12px;
+            flex-shrink: 0;
+
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
+            }
+        }
+
+        .user-initials-mini {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #273853;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-right: 12px;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
         &:hover {
             color: $text-active;
             background: $hover-bg;
@@ -232,7 +266,7 @@ $hover-bg: rgba(255, 255, 255, 0.05);
 
         &.active {
             color: $text-active;
-            border-left: 3px solid #3b82f6; // Blue accent to match app theme
+            border-left: 3px solid #6CD8F7; // Blue accent to match app theme
             padding-left: calc(1.5rem - 3px);
             background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
 
@@ -244,8 +278,8 @@ $hover-bg: rgba(255, 255, 255, 0.05);
 
         .badge {
             margin-left: auto;
-            background: #8b5cf6; // Purple badge to match user request
-            color: white;
+            background: #6CD8F7; // Purple badge to match user request
+            color: black;
             font-size: 0.7rem;
             padding: 0.15rem 0.6rem;
             border-radius: 6px; // Slightly softer corner
@@ -265,6 +299,32 @@ $hover-bg: rgba(255, 255, 255, 0.05);
 
     .spacer {
         flex: 1;
+    }
+
+    .scribecount-brand {
+        padding: 1.5rem;
+        margin-top: 1rem;
+        text-align: center;
+        border-top: 1px solid $divider-color;
+        background: rgba(0, 0, 0, 0.2);
+
+        .brand-text {
+            display: block;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.25rem;
+        }
+
+        .brand-name {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 0.5px;
+            font-family: 'Inter', sans-serif;
+        }
     }
 }
 

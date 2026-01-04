@@ -89,6 +89,7 @@ public class DbInitService
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
                 bio TEXT,
+                avatar_url VARCHAR(500),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )",
@@ -422,6 +423,7 @@ public class DbInitService
             
             // Add missing columns to users table if they don't exist
             await AddColumnIfNotExistsAsync(conn, "users", "bio", "TEXT");
+            await AddColumnIfNotExistsAsync(conn, "users", "avatar_url", "VARCHAR(500)");
             await AddColumnIfNotExistsAsync(conn, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
             await AddColumnIfNotExistsAsync(conn, "users", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
             

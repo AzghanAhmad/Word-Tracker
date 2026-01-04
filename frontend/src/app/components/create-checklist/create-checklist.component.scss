@@ -78,10 +78,23 @@
                     }
 
                     .item-checkbox {
-                        input[type="checkbox"] {
-                            width: 20px;
-                            height: 20px;
-                            cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        cursor: pointer;
+                        padding: 2px;
+
+                        .check-icon {
+                            font-size: 1.4rem;
+                            color: #1C2E4A; // Theme primary blue
+                            transition: all 0.2s ease;
+                            width: 24px;
+                            display: flex;
+                            justify-content: center;
+
+                            &:hover {
+                                transform: scale(1.15);
+                                color: #1C2E4A;
+                            }
                         }
                     }
 
