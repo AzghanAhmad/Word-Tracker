@@ -25,6 +25,24 @@ export interface WordEntry {
             height: 300px;
             width: 100%;
         }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 250px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chart-container {
+                height: 220px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .chart-container {
+                height: 200px;
+            }
+        }
     `]
 })
 export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDestroy {
@@ -119,11 +137,11 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         ticks: {
                             color: '#94a3b8',
                             font: {
-                                size: 11
+                                size: window.innerWidth <= 480 ? 9 : 11
                             },
                             maxRotation: 0,
                             autoSkip: true,
-                            maxTicksLimit: 7
+                            maxTicksLimit: window.innerWidth <= 480 ? 5 : 7
                         },
                         border: {
                             display: false
@@ -137,9 +155,10 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         ticks: {
                             color: '#94a3b8',
                             font: {
-                                size: 11
+                                size: window.innerWidth <= 480 ? 9 : 11
                             },
-                            callback: (value) => new Intl.NumberFormat('en-US').format(value as number)
+                            callback: (value) => new Intl.NumberFormat('en-US').format(value as number),
+                            maxTicksLimit: window.innerWidth <= 480 ? 4 : 6
                         },
                         border: {
                             display: false

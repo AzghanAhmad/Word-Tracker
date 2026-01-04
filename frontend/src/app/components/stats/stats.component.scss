@@ -100,6 +100,8 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
     margin-bottom: 2rem;
     border: 1px solid rgba(241, 245, 249, 0.8);
+    width: 100%;
+    box-sizing: border-box;
 
     .card-header {
         display: flex;
@@ -171,6 +173,12 @@
             margin-bottom: 0.5rem;
         }
     }
+
+    &.heatmap-card {
+        .heatmap-container {
+            width: 100%;
+        }
+    }
 }
 
 .bottom-grid {
@@ -187,38 +195,60 @@
 // Heatmap
 .heatmap-container {
     position: relative;
+    width: 100%;
+    overflow-x: auto;
+}
+
+.heatmap-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 0 2px;
+    width: 100%;
+    min-width: 280px;
+
+    .weekday-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 600;
+        text-align: center;
+    }
 }
 
 .heatmap-grid {
     display: flex;
-    gap: 3px;
-    padding-bottom: 25px;
-    overflow-x: auto;
-    /* justify-content: flex-start; Default */
+    gap: 8px;
+    flex-direction: column;
+    width: 100%;
+    min-width: 280px;
 
-    .week-col {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        width: 14px;
-        flex: none;
+    &.monthly-grid {
+        gap: 8px;
+    }
+
+    .week-row {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        width: 100%;
 
         .day-cell {
-            height: 14px;
-            border-radius: 2px;
-            /* Slightly sharper styling like GitHub */
+            aspect-ratio: 1;
+            width: 100%;
+            min-height: 60px;
+            border-radius: 8px;
             background: #ebedf0;
-            /* Classic GitHub empty grey */
             transition: all 0.2s;
             cursor: pointer;
-            border: none;
+            border: 2px solid transparent;
             position: relative;
 
             &:hover {
-                transform: scale(1.25);
+                transform: scale(1.05);
                 z-index: 10;
                 border-color: #1C2E4A;
-                box-shadow: 0 4px 12px rgba(28, 46, 74, 0.4);
+                box-shadow: 0 4px 12px rgba(28, 46, 74, 0.3);
             }
 
             &[data-level="1"] {
@@ -237,22 +267,13 @@
                 background: #1C2E4A;
                 box-shadow: 0 0 8px rgba(28, 46, 74, 0.4);
             }
+
+            &.empty-day {
+                opacity: 0.25;
+                cursor: default;
+                background: #f1f5f9;
+            }
         }
-    }
-}
-
-.heatmap-months {
-    display: flex;
-    position: relative;
-    margin-top: -20px;
-    padding-left: 0;
-    font-size: 0.7rem;
-    color: #64748b;
-    font-weight: 500;
-
-    .month-label {
-        position: absolute;
-        white-space: nowrap;
     }
 }
 
@@ -356,24 +377,397 @@
 }
 
 // Responsive
+@media (max-width: 1200px) {
+    .bottom-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .stats-container {
         padding: 1.5rem;
     }
 
-    .header h1 {
-        font-size: 2rem;
+    .header {
+        margin-bottom: 2rem;
+
+        h1 {
+            font-size: 2rem;
+        }
+
+        p {
+            font-size: 1rem;
+        }
     }
 
     .metrics-grid {
         grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .metric-card {
+        padding: 1.5rem;
+
+        .stat-value {
+            font-size: 1.6rem;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+        }
     }
 
     .chart-card {
         padding: 1.5rem;
+
+        .card-header {
+            margin-bottom: 1.5rem;
+
+            h3 {
+                font-size: 1.2rem;
+            }
+
+            .chart-legend {
+                font-size: 0.85rem;
+            }
+        }
     }
 
     .bottom-grid {
         grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    // Monthly Frequency responsive
+    .heatmap-container {
+        overflow-x: visible;
+    }
+
+    .heatmap-weekdays {
+        gap: 6px;
+        margin-bottom: 10px;
+        min-width: 100%;
+
+        .weekday-label {
+            font-size: 0.7rem;
+        }
+    }
+
+    .heatmap-grid.monthly-grid {
+        gap: 6px;
+        min-width: 100%;
+
+        .week-row {
+            gap: 6px;
+
+            .day-cell {
+                min-height: 40px;
+                border-radius: 6px;
+            }
+        }
+    }
+
+    .legend {
+        margin-top: 1rem;
+        font-size: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-container {
+        padding: 1rem;
+    }
+
+    .content {
+        max-width: 100%;
+    }
+
+    .header {
+        margin-bottom: 1.5rem;
+
+        h1 {
+            font-size: 1.5rem;
+            gap: 0.75rem;
+        }
+
+        p {
+            font-size: 0.9rem;
+        }
+    }
+
+    .metrics-grid {
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        padding: 1.25rem;
+
+        .stat-value {
+            font-size: 1.4rem;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+        }
+    }
+
+    .chart-card {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+
+        .card-header {
+            margin-bottom: 1.25rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+
+            h3 {
+                font-size: 1.1rem;
+            }
+
+            .chart-legend {
+                font-size: 0.8rem;
+            }
+        }
+    }
+
+    .bottom-grid {
+        gap: 1.25rem;
+    }
+
+    // Monthly Frequency responsive for small screens
+    .heatmap-container {
+        overflow-x: visible;
+    }
+
+    .heatmap-weekdays {
+        gap: 3px;
+        margin-bottom: 8px;
+        padding: 0 1px;
+        min-width: 100%;
+
+        .weekday-label {
+            font-size: 0.6rem;
+        }
+    }
+
+    .heatmap-grid.monthly-grid {
+        gap: 3px;
+        min-width: 100%;
+
+        .week-row {
+            gap: 3px;
+            width: 100%;
+
+            .day-cell {
+                min-height: 32px;
+                border-radius: 4px;
+                width: 100%;
+            }
+        }
+    }
+
+    .heatmap-tooltip {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+        max-width: 150px;
+
+        .tooltip-date {
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+        }
+
+        .tooltip-count {
+            font-size: 0.65rem;
+        }
+    }
+
+    .legend {
+        margin-top: 0.75rem;
+        font-size: 0.65rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: center;
+
+        .levels {
+            gap: 3px;
+
+            .day-cell {
+                width: 12px;
+                height: 12px;
+                border-radius: 2px;
+            }
+        }
+    }
+}
+
+@media (max-width: 375px) {
+    .stats-container {
+        padding: 0.75rem;
+    }
+
+    .header {
+        h1 {
+            font-size: 1.35rem;
+        }
+
+        p {
+            font-size: 0.85rem;
+        }
+    }
+
+    .metric-card {
+        padding: 1rem;
+
+        .stat-value {
+            font-size: 1.3rem;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+        }
+    }
+
+    .chart-card {
+        padding: 0.875rem;
+
+        .card-header {
+            margin-bottom: 1rem;
+
+            h3 {
+                font-size: 1rem;
+            }
+
+            .chart-legend {
+                font-size: 0.75rem;
+            }
+        }
+    }
+
+    .heatmap-container {
+        overflow-x: visible;
+    }
+
+    .heatmap-weekdays {
+        gap: 2px;
+        margin-bottom: 6px;
+        min-width: 100%;
+
+        .weekday-label {
+            font-size: 0.55rem;
+        }
+    }
+
+    .heatmap-grid.monthly-grid {
+        gap: 2px;
+        min-width: 100%;
+
+        .week-row {
+            gap: 2px;
+            width: 100%;
+
+            .day-cell {
+                min-height: 28px;
+                border-radius: 3px;
+                width: 100%;
+            }
+        }
+    }
+}
+
+@media (max-width: 320px) {
+    .stats-container {
+        padding: 0.5rem;
+    }
+
+    .header {
+        margin-bottom: 1.25rem;
+
+        h1 {
+            font-size: 1.2rem;
+            gap: 0.5rem;
+        }
+
+        p {
+            font-size: 0.8rem;
+        }
+    }
+
+    .metrics-grid {
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .metric-card {
+        padding: 0.875rem;
+
+        .stat-value {
+            font-size: 1.2rem;
+        }
+
+        .stat-label {
+            font-size: 0.55rem;
+        }
+    }
+
+    .chart-card {
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+
+        .card-header {
+            margin-bottom: 0.875rem;
+
+            h3 {
+                font-size: 0.95rem;
+            }
+
+            .chart-legend {
+                font-size: 0.7rem;
+            }
+        }
+    }
+
+    .heatmap-container {
+        overflow-x: visible;
+    }
+
+    .heatmap-weekdays {
+        gap: 2px;
+        margin-bottom: 5px;
+        min-width: 100%;
+
+        .weekday-label {
+            font-size: 0.5rem;
+        }
+    }
+
+    .heatmap-grid.monthly-grid {
+        gap: 2px;
+        min-width: 100%;
+
+        .week-row {
+            gap: 2px;
+            width: 100%;
+
+            .day-cell {
+                min-height: 28px;
+                border-radius: 3px;
+                width: 100%;
+            }
+        }
+    }
+
+    .legend {
+        font-size: 0.6rem;
+
+        .levels {
+            .day-cell {
+                width: 10px;
+                height: 10px;
+            }
+        }
     }
 }

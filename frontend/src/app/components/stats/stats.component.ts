@@ -64,8 +64,6 @@ export class StatsComponent implements OnInit {
         count: 0
     };
 
-    // Month labels for heatmap x-axis
-    monthLabels: { label: string; offset: number }[] = [];
 
     constructor(
         private apiService: ApiService,
@@ -185,7 +183,6 @@ export class StatsComponent implements OnInit {
                     // Prepare Charts
                     this.prepareLineChart(allDaysData);
                     this.prepareHeatmap(allDaysData);
-                    this.generateMonthLabels();
                 } else {
                     // Fallback to empty data
                     this.resetToDefaults();
@@ -211,7 +208,6 @@ export class StatsComponent implements OnInit {
         this.monthlyData = [];
         this.allDaysDataForChart = [];
         this.heatmapGrid = [];
-        this.monthLabels = [];
         this.heatmapTooltip.visible = false;
         this.lineChartPoints = '';
         this.lineChartArea = '';
@@ -360,19 +356,18 @@ export class StatsComponent implements OnInit {
     }
 
     prepareHeatmap(allData: DayStat[]) {
-        // Generate a 30-week grid ending at the current week
-        const totalWeeks = 30;
+        // Generate grid for current month only
         const today = new Date();
-        const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
 
-        // Align to the start of the current week (Sunday)
-        const currentWeekStart = new Date(today);
-        currentWeekStart.setDate(today.getDate() - dayOfWeek);
-        currentWeekStart.setHours(0, 0, 0, 0);
-
-        // Calculate the start date of the grid (51 weeks ago)
-        const gridStartDate = new Date(currentWeekStart);
-        gridStartDate.setDate(gridStartDate.getDate() - ((totalWeeks - 1) * 7));
+        // Get first and last day of current month
+        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+        const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+        
+        // Get the day of week for the first day (0 = Sunday, 6 = Saturday)
+        const firstDayOfWeek = firstDayOfMonth.getDay();
+        const daysInMonth = lastDayOfMonth.getDate();
 
         // Create a lookup map for data
         const dataMap = new Map<string, number>();
@@ -384,26 +379,60 @@ export class StatsComponent implements OnInit {
             });
         }
 
+        // Helper to format date as YYYY-MM-DD
+        const toLocalISOString = (date: Date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
         const weeks: ActivityDay[][] = [];
+        let currentWeek: ActivityDay[] = [];
 
-        for (let w = 0; w < totalWeeks; w++) {
-            const week: ActivityDay[] = [];
-            for (let d = 0; d < 7; d++) {
-                const currentDate = new Date(gridStartDate);
-                // Calculate date: Start + (Weeks * 7) + Days
-                currentDate.setDate(gridStartDate.getDate() + (w * 7) + d);
+        // Add empty cells for days before the first day of the month
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            const emptyDate = new Date(firstDayOfMonth);
+            emptyDate.setDate(firstDayOfMonth.getDate() - (firstDayOfWeek - i));
+            currentWeek.push({
+                date: emptyDate,
+                count: 0,
+                level: 0
+            });
+        }
 
-                const dateKey = currentDate.toISOString().split('T')[0];
-                const count = dataMap.get(dateKey) || 0;
-                const level = this.getLevel(count);
+        // Add all days of the current month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const currentDate = new Date(currentYear, currentMonth, day);
+            const dateKey = toLocalISOString(currentDate);
+            const count = dataMap.get(dateKey) || 0;
+            const level = this.getLevel(count);
 
-                week.push({
-                    date: currentDate,
-                    count: count,
-                    level: level
+            currentWeek.push({
+                date: currentDate,
+                count: count,
+                level: level
+            });
+
+            // If we've filled a week (7 days), start a new week
+            if (currentWeek.length === 7) {
+                weeks.push(currentWeek);
+                currentWeek = [];
+            }
+        }
+
+        // Fill remaining days in the last week with empty cells
+        if (currentWeek.length > 0) {
+            while (currentWeek.length < 7) {
+                const emptyDate = new Date(lastDayOfMonth);
+                emptyDate.setDate(lastDayOfMonth.getDate() + (currentWeek.length - (daysInMonth - (7 - firstDayOfWeek))));
+                currentWeek.push({
+                    date: emptyDate,
+                    count: 0,
+                    level: 0
                 });
             }
-            weeks.push(week);
+            weeks.push(currentWeek);
         }
 
         this.heatmapGrid = weeks;
@@ -419,6 +448,11 @@ export class StatsComponent implements OnInit {
 
     getFormattedDate(date: Date): string {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    isDayOutsideCurrentMonth(date: Date): boolean {
+        const today = new Date();
+        return date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear();
     }
 
     showHeatmapTooltip(event: MouseEvent, day: ActivityDay) {
@@ -440,59 +474,4 @@ export class StatsComponent implements OnInit {
         this.heatmapTooltip.visible = false;
     }
 
-    generateMonthLabels() {
-        const labels: { label: string; offset: number }[] = [];
-        const totalWeeks = 30;
-        
-        // Get the start date (30 weeks ago)
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        const currentWeekStart = new Date(today);
-        currentWeekStart.setDate(today.getDate() - dayOfWeek);
-        currentWeekStart.setHours(0, 0, 0, 0);
-        
-        const gridStartDate = new Date(currentWeekStart);
-        gridStartDate.setDate(gridStartDate.getDate() - ((totalWeeks - 1) * 7));
-        
-        // Week width in pixels (14px width + 3px gap)
-        const weekWidth = 17;
-        
-        // Track months we've seen
-        const seenMonths = new Set<string>();
-        let currentMonth = gridStartDate.getMonth();
-        let currentYear = gridStartDate.getFullYear();
-        
-        // Check first week
-        const firstWeekMonth = gridStartDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        if (!seenMonths.has(firstWeekMonth)) {
-            labels.push({ label: gridStartDate.toLocaleDateString('en-US', { month: 'short' }), offset: 0 });
-            seenMonths.add(firstWeekMonth);
-            currentMonth = gridStartDate.getMonth();
-            currentYear = gridStartDate.getFullYear();
-        }
-        
-        // Check each week to see if we cross a month boundary
-        for (let w = 1; w < totalWeeks; w++) {
-            const weekDate = new Date(gridStartDate);
-            weekDate.setDate(gridStartDate.getDate() + (w * 7));
-            
-            const monthKey = weekDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            const monthName = weekDate.toLocaleDateString('en-US', { month: 'short' });
-            
-            // If we've entered a new month, add a label
-            if (weekDate.getMonth() !== currentMonth || weekDate.getFullYear() !== currentYear) {
-                if (!seenMonths.has(monthKey)) {
-                    labels.push({ 
-                        label: monthName, 
-                        offset: w * weekWidth 
-                    });
-                    seenMonths.add(monthKey);
-                    currentMonth = weekDate.getMonth();
-                    currentYear = weekDate.getFullYear();
-                }
-            }
-        }
-        
-        this.monthLabels = labels;
-    }
 }

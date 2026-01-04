@@ -57,19 +57,25 @@
                     <h3>Monthly Frequency</h3>
                 </div>
                 <div class="heatmap-container">
-                    <div class="heatmap-grid">
-                        <div class="week-col" *ngFor="let week of heatmapGrid; let weekIndex = index">
+                    <div class="heatmap-weekdays">
+                        <span class="weekday-label">Sun</span>
+                        <span class="weekday-label">Mon</span>
+                        <span class="weekday-label">Tue</span>
+                        <span class="weekday-label">Wed</span>
+                        <span class="weekday-label">Thu</span>
+                        <span class="weekday-label">Fri</span>
+                        <span class="weekday-label">Sat</span>
+                    </div>
+                    <div class="heatmap-grid monthly-grid">
+                        <div class="week-row" *ngFor="let week of heatmapGrid">
                             <div class="day-cell" *ngFor="let day of week" 
                                 [attr.data-level]="day.level"
+                                [class.empty-day]="isDayOutsideCurrentMonth(day.date)"
                                 [title]="getFormattedDate(day.date) + ': ' + day.count + ' words'"
                                 (mouseenter)="showHeatmapTooltip($event, day)"
                                 (mouseleave)="hideHeatmapTooltip()">
                             </div>
                         </div>
-                    </div>
-                    <div class="heatmap-months">
-                        <span *ngFor="let monthLabel of monthLabels" class="month-label" 
-                            [style.margin-left.px]="monthLabel.offset">{{ monthLabel.label }}</span>
                     </div>
                 </div>
                 <div class="legend">
