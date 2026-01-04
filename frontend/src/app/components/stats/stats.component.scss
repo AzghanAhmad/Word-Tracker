@@ -185,10 +185,14 @@
 
 
 // Heatmap
+.heatmap-container {
+    position: relative;
+}
+
 .heatmap-grid {
     display: flex;
     gap: 3px;
-    padding-bottom: 10px;
+    padding-bottom: 25px;
     overflow-x: auto;
     /* justify-content: flex-start; Default */
 
@@ -234,6 +238,55 @@
                 box-shadow: 0 0 8px rgba(28, 46, 74, 0.4);
             }
         }
+    }
+}
+
+.heatmap-months {
+    display: flex;
+    position: relative;
+    margin-top: -20px;
+    padding-left: 0;
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 500;
+
+    .month-label {
+        position: absolute;
+        white-space: nowrap;
+    }
+}
+
+.heatmap-tooltip {
+    position: absolute;
+    background: #1e293b;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateX(-50%);
+
+    .tooltip-date {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .tooltip-count {
+        color: #cbd5e1;
+        font-size: 0.8rem;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #1e293b;
     }
 }
 

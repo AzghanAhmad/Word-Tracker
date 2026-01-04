@@ -27,10 +27,10 @@
             </div>
         </div>
 
-        <!-- Cumulative Progress (Line Chart) -->
+        <!-- Overall Growth (Line Chart) -->
         <div class="chart-card line-chart-card">
             <div class="card-header">
-                <h3>Cumulative Growth</h3>
+                <h3>Overall Growth</h3>
                 <div class="chart-legend">
                     <span class="dot"></span> Cumulative Word Count
                 </div>
@@ -56,11 +56,20 @@
                 <div class="card-header">
                     <h3>Monthly Frequency</h3>
                 </div>
-                <div class="heatmap-grid">
-                    <div class="week-col" *ngFor="let week of heatmapGrid">
-                        <div class="day-cell" *ngFor="let day of week" [attr.data-level]="day.level"
-                            [title]="(day.date | date) + ': ' + day.count + ' words'">
+                <div class="heatmap-container">
+                    <div class="heatmap-grid">
+                        <div class="week-col" *ngFor="let week of heatmapGrid; let weekIndex = index">
+                            <div class="day-cell" *ngFor="let day of week" 
+                                [attr.data-level]="day.level"
+                                [title]="getFormattedDate(day.date) + ': ' + day.count + ' words'"
+                                (mouseenter)="showHeatmapTooltip($event, day)"
+                                (mouseleave)="hideHeatmapTooltip()">
+                            </div>
                         </div>
+                    </div>
+                    <div class="heatmap-months">
+                        <span *ngFor="let monthLabel of monthLabels" class="month-label" 
+                            [style.margin-left.px]="monthLabel.offset">{{ monthLabel.label }}</span>
                     </div>
                 </div>
                 <div class="legend">
@@ -73,6 +82,13 @@
                         <div class="day-cell" data-level="4"></div>
                     </div>
                     <span>More</span>
+                </div>
+                <!-- Tooltip -->
+                <div class="heatmap-tooltip" *ngIf="heatmapTooltip.visible" 
+                    [style.left.px]="heatmapTooltip.x" 
+                    [style.top.px]="heatmapTooltip.y">
+                    <div class="tooltip-date">{{ heatmapTooltip.date }}</div>
+                    <div class="tooltip-count">{{ heatmapTooltip.count }} words</div>
                 </div>
             </div>
         </div>

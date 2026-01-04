@@ -36,7 +36,8 @@ export class StatsComponent implements OnInit {
     currentStreak = 0;
 
     // Chart Data
-    activityData: DayStat[] = []; // Last 14 days
+    activityData: DayStat[] = []; // Last 14 days (deprecated, kept for compatibility)
+    monthlyData: DayStat[] = []; // Current month daily data
     allDaysDataForChart: DayStat[] = [];
     initialChartCount: number = 0;
     heatmapGrid: ActivityDay[][] = []; // Weeks x Days
@@ -53,6 +54,18 @@ export class StatsComponent implements OnInit {
     activeTooltip: number | null = null;
     tooltipX = 0;
     tooltipY = 0;
+
+    // Heatmap tooltip state
+    heatmapTooltip = {
+        visible: false,
+        x: 0,
+        y: 0,
+        date: '',
+        count: 0
+    };
+
+    // Month labels for heatmap x-axis
+    monthLabels: { label: string; offset: number }[] = [];
 
     constructor(
         private apiService: ApiService,
@@ -172,6 +185,7 @@ export class StatsComponent implements OnInit {
                     // Prepare Charts
                     this.prepareLineChart(allDaysData);
                     this.prepareHeatmap(allDaysData);
+                    this.generateMonthLabels();
                 } else {
                     // Fallback to empty data
                     this.resetToDefaults();
@@ -194,10 +208,53 @@ export class StatsComponent implements OnInit {
         this.bestDay = 0;
         this.currentStreak = 0;
         this.activityData = [];
+        this.monthlyData = [];
+        this.allDaysDataForChart = [];
         this.heatmapGrid = [];
+        this.monthLabels = [];
+        this.heatmapTooltip.visible = false;
         this.lineChartPoints = '';
         this.lineChartArea = '';
         this.lineChartDataPoints = [];
+    }
+
+    processMonthlyData(allDaysData: DayStat[]) {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+
+        // Get first and last day of current month
+        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+        const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
+
+        // Helper to format date as YYYY-MM-DD
+        const toLocalISOString = (date: Date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
+        // Create a map of the data for quick lookup
+        const dataMap = new Map<string, number>();
+        allDaysData.forEach(d => {
+            dataMap.set(d.date, d.count);
+        });
+
+        // Generate all days of current month with data
+        const monthlyData: DayStat[] = [];
+        const current = new Date(firstDayOfMonth);
+        
+        while (current <= lastDayOfMonth) {
+            const dateStr = toLocalISOString(current);
+            monthlyData.push({
+                date: dateStr,
+                count: dataMap.get(dateStr) || 0
+            });
+            current.setDate(current.getDate() + 1);
+        }
+
+        this.monthlyData = monthlyData;
     }
 
     calculateStreak(data: DayStat[]): number {
@@ -358,5 +415,84 @@ export class StatsComponent implements OnInit {
         if (count < 1000) return 2;
         if (count < 2000) return 3;
         return 4;
+    }
+
+    getFormattedDate(date: Date): string {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    showHeatmapTooltip(event: MouseEvent, day: ActivityDay) {
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        const containerRect = (event.target as HTMLElement).closest('.heatmap-card')?.getBoundingClientRect();
+        
+        if (containerRect) {
+            this.heatmapTooltip = {
+                visible: true,
+                x: rect.left - containerRect.left + rect.width / 2,
+                y: rect.top - containerRect.top - 45,
+                date: this.getFormattedDate(day.date),
+                count: day.count
+            };
+        }
+    }
+
+    hideHeatmapTooltip() {
+        this.heatmapTooltip.visible = false;
+    }
+
+    generateMonthLabels() {
+        const labels: { label: string; offset: number }[] = [];
+        const totalWeeks = 30;
+        
+        // Get the start date (30 weeks ago)
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const currentWeekStart = new Date(today);
+        currentWeekStart.setDate(today.getDate() - dayOfWeek);
+        currentWeekStart.setHours(0, 0, 0, 0);
+        
+        const gridStartDate = new Date(currentWeekStart);
+        gridStartDate.setDate(gridStartDate.getDate() - ((totalWeeks - 1) * 7));
+        
+        // Week width in pixels (14px width + 3px gap)
+        const weekWidth = 17;
+        
+        // Track months we've seen
+        const seenMonths = new Set<string>();
+        let currentMonth = gridStartDate.getMonth();
+        let currentYear = gridStartDate.getFullYear();
+        
+        // Check first week
+        const firstWeekMonth = gridStartDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        if (!seenMonths.has(firstWeekMonth)) {
+            labels.push({ label: gridStartDate.toLocaleDateString('en-US', { month: 'short' }), offset: 0 });
+            seenMonths.add(firstWeekMonth);
+            currentMonth = gridStartDate.getMonth();
+            currentYear = gridStartDate.getFullYear();
+        }
+        
+        // Check each week to see if we cross a month boundary
+        for (let w = 1; w < totalWeeks; w++) {
+            const weekDate = new Date(gridStartDate);
+            weekDate.setDate(gridStartDate.getDate() + (w * 7));
+            
+            const monthKey = weekDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            const monthName = weekDate.toLocaleDateString('en-US', { month: 'short' });
+            
+            // If we've entered a new month, add a label
+            if (weekDate.getMonth() !== currentMonth || weekDate.getFullYear() !== currentYear) {
+                if (!seenMonths.has(monthKey)) {
+                    labels.push({ 
+                        label: monthName, 
+                        offset: w * weekWidth 
+                    });
+                    seenMonths.add(monthKey);
+                    currentMonth = weekDate.getMonth();
+                    currentYear = weekDate.getFullYear();
+                }
+            }
+        }
+        
+        this.monthLabels = labels;
     }
 }
