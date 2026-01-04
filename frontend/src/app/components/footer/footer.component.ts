@@ -11,7 +11,6 @@ import { RouterLink } from '@angular/router';
       <div class="footer-links">
         <a routerLink="/help">Help</a>
         <a routerLink="/feedback">Feedback</a>
-        <a routerLink="/credits">Credits</a>
         <a routerLink="/privacy">Privacy</a>
         <a routerLink="/terms">Terms</a>
       </div>

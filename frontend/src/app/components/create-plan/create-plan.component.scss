@@ -1718,6 +1718,29 @@ $radius-sm: 8px;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5rem;
+
+            // Custom scrollbar styling
+            &::-webkit-scrollbar {
+                width: 8px;
+            }
+
+            &::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 4px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+
+                &:hover {
+                    background: #94a3b8;
+                }
+            }
 
             .progress-update-card {
                 background: white;

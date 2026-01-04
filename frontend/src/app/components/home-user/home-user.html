@@ -53,25 +53,25 @@
                                 <div class="progress-card featured">
                                     <div class="card-header">
                                         <span class="card-label">Today's Progress</span>
-                                        <span class="card-status">On Track</span>
+                                        <span class="card-status">{{ isOnTrack ? 'On Track' : 'Behind' }}</span>
                                     </div>
                                     <div class="card-stats">
-                                        <div class="stat-main">2,847</div>
-                                        <div class="stat-target">/ 3,000 words</div>
+                                        <div class="stat-main">{{ todayProgress | number }}</div>
+                                        <div class="stat-target">/ {{ todayTarget | number }} words</div>
                                     </div>
                                     <div class="progress-track">
-                                        <div class="progress-fill" style="width: 95%"></div>
+                                        <div class="progress-fill" [style.width.%]="progressPercentage"></div>
                                     </div>
                                 </div>
                                 <div class="mini-cards">
                                     <div class="mini-card">
                                         <div class="mini-icon">🔥</div>
-                                        <div class="mini-value">14</div>
+                                        <div class="mini-value">{{ currentStreak }}</div>
                                         <div class="mini-label">Day Streak</div>
                                     </div>
                                     <div class="mini-card">
                                         <div class="mini-icon">📖</div>
-                                        <div class="mini-value">3</div>
+                                        <div class="mini-value">{{ activePlansCount }}</div>
                                         <div class="mini-label">Active Plans</div>
                                     </div>
                                 </div>

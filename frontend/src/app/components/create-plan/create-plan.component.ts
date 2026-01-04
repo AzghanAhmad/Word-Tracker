@@ -384,6 +384,10 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                             isToday: this.isSameDay(date, new Date())
                         };
                     });
+                    
+                    // Sort progress entries by date (most recent first)
+                    this.progressEntries.sort((a, b) => b.date.getTime() - a.date.getTime());
+                    
                     console.log(`📝 Loaded ${this.progressEntries.length} progress entries`);
                 } else {
                     this.progressEntries = [];
@@ -474,6 +478,9 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 // Always use the manual progress from database for the text box
                 // This ensures the user sees the stored progress percentage when editing
                 this.currentProgress = progressToShow;
+
+                // Load streak from backend stats API (matches profile)
+                this.loadStreakFromBackend();
 
                 console.log(`✅ Plan progress loading complete. Progress displayed in text box: ${this.currentProgress}%`);
 
@@ -749,13 +756,6 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         let actualTotal = 0;
         let maxCount = 0;
         let maxDate = '';
-        let streak = 0;
-        let countingStreak = true;
-
-        // Iterate backwards for streak
-        const sortedDays = [...this.planDays].sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
         this.planDays.forEach(day => {
             const date = new Date(day.dateObj);
@@ -780,21 +780,8 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             }
         });
 
-        // Current Streak calculation
-        for (const day of sortedDays) {
-            const dayDate = new Date(day.dateObj);
-            dayDate.setHours(0, 0, 0, 0);
-
-            if (dayDate > today) continue; // Skip future days
-
-            if ((day.actualWorkDone || 0) > 0) {
-                streak++;
-            } else if (dayDate < today) {
-                // If it's before today and 0, streak is broken
-                break;
-            }
-            // If it's today and 0, we don't break the streak yet, giving user time to write
-        }
+        // Note: Streak is now loaded from backend stats API via loadStreakFromBackend()
+        // to match the profile streak. Local calculation is no longer used.
 
         this.weekdayAvg = weekdayCount > 0 ? Math.round(weekdayTargetTotal / weekdayCount) : 0;
         this.weekendAvg = weekendCount > 0 ? Math.round(weekendTargetTotal / weekendCount) : 0;
@@ -802,7 +789,6 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         this.totalWordsLogged = actualTotal;
         this.wordsRemaining = Math.max(0, this.targetWordCount - actualTotal);
         this.bestDay = maxCount > 0 ? { date: maxDate, count: maxCount } : null;
-        this.currentStreak = streak;
 
         // On-track percentage (actual words vs expected progress for current date)
         const now = new Date();
@@ -1294,4 +1280,20 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
     updateGrowthChart() { }
     initGrowthChart() { }
+
+    loadStreakFromBackend() {
+        // Fetch streak from backend stats API to match profile
+        this.apiService.getStats().subscribe({
+            next: (response) => {
+                if (response.success && response.data) {
+                    this.currentStreak = response.data.currentStreak || 0;
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (error) => {
+                console.error('Error fetching streak from backend:', error);
+                // Keep current streak value on error
+            }
+        });
+    }
 }

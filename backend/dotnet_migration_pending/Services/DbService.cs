@@ -27,13 +27,16 @@ public class DbService : IDbService
             conn.Open();
             Console.WriteLine($"✓ Database connection successful for CreateUser");
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "INSERT INTO users (username,email,password_hash) VALUES (@u,@e,@p)";
+            // Set default avatar URL when creating user
+            const string defaultAvatarUrl = "/uploads/avatars/avatar_28_639027429285273708.png";
+            cmd.CommandText = "INSERT INTO users (username,email,password_hash,avatar_url) VALUES (@u,@e,@p,@a)";
             cmd.Parameters.AddWithValue("@u", username);
             cmd.Parameters.AddWithValue("@e", email);
             cmd.Parameters.AddWithValue("@p", passwordHash);
+            cmd.Parameters.AddWithValue("@a", defaultAvatarUrl);
             var result = cmd.ExecuteNonQuery() == 1;
             if (result)
-                Console.WriteLine($"✓ User created: {username} ({email})");
+                Console.WriteLine($"✓ User created: {username} ({email}) with default avatar");
             return result;
         }
         catch (MySqlException ex) when (ex.Number == 1062) // Duplicate entry
@@ -2237,13 +2240,23 @@ public class DbService : IDbService
                 return null;
             }
             
+            // Get avatar_url, use default if null or empty
+            var avatarUrl = reader.IsDBNull(reader.GetOrdinal("avatar_url")) 
+                ? null 
+                : reader.GetString("avatar_url");
+            
+            // Default avatar path (relative to wwwroot)
+            var defaultAvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) 
+                ? "/uploads/avatars/avatar_28_639027429285273708.png" 
+                : avatarUrl;
+
             var profile = new Dictionary<string, object>
             {
                 ["id"] = reader.GetInt32("id"),
                 ["username"] = reader.GetString("username"),
                 ["email"] = reader.GetString("email"),
                 ["bio"] = reader.IsDBNull(reader.GetOrdinal("bio")) ? null! : reader.GetString("bio"),
-                ["avatar_url"] = reader.IsDBNull(reader.GetOrdinal("avatar_url")) ? null! : reader.GetString("avatar_url"),
+                ["avatar_url"] = defaultAvatarUrl,
                 ["created_at"] = reader.GetDateTime("created_at").ToString("yyyy-MM-ddTHH:mm:ss")
             };
             
@@ -2645,11 +2658,12 @@ public class DbService : IDbService
             var today = DateTime.Today;
             var activityData = new List<Dictionary<string, object>>();
             var allDaysData = new List<Dictionary<string, object>>();
+            var allDaysDataSet = new HashSet<string>(); // Track dates already added
             long cumulative = 0;
             int bestDay = 0;
             int currentStreak = 0;
             
-            // Build all days data first
+            // Build all days data for last 365 days
             for (int i = 364; i >= 0; i--)
             {
                 var date = today.AddDays(-i);
@@ -2670,6 +2684,7 @@ public class DbService : IDbService
                 };
                 
                 allDaysData.Add(dayData);
+                allDaysDataSet.Add(dateKey);
                 
                 // Last 14 days for bar chart
                 if (i < 14)
@@ -2677,6 +2692,38 @@ public class DbService : IDbService
                     activityData.Add(dayData);
                 }
             }
+            
+            // Add all remaining days of the current month (including future dates)
+            var currentMonthStart = new DateTime(today.Year, today.Month, 1);
+            var currentMonthEnd = currentMonthStart.AddMonths(1).AddDays(-1);
+            
+            for (var date = currentMonthStart; date <= currentMonthEnd; date = date.AddDays(1))
+            {
+                var dateKey = date.ToString("yyyy-MM-dd");
+                
+                // Only add if not already in allDaysData
+                if (!allDaysDataSet.Contains(dateKey))
+                {
+                    var count = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : 0;
+                    
+                    var dayData = new Dictionary<string, object>
+                    {
+                        ["date"] = dateKey,
+                        ["count"] = count
+                    };
+                    
+                    allDaysData.Add(dayData);
+                    allDaysDataSet.Add(dateKey);
+                }
+            }
+            
+            // Sort allDaysData by date to ensure proper ordering
+            allDaysData.Sort((a, b) => 
+            {
+                var dateA = DateTime.Parse(a["date"]?.ToString() ?? "");
+                var dateB = DateTime.Parse(b["date"]?.ToString() ?? "");
+                return dateA.CompareTo(dateB);
+            });
             
             // Calculate current streak (counting backwards from today)
             // We allow today to be 0 without breaking the streak yet (user has all day to write)

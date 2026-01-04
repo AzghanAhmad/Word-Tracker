@@ -64,7 +64,6 @@ export class StatsComponent implements OnInit {
         count: 0
     };
 
-
     constructor(
         private apiService: ApiService,
         private cdr: ChangeDetectorRef,
@@ -73,11 +72,6 @@ export class StatsComponent implements OnInit {
 
     showTooltip(index: number) {
         this.activeTooltip = index;
-        const point = this.lineChartDataPoints[index];
-        if (point) {
-            this.tooltipX = point.x + 10;
-            this.tooltipY = point.y - 50;
-        }
     }
 
     hideTooltip() {
@@ -85,15 +79,7 @@ export class StatsComponent implements OnInit {
     }
 
     ngOnInit() {
-        const userId = localStorage.getItem('user_id');
-        if (!userId) {
-            this.router.navigate(['/login']);
-            return;
-        }
-
         this.loadStats();
-
-        // Reload on navigation back to this page
         this.router.events.pipe(
             filter(event => event instanceof NavigationEnd)
         ).subscribe((event: any) => {
@@ -204,8 +190,7 @@ export class StatsComponent implements OnInit {
         this.weeklyAvg = 0;
         this.bestDay = 0;
         this.currentStreak = 0;
-        this.activityData = [];
-        this.monthlyData = [];
+
         this.allDaysDataForChart = [];
         this.heatmapGrid = [];
         this.heatmapTooltip.visible = false;
@@ -369,17 +354,7 @@ export class StatsComponent implements OnInit {
         const firstDayOfWeek = firstDayOfMonth.getDay();
         const daysInMonth = lastDayOfMonth.getDate();
 
-        // Create a lookup map for data
-        const dataMap = new Map<string, number>();
-        if (allData) {
-            allData.forEach(d => {
-                // Ensure date format consistency
-                const dateKey = new Date(d.date).toISOString().split('T')[0];
-                dataMap.set(dateKey, d.count);
-            });
-        }
-
-        // Helper to format date as YYYY-MM-DD
+        // Helper to format date as YYYY-MM-DD (local time)
         const toLocalISOString = (date: Date) => {
             const y = date.getFullYear();
             const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -387,6 +362,77 @@ export class StatsComponent implements OnInit {
             return `${y}-${m}-${d}`;
         };
 
+        // Create a lookup map for data - process ALL data from backend
+        const dataMap = new Map<string, number>();
+        if (allData && allData.length > 0) {
+            allData.forEach(d => {
+                // Backend returns dates as YYYY-MM-DD strings, use them directly
+                // If it's a Date object, format it using local time
+                let dateKey: string;
+                if (typeof d.date === 'string') {
+                    // Use date string directly, but ensure it's in YYYY-MM-DD format
+                    dateKey = d.date.split('T')[0]; // Remove time part if present
+                } else {
+                    dateKey = toLocalISOString(new Date(d.date));
+                }
+                // Store the count, ensuring we use the maximum if there are duplicates
+                const existingCount = dataMap.get(dateKey) || 0;
+                dataMap.set(dateKey, Math.max(existingCount, d.count || 0));
+            });
+        }
+
+        // First, calculate total words for the entire month and find max day count
+        let monthTotal = 0;
+        let maxDayCount = 0;
+        const monthDays: ActivityDay[] = [];
+        
+        // Collect all day counts first to find max - process ALL days of the month (1 to daysInMonth)
+        for (let day = 1; day <= daysInMonth; day++) {
+            const currentDate = new Date(currentYear, currentMonth, day);
+            const dateKey = toLocalISOString(currentDate);
+            const dayCount = dataMap.get(dateKey) || 0;
+            monthTotal += dayCount;
+            if (dayCount > maxDayCount) {
+                maxDayCount = dayCount;
+            }
+        }
+
+        // Calculate level thresholds based on max day count (divided into 5 ranges: 0-20%, 20-40%, 40-60%, 60-100%)
+        // Each day's word count is compared to these thresholds
+        // Since we have levels 0-4 (5 levels), we use: Level 0=no data, Level 1=0-20%, Level 2=20-40%, Level 3=40-60%, Level 4=60-100%
+        const level1Threshold = maxDayCount * 0.20;  // 0-20% of max
+        const level2Threshold = maxDayCount * 0.40;  // 20-40% of max
+        const level3Threshold = maxDayCount * 0.60;  // 40-60% of max
+        // Level 4 = 60-100% (anything above level3Threshold)
+
+        // Now assign levels to each day based on its word count relative to max
+        for (let day = 1; day <= daysInMonth; day++) {
+            const currentDate = new Date(currentYear, currentMonth, day);
+            const dateKey = toLocalISOString(currentDate);
+            const dayCount = dataMap.get(dateKey) || 0;
+            
+            // Calculate level based on day's word count relative to max day count (percentage-based)
+            let level: 0 | 1 | 2 | 3 | 4 = 0;
+            if (dayCount > 0 && maxDayCount > 0) {
+                if (dayCount <= level1Threshold) {
+                    level = 1;  // 0-20% of max
+                } else if (dayCount <= level2Threshold) {
+                    level = 2;  // 20-40% of max
+                } else if (dayCount <= level3Threshold) {
+                    level = 3;  // 40-60% of max
+                } else {
+                    level = 4;  // 60-100% of max
+                }
+            }
+            
+            monthDays.push({
+                date: currentDate,
+                count: dayCount,
+                level: level
+            });
+        }
+
+        // Now build the grid structure with empty days for alignment
         const weeks: ActivityDay[][] = [];
         let currentWeek: ActivityDay[] = [];
 
@@ -402,17 +448,8 @@ export class StatsComponent implements OnInit {
         }
 
         // Add all days of the current month
-        for (let day = 1; day <= daysInMonth; day++) {
-            const currentDate = new Date(currentYear, currentMonth, day);
-            const dateKey = toLocalISOString(currentDate);
-            const count = dataMap.get(dateKey) || 0;
-            const level = this.getLevel(count);
-
-            currentWeek.push({
-                date: currentDate,
-                count: count,
-                level: level
-            });
+        for (const monthDay of monthDays) {
+            currentWeek.push(monthDay);
 
             // If we've filled a week (7 days), start a new week
             if (currentWeek.length === 7) {
@@ -438,7 +475,9 @@ export class StatsComponent implements OnInit {
         this.heatmapGrid = weeks;
     }
 
+
     getLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+        // This method is kept for backward compatibility but not used in heatmap
         if (count === 0) return 0;
         if (count < 500) return 1;
         if (count < 1000) return 2;

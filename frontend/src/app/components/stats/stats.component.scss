@@ -243,6 +243,9 @@
             cursor: pointer;
             border: 2px solid transparent;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
             &:hover {
                 transform: scale(1.05);
