@@ -89,7 +89,7 @@ export class NavbarComponent implements OnInit, OnChanges {
         this.apiService.getUserProfile().subscribe({
             next: (response) => {
                 if (response.success && response.data) {
-                    this.userAvatar = response.data.avatar_url || '';
+                    this.userAvatar = response.data.avatar_url || 'test_avatar.png';
                     this.userInitials = this.getInitials(response.data.username || 'User');
 
                     // Sync localStorage

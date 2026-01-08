@@ -277,11 +277,18 @@ public class ChallengesController : ControllerBase
             var userId = UserId();
             Console.WriteLine($"📊 User {userId} updating progress in challenge {id}: {req.progress}");
             
+            // Get today's date
+            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            
+            // Update total progress
             var ok = _db.UpdateChallengeProgress(id, userId, req.progress);
             
             if (ok)
             {
-                Console.WriteLine($"✅ Progress updated successfully");
+                // Also log to daily log
+                _db.LogChallengeProgress(id, userId, today, req.progress);
+                
+                Console.WriteLine($"✅ Progress updated and logged successfully");
                 return Ok(new { success = true, message = "Progress updated successfully" });
             }
             
@@ -291,6 +298,32 @@ public class ChallengesController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Exception updating progress: {ex.Message}");
+            return StatusCode(500, new { success = false, message = $"Error: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Get challenge daily logs for a user
+    /// GET /challenges/{id}/logs
+    /// </summary>
+    [Authorize]
+    [HttpGet("{id}/logs")]
+    public IActionResult GetLogs(int id)
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📋 Fetching logs for challenge {id}, user {userId}");
+            
+            var logsJson = _db.GetChallengeLogsJson(id, userId);
+            var logsData = System.Text.Json.JsonSerializer.Deserialize<object[]>(logsJson);
+            
+            Console.WriteLine($"✅ Retrieved {logsData?.Length ?? 0} logs");
+            return Ok(new { success = true, data = logsData });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception fetching logs: {ex.Message}");
             return StatusCode(500, new { success = false, message = $"Error: {ex.Message}" });
         }
     }

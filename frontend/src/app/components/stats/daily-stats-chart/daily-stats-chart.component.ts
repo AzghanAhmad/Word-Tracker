@@ -20,6 +20,10 @@ export interface WordEntry {
         </div>
     `,
     styles: [`
+        :host {
+            display: block;
+        }
+
         .chart-container {
             position: relative;
             height: 300px;
@@ -47,8 +51,9 @@ export interface WordEntry {
 })
 export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDestroy {
     @Input() data: WordEntry[] = [];
-    @Input() color: string = '#1C2E4A'; // Default blue
+    @Input() color: string = '#1e293b';
     @Input() useSlicing: boolean = true;
+    @Input() mode: 'line' | 'bar' = 'line';
 
     @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
     private chart?: Chart;
@@ -60,7 +65,7 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['data'] && this.chart) {
+        if ((changes['data'] || changes['mode']) && this.chart) {
             this.updateChart();
         }
     }
@@ -71,16 +76,44 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
         }
     }
 
-    private processData() {
-        // Sort by date
-        const sortedData = [...this.data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    private getComputedColor(color: string): string {
+        if (color && color.startsWith('var(')) {
+            const varName = color.slice(4, -1);
+            const element = this.chartCanvas?.nativeElement || document.documentElement;
+            const value = getComputedStyle(element).getPropertyValue(varName).trim();
+            return value || '#1e293b';
+        }
+        return color || '#1e293b';
+    }
 
-        // Take last 14 days or all if less, unless slicing is disabled
-        const displayedData = this.useSlicing ? sortedData.slice(-14) : sortedData;
+    private processData() {
+        const sortedData = [...this.data].sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+        });
+
+        // Use different slicing for bar chart to match design
+        const limit = this.mode === 'bar' ? -14 : -30;
+        const displayedData = this.useSlicing ? sortedData.slice(limit) : sortedData;
 
         const labels = displayedData.map(d => {
-            const date = new Date(d.date);
-            return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+            if (!d.date) return 'Unknown';
+
+            let date: Date;
+            if (d.date.includes('-')) {
+                const parts = d.date.split('-');
+                date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else {
+                date = new Date(d.date);
+            }
+
+            if (isNaN(date.getTime())) return 'Invalid Date';
+
+            if (this.mode === 'bar') {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
         const actuals = displayedData.map(d => d.count);
         const targets = displayedData.map(d => d.target || 0);
@@ -89,21 +122,59 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
     }
 
     private createChart() {
-        const { labels, actuals } = this.processData();
+        const { labels, actuals, targets } = this.processData();
         const ctx = this.chartCanvas.nativeElement.getContext('2d');
         if (!ctx) return;
 
+        const chartData = this.data; // Store reference for callbacks
+
         const config: ChartConfiguration = {
-            type: 'bar',
+            type: this.mode,
             data: {
                 labels: labels,
-                datasets: [
+                datasets: this.mode === 'bar' ? [
+                    {
+                        label: 'Planned Target',
+                        data: targets,
+                        backgroundColor: this.getComputedColor(this.color),
+                        borderRadius: 4,
+                        barPercentage: 0.8,
+                        categoryPercentage: 0.8
+                    },
                     {
                         label: 'Actual Words',
                         data: actuals,
-                        backgroundColor: this.color,
+                        backgroundColor: '#10b981', // Success green for actuals
                         borderRadius: 4,
-                        barThickness: 16
+                        barPercentage: 0.8,
+                        categoryPercentage: 0.8
+                    }
+                ] : [
+                    {
+                        label: 'Planned Target',
+                        data: targets,
+                        borderColor: '#e2e8f0',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Actual Words',
+                        data: actuals,
+                        borderColor: this.getComputedColor(this.color),
+                        backgroundColor: this.getGradient(ctx, this.getComputedColor(this.color)),
+                        borderWidth: 4,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: this.getComputedColor(this.color),
+                        pointBorderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: this.getComputedColor(this.color),
+                        pointHoverBorderColor: '#fff',
+                        fill: true,
+                        tension: 0.3
                     }
                 ]
             },
@@ -121,10 +192,33 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         borderColor: '#e2e8f0',
                         borderWidth: 1,
                         padding: 12,
-                        displayColors: false,
+                        displayColors: this.mode === 'line',
                         callbacks: {
+                            title: (context) => {
+                                return context[0].label;
+                            },
                             label: (context) => {
-                                return `Words: ${new Intl.NumberFormat('en-US').format(context.parsed.y)}`;
+                                const value = context.parsed.y;
+                                const datasetLabel = context.dataset.label || '';
+                                const index = context.dataIndex;
+                                
+                                // Get target if available
+                                if (chartData && index < chartData.length) {
+                                    const dayData = chartData[index];
+                                    const target = dayData.target || 0;
+                                    
+                                    if (datasetLabel === 'Actual Words') {
+                                        return [
+                                            `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} words`,
+                                            `Target: ${new Intl.NumberFormat('en-US').format(target)} words`,
+                                            `Difference: ${new Intl.NumberFormat('en-US').format(value - target)} words`
+                                        ];
+                                    } else if (datasetLabel === 'Planned Target') {
+                                        return `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} words`;
+                                    }
+                                }
+                                
+                                return `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} words`;
                             }
                         }
                     }
@@ -137,11 +231,21 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         ticks: {
                             color: '#94a3b8',
                             font: {
-                                size: window.innerWidth <= 480 ? 9 : 11
+                                size: 10,
+                                weight: 600
                             },
-                            maxRotation: 0,
+                            maxRotation: 45,
                             autoSkip: true,
-                            maxTicksLimit: window.innerWidth <= 480 ? 5 : 7
+                            maxTicksLimit: 15, // Show more dates
+                            callback: function(value, index, ticks) {
+                                // Show every nth label to avoid crowding
+                                const step = Math.max(1, Math.floor(ticks.length / 12));
+                                if (index % step === 0 || index === ticks.length - 1) {
+                                    const numValue = typeof value === 'number' ? value : Number(value);
+                                    return this.getLabelForValue(numValue);
+                                }
+                                return '';
+                            }
                         },
                         border: {
                             display: false
@@ -150,24 +254,26 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: '#f1f5f9'
+                            color: '#f1f5f9',
+                            lineWidth: 1
                         },
                         ticks: {
                             color: '#94a3b8',
+                            padding: 10,
                             font: {
-                                size: window.innerWidth <= 480 ? 9 : 11
+                                size: 10
                             },
-                            callback: (value) => new Intl.NumberFormat('en-US').format(value as number),
-                            maxTicksLimit: window.innerWidth <= 480 ? 4 : 6
+                            callback: (value) => {
+                                const val = value as number;
+                                if (val >= 1000) return (val / 1000).toFixed(1) + 'k';
+                                return val;
+                            },
+                            maxTicksLimit: 5
                         },
                         border: {
                             display: false
                         }
                     }
-                },
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
                 }
             }
         };
@@ -175,12 +281,18 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
         this.chart = new Chart(ctx, config);
     }
 
+    private getGradient(ctx: CanvasRenderingContext2D, color: string) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        // Add transparency to the resolved color
+        gradient.addColorStop(0, `${color}26`);
+        gradient.addColorStop(1, `${color}03`);
+        return gradient;
+    }
+
     private updateChart() {
-        const { labels, actuals } = this.processData();
         if (this.chart) {
-            this.chart.data.labels = labels;
-            this.chart.data.datasets[0].data = actuals;
-            this.chart.update();
+            this.chart.destroy();
+            this.createChart();
         }
     }
 }

@@ -378,90 +378,433 @@ public class DbService : IDbService
     /// </summary>
     public string GetPlansJson(int userId)
     {
+        _lastError = string.Empty;
         try
         {
+            Console.WriteLine($"📋 Fetching all plans for user {userId}");
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
+            
+            // First, check if user has any plans at all (for debugging)
+            using (var countCmd = conn.CreateCommand())
+            {
+                countCmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u";
+                countCmd.Parameters.AddWithValue("@u", userId);
+                var totalCount = Convert.ToInt32(countCmd.ExecuteScalar());
+                Console.WriteLine($"📊 Total plans for user {userId}: {totalCount}");
+            }
+            
             using var cmd = conn.CreateCommand();
             
-            // Get all plans for user, ordered by latest activity or creation date
-            // Exclude archived plans
+            // Get all plans for user, ordered by ID (newest first)
+            // Exclude archived plans - check for both lowercase and capitalized versions
             cmd.CommandText = @"
-                SELECT p.*, 
-                (SELECT MAX(date) FROM plan_days WHERE plan_id = p.id) as last_activity
+                SELECT p.*
                 FROM plans p 
-                WHERE p.user_id=@u AND (p.status IS NULL OR p.status != 'archived') 
-                ORDER BY last_activity DESC, p.id DESC";
+                WHERE p.user_id=@u 
+                AND (p.status IS NULL 
+                     OR LOWER(p.status) != 'archived')
+                ORDER BY p.id DESC";
             cmd.Parameters.AddWithValue("@u", userId);
             
             using var reader = cmd.ExecuteReader();
-            var list = new List<Dictionary<string, object>>();
+            var list = new List<Dictionary<string, object?>>();
             
             while (reader.Read())
             {
-                var dict = new Dictionary<string, object>();
+                var dict = new Dictionary<string, object?>();
                 for (var i = 0; i < reader.FieldCount; i++)
                 {
                     var fieldName = reader.GetName(i);
-                    var val = reader.IsDBNull(i) ? null : reader.GetValue(i);
                     
-                    // Convert MySQL date types to strings for JSON serialization
-                    if (val is DateTime dt)
+                    // Skip DBNull values - they can't be serialized
+                    if (reader.IsDBNull(i))
                     {
-                        dict[fieldName] = dt.ToString("yyyy-MM-dd");
+                        dict[fieldName] = null;
+                        continue;
                     }
-                    else if (val is DateOnly dateOnly)
+                    
+                    try
                     {
-                        dict[fieldName] = dateOnly.ToString("yyyy-MM-dd");
+                        // Try to get value, handling zero dates
+                        object? val = null;
+                        try
+                        {
+                            val = reader.GetValue(i);
+                        }
+                        catch (Exception dateEx)
+                        {
+                            // If it's a date conversion error, try to read as string
+                            if (dateEx.Message.Contains("DateTime") || dateEx.Message.Contains("date"))
+                            {
+                                try
+                                {
+                                    var colType = reader.GetFieldType(i);
+                                    if (colType == typeof(DateTime) || colType?.Name.Contains("Date") == true)
+                                    {
+                                        // Try reading as string instead
+                                        var ordinal = reader.GetOrdinal(fieldName);
+                                        if (!reader.IsDBNull(ordinal))
+                                        {
+                                            var dateStr = reader.GetString(ordinal);
+                                            if (string.IsNullOrWhiteSpace(dateStr) || dateStr.StartsWith("0000-00-00"))
+                                            {
+                                                dict[fieldName] = null;
+                                                continue;
+                                            }
+                                            // Try to parse it
+                                            if (DateTime.TryParse(dateStr, out var parsedDate))
+                                            {
+                                                dict[fieldName] = parsedDate.ToString("yyyy-MM-dd");
+                                                continue;
+                                            }
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
+                            // If we can't read it, set to null
+                            dict[fieldName] = null;
+                            continue;
+                        }
+                        
+                        // Skip DBNull values
+                        if (val == null || val == DBNull.Value)
+                        {
+                            dict[fieldName] = null;
+                            continue;
+                        }
+                        
+                        // Convert MySQL date types to strings for JSON serialization
+                        if (val is DateTime dt)
+                        {
+                            // Check for zero date (year 1 or before)
+                            if (dt.Year <= 1)
+                            {
+                                dict[fieldName] = null;
+                            }
+                            else
+                            {
+                                dict[fieldName] = dt.ToString("yyyy-MM-dd");
+                            }
+                        }
+                        else if (val is DateOnly dateOnly)
+                        {
+                            if (dateOnly.Year <= 1)
+                            {
+                                dict[fieldName] = null;
+                            }
+                            else
+                            {
+                                dict[fieldName] = dateOnly.ToString("yyyy-MM-dd");
+                            }
+                        }
+                        else if (val is bool boolVal)
+                        {
+                            dict[fieldName] = boolVal;
+                        }
+                        else if (val is sbyte || val is byte || val is short || val is ushort || 
+                                 val is int || val is uint || val is long || val is ulong)
+                        {
+                            // Handle all integer types
+                            dict[fieldName] = Convert.ToInt64(val);
+                        }
+                        else if (val is float || val is double || val is decimal)
+                        {
+                            // Handle floating point types
+                            dict[fieldName] = Convert.ToDouble(val);
+                        }
+                        else
+                        {
+                            // For strings and other types, use as-is
+                            dict[fieldName] = val;
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        dict[fieldName] = val ?? DBNull.Value;
+                        // If we can't read the value, set it to null
+                        Console.WriteLine($"⚠ Warning: Could not read field {fieldName}: {ex.Message}");
+                        dict[fieldName] = null;
                     }
                 }
                 list.Add(dict);
             }
             
+            Console.WriteLine($"✓ Retrieved {list.Count} plans for user {userId}");
             return JsonSerializer.Serialize(list);
         }
-        catch
+        catch (MySqlException ex)
         {
-            // Return empty array on error
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching plans for user {userId}: {ex.Number} - {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return "[]";
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching plans for user {userId}: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
             return "[]";
         }
     }
 
     public string? GetPlanJson(int id, int userId)
     {
-        using var conn = new MySqlConnection(_connectionString);
-        conn.Open();
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM plans WHERE id=@id AND user_id=@u LIMIT 1";
-        cmd.Parameters.AddWithValue("@id", id);
-        cmd.Parameters.AddWithValue("@u", userId);
-        using var reader = cmd.ExecuteReader();
-        if (!reader.Read()) return null;
-        var dict = new Dictionary<string, object>();
-        for (var i = 0; i < reader.FieldCount; i++)
+        _lastError = string.Empty;
+        try
         {
-            var fieldName = reader.GetName(i);
-            var val = reader.IsDBNull(i) ? null : reader.GetValue(i);
+            Console.WriteLine($"📋 Fetching plan {id} for user {userId}");
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT * FROM plans WHERE id=@id AND user_id=@u LIMIT 1";
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@u", userId);
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                Console.WriteLine($"✗ Plan {id} not found for user {userId}");
+                return null;
+            }
             
-            // Convert MySQL date types to strings for JSON serialization
-            if (val is DateTime dt)
+            var dict = new Dictionary<string, object?>();
+            for (var i = 0; i < reader.FieldCount; i++)
             {
-                dict[fieldName] = dt.ToString("yyyy-MM-dd");
+                var fieldName = reader.GetName(i);
+                
+                // Skip DBNull values - they can't be serialized
+                if (reader.IsDBNull(i))
+                {
+                    dict[fieldName] = null;
+                    continue;
+                }
+                
+                object? val = null;
+                try
+                {
+                    // Check field type first to handle dates properly
+                    var fieldType = reader.GetFieldType(i);
+                    
+                    // Handle date fields by reading as string first to avoid MySqlDateTime issues
+                    if (fieldType == typeof(DateTime) || fieldType?.Name.Contains("Date") == true)
+                    {
+                        try
+                        {
+                            // Try to get as DateTime first
+                            var dateVal = reader.GetDateTime(i);
+                            if (dateVal.Year <= 1)
+                            {
+                                dict[fieldName] = null;
+                            }
+                            else
+                            {
+                                dict[fieldName] = dateVal.ToString("yyyy-MM-dd");
+                            }
+                            continue;
+                        }
+                        catch
+                        {
+                            // If DateTime fails, try as string
+                            try
+                            {
+                                var dateStr = reader.GetString(i);
+                                if (string.IsNullOrWhiteSpace(dateStr) || dateStr.StartsWith("0000-00-00"))
+                                {
+                                    dict[fieldName] = null;
+                                }
+                                else if (DateTime.TryParse(dateStr, out var parsedDate))
+                                {
+                                    dict[fieldName] = parsedDate.ToString("yyyy-MM-dd");
+                                }
+                                else
+                                {
+                                    dict[fieldName] = null;
+                                }
+                                continue;
+                            }
+                            catch
+                            {
+                                dict[fieldName] = null;
+                                continue;
+                            }
+                        }
+                    }
+                    
+                    val = reader.GetValue(i);
+                }
+                catch (Exception dateEx)
+                {
+                    // If it's a date conversion error, try to read as string
+                    if (dateEx.Message.Contains("DateTime") || dateEx.Message.Contains("date"))
+                    {
+                        try
+                        {
+                            var colType = reader.GetFieldType(i);
+                            if (colType == typeof(DateTime) || colType?.Name.Contains("Date") == true)
+                            {
+                                // Try reading as string instead
+                                var ordinal = reader.GetOrdinal(fieldName);
+                                if (!reader.IsDBNull(ordinal))
+                                {
+                                    var dateStr = reader.GetString(ordinal);
+                                    if (string.IsNullOrWhiteSpace(dateStr) || dateStr.StartsWith("0000-00-00"))
+                                    {
+                                        dict[fieldName] = null;
+                                        continue;
+                                    }
+                                    // Try to parse it
+                                    if (DateTime.TryParse(dateStr, out var parsedDate))
+                                    {
+                                        dict[fieldName] = parsedDate.ToString("yyyy-MM-dd");
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                    // If we can't read it, set to null
+                    dict[fieldName] = null;
+                    continue;
+                }
+                
+                // Skip DBNull values
+                if (val == null || val == DBNull.Value)
+                {
+                    dict[fieldName] = null;
+                    continue;
+                }
+                
+                // Handle MySqlDateTime type (when AllowZeroDateTime=True, MySqlConnector returns MySqlDateTime)
+                var valTypeName = val.GetType().Name;
+                if (valTypeName == "MySqlDateTime")
+                {
+                    try
+                    {
+                        // Use reflection to access MySqlDateTime properties
+                        var type = val.GetType();
+                        var isValidProp = type.GetProperty("IsValidDateTime");
+                        var yearProp = type.GetProperty("Year");
+                        var monthProp = type.GetProperty("Month");
+                        var dayProp = type.GetProperty("Day");
+                        
+                        if (isValidProp != null && yearProp != null && monthProp != null && dayProp != null)
+                        {
+                            var isValid = (bool)(isValidProp.GetValue(val) ?? false);
+                            if (isValid)
+                            {
+                                var year = (int)(yearProp.GetValue(val) ?? 0);
+                                var month = (int)(monthProp.GetValue(val) ?? 0);
+                                var day = (int)(dayProp.GetValue(val) ?? 0);
+                                
+                                if (year > 1)
+                                {
+                                    dict[fieldName] = $"{year}-{month:D2}-{day:D2}";
+                                }
+                                else
+                                {
+                                    dict[fieldName] = null;
+                                }
+                            }
+                            else
+                            {
+                                dict[fieldName] = null;
+                            }
+                        }
+                        else
+                        {
+                            // Fallback: try GetDateTime method
+                            var getDateTimeMethod = type.GetMethod("GetDateTime");
+                            if (getDateTimeMethod != null)
+                            {
+                                var dateTimeVal = (DateTime?)getDateTimeMethod.Invoke(val, null);
+                                if (dateTimeVal.HasValue && dateTimeVal.Value.Year > 1)
+                                {
+                                    dict[fieldName] = dateTimeVal.Value.ToString("yyyy-MM-dd");
+                                }
+                                else
+                                {
+                                    dict[fieldName] = null;
+                                }
+                            }
+                            else
+                            {
+                                dict[fieldName] = null;
+                            }
+                        }
+                        continue;
+                    }
+                    catch (Exception mysqlEx)
+                    {
+                        Console.WriteLine($"⚠ Warning: Could not convert MySqlDateTime for field {fieldName}: {mysqlEx.Message}");
+                        dict[fieldName] = null;
+                        continue;
+                    }
+                }
+                
+                // Convert MySQL date types to strings for JSON serialization
+                if (val is DateTime dt)
+                {
+                    if (dt.Year <= 1)
+                    {
+                        dict[fieldName] = null;
+                    }
+                    else
+                    {
+                        dict[fieldName] = dt.ToString("yyyy-MM-dd");
+                    }
+                }
+                else if (val is DateOnly dateOnly)
+                {
+                    if (dateOnly.Year <= 1)
+                    {
+                        dict[fieldName] = null;
+                    }
+                    else
+                    {
+                        dict[fieldName] = dateOnly.ToString("yyyy-MM-dd");
+                    }
+                }
+                else if (val is bool boolVal)
+                {
+                    dict[fieldName] = boolVal;
+                }
+                else if (val is sbyte || val is byte || val is short || val is ushort || 
+                         val is int || val is uint || val is long || val is ulong)
+                {
+                    // Handle all integer types
+                    dict[fieldName] = Convert.ToInt64(val);
+                }
+                else if (val is float || val is double || val is decimal)
+                {
+                    // Handle floating point types
+                    dict[fieldName] = Convert.ToDouble(val);
+                }
+                else
+                {
+                    // For strings and other types, use as-is
+                    dict[fieldName] = val;
+                }
             }
-            else if (val is DateOnly dateOnly)
-            {
-                dict[fieldName] = dateOnly.ToString("yyyy-MM-dd");
-            }
-            else
-            {
-                dict[fieldName] = val ?? DBNull.Value;
-            }
+            
+            Console.WriteLine($"✓ Plan {id} retrieved successfully");
+            return JsonSerializer.Serialize(dict);
         }
-        return JsonSerializer.Serialize(dict);
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching plan {id}: {ex.Number} - {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching plan {id}: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return null;
+        }
     }
 
     public bool DeletePlan(int id, int userId)
@@ -485,56 +828,206 @@ public class DbService : IDbService
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
             
-            // First verify the plan belongs to the user
-            using var verifyCmd = conn.CreateCommand();
-            verifyCmd.CommandText = "SELECT id FROM plans WHERE id=@pid AND user_id=@uid LIMIT 1";
-            verifyCmd.Parameters.AddWithValue("@pid", planId);
-            verifyCmd.Parameters.AddWithValue("@uid", userId);
+            // 1. Get plan details to know the date range and target
+            using var planCmd = conn.CreateCommand();
+            planCmd.CommandText = "SELECT start_date, end_date, total_word_count, algorithm_type, weekend_approach FROM plans WHERE id=@pid AND user_id=@uid LIMIT 1";
+            planCmd.Parameters.AddWithValue("@pid", planId);
+            planCmd.Parameters.AddWithValue("@uid", userId);
             
-            if (verifyCmd.ExecuteScalar() == null)
+            DateTime startDate = DateTime.MinValue, endDate = DateTime.MinValue;
+            int totalGoal = 0;
+            string algorithm = "steady", weekendApproach = "The Usual";
+            bool planFound = false;
+
+            using (var planReader = planCmd.ExecuteReader())
+            {
+                if (planReader.Read())
+                {
+                    startDate = planReader.GetDateTime("start_date");
+                    endDate = planReader.GetDateTime("end_date");
+                    totalGoal = planReader.GetInt32("total_word_count");
+                    algorithm = planReader.IsDBNull(planReader.GetOrdinal("algorithm_type")) ? "steady" : planReader.GetString("algorithm_type");
+                    weekendApproach = planReader.IsDBNull(planReader.GetOrdinal("weekend_approach")) ? "The Usual" : planReader.GetString("weekend_approach");
+                    planFound = true;
+                }
+            }
+            
+            if (!planFound)
             {
                 Console.WriteLine($"✗ Plan {planId} not found or doesn't belong to user {userId}");
                 return "[]";
             }
             
-            // Get plan days
+            // 2. Get logged logs from plan_days
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT date, target_count, actual_count, notes
+                SELECT id, date, target_count, actual_count, notes
                 FROM plan_days
                 WHERE plan_id = @pid
-                ORDER BY date DESC";
+                ORDER BY date ASC";
             cmd.Parameters.AddWithValue("@pid", planId);
             
-            using var reader = cmd.ExecuteReader();
-            var days = new List<Dictionary<string, object>>();
-            
-            // Get column indices
-            var dateOrdinal = reader.GetOrdinal("date");
-            var targetCountOrdinal = reader.GetOrdinal("target_count");
-            var actualCountOrdinal = reader.GetOrdinal("actual_count");
-            var notesOrdinal = reader.GetOrdinal("notes");
-            
-            while (reader.Read())
+            var loggedDays = new Dictionary<string, (int id, int target, int actual, string? notes)>();
+            using (var reader = cmd.ExecuteReader())
             {
-                var day = new Dictionary<string, object>
+                while (reader.Read())
                 {
-                    ["date"] = reader.GetDateTime(dateOrdinal).ToString("yyyy-MM-dd"),
-                    ["target_count"] = reader.IsDBNull(targetCountOrdinal) ? 0 : reader.GetInt32(targetCountOrdinal),
-                    ["actual_count"] = reader.IsDBNull(actualCountOrdinal) ? 0 : reader.GetInt32(actualCountOrdinal),
-                    ["notes"] = reader.IsDBNull(notesOrdinal) ? (string?)null : reader.GetString(notesOrdinal)
-                };
-                days.Add(day);
+                    var d = reader.GetDateTime(1).ToString("yyyy-MM-dd");
+                    loggedDays[d] = (
+                        reader.IsDBNull(0) ? 0 : reader.GetInt32(0),
+                        reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                        reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                        reader.IsDBNull(4) ? (string?)null : reader.GetString(4)
+                    );
+                }
             }
             
-            Console.WriteLine($"✓ Retrieved {days.Count} plan days for plan {planId}");
+            // 3. Generate full schedule from start to end
+            var days = new List<Dictionary<string, object>>();
+            int totalDaysCount = (int)(endDate - startDate).TotalDays + 1;
+            if (totalDaysCount <= 0 || totalDaysCount > 1000) // Safety sanity check
+            {
+                 // If dates are weird, Fallback to just returning logged days
+                 return JsonSerializer.Serialize(loggedDays.Select(kv => new Dictionary<string, object> {
+                     ["id"] = kv.Value.id,
+                     ["date"] = kv.Key,
+                     ["target_count"] = kv.Value.target,
+                     ["actual_count"] = kv.Value.actual,
+                     ["notes"] = kv.Value.notes ?? (object)DBNull.Value
+                 }).ToList());
+            }
+
+            // Calculate writing days count for distribution based on weekend approach
+            int writingDaysCount = 0;
+            for (int i = 0; i < totalDaysCount; i++)
+            {
+                var currDate = startDate.AddDays(i);
+                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
+                
+                // Determine if this day should be a writing day based on strategy
+                bool isWritingDay = true;
+                
+                // "Weekdays Only": Only Monday-Friday are writing days, weekends are rest days
+                if (weekendApproach == "Weekdays Only")
+                {
+                    isWritingDay = !isWeekend;
+                }
+                // "None" or "Rest Days" (Adaptive rest): Weekends are rest days, flexible scheduling
+                else if (weekendApproach == "None" || weekendApproach == "Rest Days")
+                {
+                    isWritingDay = !isWeekend;
+                }
+                // "The Usual": All days including weekends are writing days
+                // For any other value, default to all days (isWritingDay = true)
+                
+                if (isWritingDay)
+                {
+                    writingDaysCount++;
+                }
+            }
+            if (writingDaysCount == 0) writingDaysCount = 1;
+
+            int wordsRemaining = totalGoal;
+            int daysRemaining = writingDaysCount;
+
+            for (int i = 0; i < totalDaysCount; i++)
+            {
+                var currDate = startDate.AddDays(i);
+                var dateKey = currDate.ToString("yyyy-MM-dd");
+                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
+                
+                // Determine if this day should be a writing day based on strategy
+                bool isWritingDay = true;
+                
+                // "Weekdays Only": Only Monday-Friday are writing days, weekends are rest days
+                if (weekendApproach == "Weekdays Only")
+                {
+                    isWritingDay = !isWeekend;
+                }
+                // "None" or "Rest Days" (Adaptive rest): Weekends are rest days, flexible scheduling
+                else if (weekendApproach == "None" || weekendApproach == "Rest Days")
+                {
+                    isWritingDay = !isWeekend;
+                }
+                // "The Usual": All days including weekends are writing days
+                // For any other value, default to all days (isWritingDay = true)
+                
+                int targetCount = 0;
+                // Only assign target if it's a writing day
+                if (isWritingDay)
+                {
+                    if (daysRemaining > 0)
+                    {
+                        targetCount = (int)Math.Round((double)wordsRemaining / daysRemaining);
+                        wordsRemaining -= targetCount;
+                        daysRemaining--;
+                    }
+                }
+
+                int actualCount = 0;
+                string? notes = null;
+
+                int dayId = 0;
+                // If this day exists in plan_days table, use the stored target_count
+                if (loggedDays.ContainsKey(dateKey))
+                {
+                    var logged = loggedDays[dateKey];
+                    dayId = logged.id;
+                    actualCount = logged.actual;
+                    notes = logged.notes;
+                    // Use the stored target_count from plan_days table if it exists and is > 0
+                    // This ensures we display the actual target words that were set when the plan was created
+                    if (logged.target > 0)
+                    {
+                        targetCount = logged.target;
+                    }
+                }
+
+                days.Add(new Dictionary<string, object>
+                {
+                    ["id"] = dayId,
+                    ["date"] = dateKey,
+                    ["target_count"] = targetCount,
+                    ["actual_count"] = actualCount,
+                    ["notes"] = notes ?? (object)DBNull.Value
+                });
+            }
+            
+            // 4. Add any logged days that fall outside the plan's date range
+            // This ensures that progress logged for dates outside the plan range is still included
+            foreach (var loggedDay in loggedDays)
+            {
+                var loggedDateKey = loggedDay.Key;
+                
+                // Try to parse the date safely
+                if (DateTime.TryParse(loggedDateKey, out var loggedDate))
+                {
+                    // Check if this date is outside the plan's date range
+                    if (loggedDate < startDate || loggedDate > endDate)
+                    {
+                        // Add this logged day to the results
+                        days.Add(new Dictionary<string, object>
+                        {
+                            ["id"] = loggedDay.Value.id,
+                            ["date"] = loggedDateKey,
+                            ["target_count"] = 0, // No target for days outside plan range
+                            ["actual_count"] = loggedDay.Value.actual,
+                            ["notes"] = loggedDay.Value.notes ?? (object)DBNull.Value
+                        });
+                    }
+                }
+                else
+                {
+                    // If date parsing fails, log a warning but don't crash
+                    Console.WriteLine($"⚠ Warning: Could not parse date '{loggedDateKey}' for plan {planId}");
+                }
+            }
+            
+            // Sort all days by date to maintain chronological order
+            days = days.OrderBy(d => d["date"].ToString()).ToList();
+            
+            Console.WriteLine($"✓ Generated {days.Count} days for plan {planId} (respecting approach: {weekendApproach}, including days outside range)");
             return JsonSerializer.Serialize(days);
-        }
-        catch (MySqlException ex)
-        {
-            _lastError = $"Database error ({ex.Number}): {ex.Message}";
-            Console.WriteLine($"✗ MySQL Error fetching plan days: {ex.Number} - {ex.Message}");
-            return "[]";
         }
         catch (Exception ex)
         {
@@ -544,12 +1037,20 @@ public class DbService : IDbService
         }
     }
 
-    public bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes)
+    public bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null)
     {
         _lastError = string.Empty;
         try
         {
-            Console.WriteLine($"📝 Logging progress for plan {planId}, user {userId}, date {date}: {actualCount} words");
+            Console.WriteLine($"📝 Logging progress for plan {planId}, user {userId}, date {date}: {actualCount} words, target: {targetCount ?? 0}");
+            
+            // Validate date format
+            if (!DateTime.TryParse(date, out var parsedDate))
+            {
+                _lastError = $"Invalid date format: {date}";
+                Console.WriteLine($"✗ {_lastError}");
+                return false;
+            }
             
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
@@ -563,22 +1064,56 @@ public class DbService : IDbService
                 if (Convert.ToInt32(verifyCmd.ExecuteScalar()) == 0)
                 {
                     _lastError = "Plan not found or access denied";
+                    Console.WriteLine($"✗ {_lastError}");
                     return false;
                 }
             }
 
+            // If targetCount is not provided, get existing target_count to preserve it
+            int existingTargetCount = 0;
+            if (!targetCount.HasValue)
+            {
+                using (var getTargetCmd = conn.CreateCommand())
+                {
+                    getTargetCmd.CommandText = "SELECT target_count FROM plan_days WHERE plan_id = @pid AND date = @date";
+                    getTargetCmd.Parameters.AddWithValue("@pid", planId);
+                    getTargetCmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd"));
+                    var result = getTargetCmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        existingTargetCount = Convert.ToInt32(result);
+                    }
+                }
+            }
+
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
-                INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
-                VALUES (@pid, @date, @count, @notes, 0)
-                ON DUPLICATE KEY UPDATE actual_count = @count, notes = @notes";
+            // If targetCount is provided, update it; otherwise preserve existing target_count
+            if (targetCount.HasValue)
+            {
+                cmd.CommandText = @"
+                    INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
+                    VALUES (@pid, @date, @count, @notes, @target)
+                    ON DUPLICATE KEY UPDATE actual_count = @count, notes = @notes, target_count = @target";
+                cmd.Parameters.AddWithValue("@target", targetCount.Value);
+            }
+            else
+            {
+                // For INSERT: use existing target_count if available, otherwise 0
+                // For UPDATE: preserve existing target_count (don't change it)
+                cmd.CommandText = @"
+                    INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
+                    VALUES (@pid, @date, @count, @notes, @target)
+                    ON DUPLICATE KEY UPDATE actual_count = @count, notes = @notes";
+                cmd.Parameters.AddWithValue("@target", existingTargetCount);
+            }
             
             cmd.Parameters.AddWithValue("@pid", planId);
-            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd")); // Ensure consistent date format
             cmd.Parameters.AddWithValue("@count", actualCount);
             cmd.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
             
             cmd.ExecuteNonQuery();
+            Console.WriteLine($"✓ Successfully logged progress for plan {planId}, date {date}");
             
             // Recalculate and update progress percentage based on total words logged
             using (var updateProgressCmd = conn.CreateCommand())
@@ -1815,7 +2350,12 @@ public class DbService : IDbService
             
             dict["participants_list"] = participantsList;
             
-            Console.WriteLine($"✓ Retrieved challenge {id} with {participantsList.Count} participants");
+            // Get daily logs for this user
+            var logsJson = GetChallengeLogsJson(id, userId);
+            var logsData = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(logsJson) ?? new List<Dictionary<string, object>>();
+            dict["daily_logs"] = logsData;
+            
+            Console.WriteLine($"✓ Retrieved challenge {id} with {participantsList.Count} participants and {logsData.Count} logs");
             return JsonSerializer.Serialize(dict);
         }
         catch (MySqlException ex)
@@ -1970,6 +2510,95 @@ public class DbService : IDbService
             _lastError = $"Error: {ex.Message}";
             Console.WriteLine($"✗ Error updating progress: {ex.Message}");
             return false;
+        }
+    }
+
+    public bool LogChallengeProgress(int challengeId, int userId, string date, int wordCount)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📝 Logging progress for user {userId} in challenge {challengeId} on {date}: {wordCount} words");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO challenge_logs (challenge_id, user_id, log_date, word_count)
+                VALUES (@c, @u, @d, @w)
+                ON DUPLICATE KEY UPDATE word_count = word_count + @w, updated_at = CURRENT_TIMESTAMP";
+            cmd.Parameters.AddWithValue("@c", challengeId);
+            cmd.Parameters.AddWithValue("@u", userId);
+            cmd.Parameters.AddWithValue("@d", date);
+            cmd.Parameters.AddWithValue("@w", wordCount);
+            
+            var result = cmd.ExecuteNonQuery();
+            Console.WriteLine($"✓ Progress logged for user {userId} in challenge {challengeId} on {date}");
+            return result > 0;
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error logging progress: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error logging progress: {ex.Message}");
+            return false;
+        }
+    }
+
+    public string GetChallengeLogsJson(int challengeId, int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📋 Fetching challenge logs for challenge {challengeId}, user {userId}");
+            
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT log_date, word_count
+                FROM challenge_logs
+                WHERE challenge_id = @c AND user_id = @u
+                ORDER BY log_date DESC";
+            cmd.Parameters.AddWithValue("@c", challengeId);
+            cmd.Parameters.AddWithValue("@u", userId);
+            
+            using var reader = cmd.ExecuteReader();
+            var logs = new List<Dictionary<string, object>>();
+            
+            while (reader.Read())
+            {
+                var logDate = reader.GetDateTime("log_date").ToString("yyyy-MM-dd");
+                var wordCount = reader.GetInt32("word_count");
+                
+                logs.Add(new Dictionary<string, object>
+                {
+                    ["log_date"] = logDate,
+                    ["word_count"] = wordCount
+                });
+            }
+            
+            Console.WriteLine($"✓ Retrieved {logs.Count} challenge logs");
+            return System.Text.Json.JsonSerializer.Serialize(logs);
+        }
+        catch (MySqlException ex)
+        {
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error fetching challenge logs: {ex.Number} - {ex.Message}");
+            return "[]";
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching challenge logs: {ex.Message}");
+            return "[]";
         }
     }
 

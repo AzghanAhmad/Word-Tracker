@@ -67,8 +67,13 @@ $card-bg: rgba(255, 255, 255, 0.85);
                 position: relative;
                 transition: all 0.3s ease;
 
-                &.has-image {
-                    background: white;
+                &.clickable {
+                    cursor: pointer;
+
+                    &:hover {
+                        border-color: $primary;
+                        transform: scale(1.02);
+                    }
                 }
 
                 .avatar-img {
@@ -88,19 +93,15 @@ $card-bg: rgba(255, 255, 255, 0.85);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    opacity: 0;
+                    opacity: 1; // Always visible when present (ngIf handles presence)
                     transition: opacity 0.3s ease;
                     color: white;
-                    font-size: 1.5rem;
+                    font-size: 2rem;
                     z-index: 2;
 
                     i {
                         text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
                     }
-                }
-
-                &:hover .avatar-overlay {
-                    opacity: 1;
                 }
             }
         }

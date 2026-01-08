@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -16,32 +16,29 @@ import { CommonModule } from '@angular/common';
       </div>
       
       <div class="content-area">
-        <div *ngFor="let event of events" class="event-pill" [class.deadline]="event.isDeadline">
-          <span class="dot"></span> {{ event.title }}
+        <div class="deadline-badge" *ngIf="isDeadline">DEADLINE</div>
+        
+        <!-- Daily Total Mode: Show single box with total words -->
+        <div *ngIf="viewMode === 'daily-total' && plans && plans.length > 0" class="total-box">
+          <span class="total-label">Total</span>
+          <span class="total-words">{{ getTotalWords() | number }} words</span>
         </div>
-
-        <!-- Progress vs Plan Mode -->
-        <div *ngIf="viewMode === 'progress-vs-plan'" class="plans-container">
-          <div *ngFor="let plan of plans" class="plan-pill">
-             <div class="pill-color" [style.background-color]="plan.color_code || '#6366f1'"></div>
-             <span class="name">{{ plan.title }}</span>
-             <span class="count">{{ plan.dailyTarget | number }}w</span>
-          </div>
-        </div>
-
-        <!-- Daily Total Mode -->
-        <div *ngIf="viewMode === 'daily-total'" class="daily-mode-wrapper">
-          <div class="deadline-badge" *ngIf="isDeadline">DEADLINE</div>
-
-          <div class="stats-row" *ngIf="target > 0 && !isDeadline">
-             <div class="stat-group">
-                <span class="label">Target</span>
-                <span class="val">{{ target | number }}</span>
-             </div>
-             <div class="stat-group" [class.success]="actual >= target">
-                <span class="label">Actual</span>
-                <span class="val">{{ actual | number }}</span>
-             </div>
+        
+        <!-- Progress vs Plan Mode: Show individual plan pills -->
+        <div *ngIf="viewMode === 'progress-vs-plan' && plans && plans.length > 0" class="plans-container">
+          <div *ngFor="let plan of plans; trackBy: trackByPlanId" class="plan-pill" 
+               [style.background-color]="plan.dashboard_color || plan.color_code || '#6366f1'">
+             <div class="pill-color"></div>
+             <span class="name">{{ plan.title || plan.plan_name }}</span>
+             <span class="plan-stats">
+               <!-- Show actual words logged if available, otherwise show target -->
+               <span class="actual-count" *ngIf="plan.actualProgress && plan.actualProgress > 0">
+                 {{ plan.actualProgress | number }} words logged
+               </span>
+               <span class="target-count" *ngIf="(!plan.actualProgress || plan.actualProgress === 0) && plan.dailyTarget && plan.dailyTarget > 0">
+                 {{ plan.dailyTarget | number }} words
+               </span>
+             </span>
           </div>
         </div>
       </div>
@@ -170,6 +167,30 @@ import { CommonModule } from '@angular/common';
         box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
     }
 
+    /* Total Box for Daily Total Mode */
+    .total-box {
+        background: #6366f1;
+        color: #ffffff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.75rem;
+        margin-top: auto;
+    }
+
+    .total-label {
+        font-weight: 600;
+        font-size: 0.7rem;
+        opacity: 0.9;
+    }
+
+    .total-words {
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
     /* Plan Pills */
     .plans-container {
         display: flex;
@@ -180,22 +201,27 @@ import { CommonModule } from '@angular/common';
     .plan-pill {
         display: flex;
         align-items: center;
-        gap: 6px;
-        background: #ffffff;
-        padding: 4px 8px;
+        gap: 8px;
+        background: var(--pill-bg, #6366f1);
+        padding: 6px 10px;
         border-radius: 6px;
-        font-size: 0.7rem;
-        border: 1px solid #e2e8f0;
-        transition: transform 0.1s;
+        font-size: 0.75rem;
+        color: #ffffff;
+        transition: transform 0.1s, box-shadow 0.1s;
+        min-height: 28px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 
         &:hover {
             transform: translateX(2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
         
         .pill-color {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+            width: 4px;
+            height: 100%;
+            border-radius: 2px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .name {
@@ -203,13 +229,25 @@ import { CommonModule } from '@angular/common';
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: #475569;
-            font-weight: 500;
+            color: #ffffff;
+            font-weight: 600;
+            min-width: 0;
         }
 
-        .count {
-            font-weight: 700;
-            color: #1e293b;
+        .plan-stats {
+            flex-shrink: 0;
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+
+        .target-count {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .actual-count {
+            font-weight: 600;
+            color: #ffffff;
         }
     }
 
@@ -251,4 +289,32 @@ export class CalendarDayComponent {
   @Input() isDeadline: boolean = false;
   @Input() plans: any[] = [];
   @Input() viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
+  
+  // Debug: log when plans change
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['plans'] && this.isCurrentMonth) {
+      const plans = changes['plans'].currentValue || [];
+      if (plans.length > 0) {
+        console.log(`Calendar Day - Day ${this.dayNumber}, Plans: ${plans.length}`, plans.map(p => p.title || p.plan_name));
+      }
+    }
+  }
+  
+  trackByPlanId(index: number, plan: any): any {
+    return plan.id || index;
+  }
+  
+  getTotalWords(): number {
+    if (!this.plans || this.plans.length === 0) {
+      return 0;
+    }
+    
+    // Sum up all words (actual progress if available, otherwise target)
+    return this.plans.reduce((total, plan) => {
+      const words = (plan.actualProgress && plan.actualProgress > 0) 
+        ? plan.actualProgress 
+        : (plan.dailyTarget || 0);
+      return total + words;
+    }, 0);
+  }
 }

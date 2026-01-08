@@ -30,6 +30,12 @@ var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION")
     ?? builder.Configuration.GetConnectionString("Default") 
     ?? "";
 
+// Ensure connection string has zero date handling parameters
+if (!string.IsNullOrEmpty(connectionString) && !connectionString.Contains("AllowZeroDateTime"))
+{
+    connectionString += (connectionString.EndsWith(";") ? "" : ";") + "AllowZeroDateTime=True;ConvertZeroDateTime=True;";
+}
+
 Console.WriteLine($"🔍 DB_CONNECTION env var exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DB_CONNECTION"))}");
 Console.WriteLine($"🔍 JWT_SECRET env var exists: {!string.IsNullOrEmpty(jwtSecretEnv)}");
 Console.WriteLine($"🔍 AppSettings Jwt:Secret found: {!string.IsNullOrEmpty(jwtSecretConfig)}");

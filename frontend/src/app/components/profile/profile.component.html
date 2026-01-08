@@ -7,13 +7,18 @@
             <div class="cover-bg"></div>
             <div class="avatar-wrapper">
                 <div class="profile-avatar-container">
-                    <div class="profile-avatar" [class.has-image]="user.avatar_url">
+                    <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*"
+                        style="display: none">
+                    <div class="profile-avatar" [class.has-image]="user.avatar_url" [class.clickable]="isEditing"
+                        (click)="isEditing && fileInput.click()">
                         <img *ngIf="user.avatar_url" [src]="user.avatar_url" alt="Avatar" class="avatar-img">
                         <span *ngIf="!user.avatar_url">{{ user.initials }}</span>
-                        <!-- Removed camera overlay for direct click -->
+
+                        <!-- Camera overlay only shows when editing -->
+                        <div class="avatar-overlay" *ngIf="isEditing">
+                            <i class="fas fa-camera"></i>
+                        </div>
                     </div>
-                    <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*"
-                        style="display: none;">
                 </div>
             </div>
 
@@ -22,11 +27,6 @@
                 <p class="email">{{ user.email }}</p>
                 <div class="badge-row">
                     <span class="badge">Member since {{ memberSince }}</span>
-                </div>
-                <div class="avatar-action-row" *ngIf="isEditing" style="margin-top: 1rem;">
-                    <button class="btn-secondary btn-sm" (click)="fileInput.click()">
-                        <i class="fas fa-image"></i> Change Avatar
-                    </button>
                 </div>
             </div>
 

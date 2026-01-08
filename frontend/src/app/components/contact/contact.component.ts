@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ApiService } from '../../services/api.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-contact',
@@ -65,7 +67,10 @@ import { RouterLink } from '@angular/router';
                 Message is required.
             </div>
           </div>
-          <button type="submit" class="btn-submit" [disabled]="!form.valid">Send Message</button>
+          <button type="submit" class="btn-submit" [disabled]="!form.valid || isSubmitting">
+            <span *ngIf="isSubmitting"><i class="fas fa-spinner fa-spin"></i> Sending...</span>
+            <span *ngIf="!isSubmitting">Send Message</span>
+          </button>
           
           <div *ngIf="submitted" class="success-message">
             <i class="fas fa-check-circle"></i>
@@ -209,17 +214,55 @@ export class ContactComponent {
     message: ''
   };
   submitted = false;
+  isSubmitting = false;
+
+  constructor(
+    private apiService: ApiService,
+    private notificationService: NotificationService
+  ) {}
 
   onSubmit(form: any) {
-    if (form.valid) {
-      console.log('Form Submitted:', this.contactForm);
-      this.submitted = true;
-      // Reset form after 3 seconds
-      setTimeout(() => {
-        this.submitted = false;
-        form.resetForm();
-        this.contactForm = { name: '', email: '', subject: '', message: '' };
-      }, 3000);
+    if (form.valid && !this.isSubmitting) {
+      this.isSubmitting = true;
+      
+      // Map subject to feedback type
+      const feedbackType = this.contactForm.subject || 'general';
+      
+      // Include name in message if provided
+      let fullMessage = this.contactForm.message;
+      if (this.contactForm.name) {
+        fullMessage = `From: ${this.contactForm.name}\n\n${fullMessage}`;
+      }
+      
+      // Submit feedback to backend
+      this.apiService.submitFeedback(
+        feedbackType,
+        this.contactForm.email || null,
+        fullMessage
+      ).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.submitted = true;
+            this.notificationService.showSuccess(response.message || 'Thank you for your feedback!');
+            
+            // Reset form after 3 seconds
+            setTimeout(() => {
+              this.submitted = false;
+              form.resetForm();
+              this.contactForm = { name: '', email: '', subject: '', message: '' };
+              this.isSubmitting = false;
+            }, 3000);
+          } else {
+            this.notificationService.showError(response.message || 'Failed to submit feedback');
+            this.isSubmitting = false;
+          }
+        },
+        error: (err) => {
+          console.error('Error submitting feedback:', err);
+          this.notificationService.showError(err.error?.message || 'An error occurred while submitting your message');
+          this.isSubmitting = false;
+        }
+      });
     }
   }
 }

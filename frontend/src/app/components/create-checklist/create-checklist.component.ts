@@ -190,11 +190,6 @@ export class CreateChecklistComponent implements OnInit {
                 id: it.id || null,
                 text: it.text,
                 checked: !!it.checked
-            })),
-            tasks: validItems.map(it => ({
-                id: it.id || null,
-                text: it.text,
-                checked: !!it.checked
             }))
         };
 

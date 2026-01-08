@@ -24,7 +24,7 @@ export class ProfileComponent implements OnInit {
         username: '',
         email: '',
         bio: '',
-        avatar_url: '',
+        avatar_url: 'test_avatar.png',
         created_at: '',
         initials: ''
     };
@@ -87,7 +87,7 @@ export class ProfileComponent implements OnInit {
                         username: data.username || 'User',
                         email: data.email || 'user@example.com',
                         bio: data.bio || '',
-                        avatar_url: data.avatar_url || '',
+                        avatar_url: data.avatar_url || 'test_avatar.png',
                         created_at: data.created_at || new Date().toISOString(),
                         initials: this.getInitials(data.username || 'User')
                     };
@@ -104,7 +104,7 @@ export class ProfileComponent implements OnInit {
                         username: localStorage.getItem('username') || 'Guest',
                         email: localStorage.getItem('email') || 'user@example.com',
                         bio: '',
-                        avatar_url: localStorage.getItem('avatar_url') || '',
+                        avatar_url: 'test_avatar.png',
                         created_at: new Date().toISOString(),
                         initials: this.getInitials(localStorage.getItem('username') || 'Guest')
                     };

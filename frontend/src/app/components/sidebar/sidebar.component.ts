@@ -57,7 +57,7 @@ export class SidebarComponent implements OnInit {
         this.apiService.getUserProfile().subscribe({
             next: (response) => {
                 if (response.success && response.data) {
-                    this.userAvatar = response.data.avatar_url || '';
+                    this.userAvatar = response.data.avatar_url || 'test_avatar.png';
                     this.userInitials = this.getInitials(response.data.username || 'User');
                     this.cdr.detectChanges();
                 }

@@ -1,11 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 import { forkJoin } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-group-challenges',
@@ -14,12 +15,13 @@ import { forkJoin } from 'rxjs';
   templateUrl: './group-challenges.component.html',
   styleUrls: ['./group-challenges.component.scss']
 })
-export class GroupChallengesComponent implements OnInit {
+export class GroupChallengesComponent implements OnInit, OnDestroy {
   showModal = false;
   showGuideModal = false;
   isSubmitting = false;
   loading = true;
   activeChallenges: any[] = [];
+  private routerSubscription: any;
 
   // Pagination
   currentPage = 1;
@@ -54,7 +56,28 @@ export class GroupChallengesComponent implements OnInit {
   }
 
   ngOnInit() {
+    // Load data immediately
     this.loadActiveChallenges();
+
+    // Reload on navigation back to this page
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      if (event.urlAfterRedirects === '/challenges' || event.urlAfterRedirects.startsWith('/challenges')) {
+        console.log('Reloading challenges data on navigation');
+        // Use setTimeout to ensure component is ready
+        setTimeout(() => {
+          this.loadActiveChallenges();
+        }, 100);
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    // Clean up subscription
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   loadActiveChallenges() {
@@ -73,10 +96,20 @@ export class GroupChallengesComponent implements OnInit {
         const challengeMap = new Map();
 
         // Add public challenges first
-        publicChallenges.forEach((c: any) => challengeMap.set(c.id, c));
+        publicChallenges.forEach((c: any) => {
+          // Parse dates before adding to map
+          c.end_date = this.parseDate(c.end_date);
+          c.start_date = this.parseDate(c.start_date);
+          challengeMap.set(c.id, c);
+        });
 
         // Add/Overwrite with joined challenges (ensure is_joined=1 is respected)
-        joined.forEach((c: any) => challengeMap.set(c.id, c));
+        joined.forEach((c: any) => {
+          // Parse dates before adding to map
+          c.end_date = this.parseDate(c.end_date);
+          c.start_date = this.parseDate(c.start_date);
+          challengeMap.set(c.id, c);
+        });
 
         this.activeChallenges = Array.from(challengeMap.values());
 
@@ -273,5 +306,46 @@ export class GroupChallengesComponent implements OnInit {
       end_date: '',
       is_public: true
     };
+  }
+
+  /**
+   * Parse date from various formats (string, object, MySqlDateTime)
+   */
+  private parseDate(dateValue: any): Date | null {
+    if (!dateValue) return null;
+    
+    // Handle JSON string containing MySqlDateTime object
+    if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(dateValue);
+        if (parsed.Year && parsed.Month && parsed.Day) {
+          return new Date(parsed.Year, parsed.Month - 1, parsed.Day);
+        }
+      } catch (e) {
+        // If JSON parse fails, continue to other formats
+      }
+    }
+    
+    // Handle string dates (YYYY-MM-DD format from backend)
+    if (typeof dateValue === 'string') {
+      const dateStr = dateValue.split('T')[0]; // Remove time if present
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+      }
+      // Try standard Date parsing
+      const parsed = new Date(dateValue);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+    
+    // Handle MySqlDateTime-like objects (already parsed)
+    if (dateValue && typeof dateValue === 'object') {
+      if (dateValue.Year && dateValue.Month && dateValue.Day) {
+        return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
+      }
+    }
+    
+    // Try standard Date parsing as fallback
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 }

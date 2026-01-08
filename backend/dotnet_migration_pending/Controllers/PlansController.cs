@@ -221,7 +221,7 @@ public class PlansController : ControllerBase
     /// <summary>
     /// Request model for logging progress
     /// </summary>
-    public record LogProgressRequest(string date, int actual_count, string? notes);
+    public record LogProgressRequest(string date, int actual_count, string? notes, int? target_count);
 
     /// <summary>
     /// Logs progress for a specific day
@@ -234,24 +234,47 @@ public class PlansController : ControllerBase
         try
         {
             var userId = UserId();
+            Console.WriteLine($"📥 Received log progress request - Plan ID: {id}, User ID: {userId}, Date: {req?.date}, Count: {req?.actual_count}");
+            
+            if (req == null)
+            {
+                Console.WriteLine("❌ Request body is null");
+                return BadRequest(new { success = false, message = "Request body is required" });
+            }
             
             if (string.IsNullOrWhiteSpace(req.date))
+            {
+                Console.WriteLine("❌ Date is empty");
                 return BadRequest(new { success = false, message = "Date is required" });
+            }
 
-            if (!DateTime.TryParse(req.date, out _))
-                return BadRequest(new { success = false, message = "Invalid date format" });
+            if (!DateTime.TryParse(req.date, out var parsedDate))
+            {
+                Console.WriteLine($"❌ Invalid date format: {req.date}");
+                return BadRequest(new { success = false, message = $"Invalid date format: {req.date}" });
+            }
 
-            var success = _db.LogPlanProgress(id, userId, req.date, req.actual_count, req.notes);
+            var success = _db.LogPlanProgress(id, userId, req.date, req.actual_count, req.notes, req.target_count);
             
             if (success)
+            {
+                Console.WriteLine($"✅ Successfully logged progress for plan {id}");
                 return Ok(new { success = true, message = "Progress logged successfully" });
+            }
 
-            return StatusCode(500, new { success = false, message = _db.GetLastError() ?? "Failed to log progress" });
+            var errorMsg = _db.GetLastError() ?? "Failed to log progress";
+            Console.WriteLine($"❌ Failed to log progress: {errorMsg}");
+            return StatusCode(500, new { success = false, message = errorMsg });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error logging progress: {ex.Message}");
-            return StatusCode(500, new { success = false, message = "An error occurred while logging progress" });
+            Console.WriteLine($"❌ Exception logging progress: {ex.Message}");
+            Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"❌ Inner exception: {ex.InnerException.Message}");
+            }
+            return StatusCode(500, new { success = false, message = $"An error occurred while logging progress: {ex.Message}" });
         }
     }
 
@@ -393,6 +416,7 @@ public class PlansController : ControllerBase
         try
         {
             var userId = UserId();
+            Console.WriteLine($"📋 Get Plans request - User ID: {userId}, Plan ID: {id?.ToString() ?? "null"}");
 
             // Get specific plan by ID
             if (id.HasValue)
@@ -411,15 +435,38 @@ public class PlansController : ControllerBase
 
             // Get all plans for user
             var plansJson = _db.GetPlansJson(userId);
+            if (string.IsNullOrWhiteSpace(plansJson) || plansJson == "[]")
+            {
+                Console.WriteLine($"⚠ No plans found for user {userId} or empty result");
+                return Ok(new { success = true, data = new List<object>() });
+            }
+            
             var plansData = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(plansJson);
-            var transformedPlans = plansData?.Select(TransformPlan).ToList();
+            if (plansData == null || plansData.Count == 0)
+            {
+                Console.WriteLine($"⚠ Deserialized plans data is null or empty for user {userId}");
+                return Ok(new { success = true, data = new List<object>() });
+            }
+            
+            var transformedPlans = plansData.Select(TransformPlan).ToList();
+            Console.WriteLine($"✅ Successfully transformed {transformedPlans.Count} plans for user {userId}");
 
             return Ok(new { success = true, data = transformedPlans });
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Error in Get Plans: {ex.Message}");
-            return StatusCode(500, new { success = false, message = "An error occurred while retrieving plans" });
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            var errorDetails = _db.GetLastError();
+            if (!string.IsNullOrWhiteSpace(errorDetails))
+            {
+                Console.WriteLine($"Database error details: {errorDetails}");
+            }
+            return StatusCode(500, new { 
+                success = false, 
+                message = "An error occurred while retrieving plans",
+                error = ex.Message // Include error for debugging
+            });
         }
     }
 
@@ -435,19 +482,32 @@ public class PlansController : ControllerBase
         {
             var userId = UserId();
             Console.WriteLine($"🔄 Updating plan {id} for user {userId}");
+            Console.WriteLine($"📥 Request data - Title: '{req.title}', Start: '{req.start_date}', End: '{req.end_date}', Algo: '{req.algorithm_type}'");
 
             // Validate required fields
             if (string.IsNullOrWhiteSpace(req.title))
+            {
+                Console.WriteLine("❌ Validation failed: Title is empty");
                 return BadRequest(new { success = false, message = "Plan title is required" });
+            }
 
             if (string.IsNullOrWhiteSpace(req.start_date))
+            {
+                Console.WriteLine("❌ Validation failed: Start date is empty");
                 return BadRequest(new { success = false, message = "Start date is required" });
+            }
 
             if (string.IsNullOrWhiteSpace(req.end_date))
+            {
+                Console.WriteLine("❌ Validation failed: End date is empty");
                 return BadRequest(new { success = false, message = "End date is required" });
+            }
 
             if (string.IsNullOrWhiteSpace(req.algorithm_type))
+            {
+                Console.WriteLine("❌ Validation failed: Algorithm type is empty");
                 return BadRequest(new { success = false, message = "Algorithm type is required" });
+            }
 
             // Validate word count
             if (req.total_word_count <= 0)

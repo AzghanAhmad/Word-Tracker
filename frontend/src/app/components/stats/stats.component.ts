@@ -105,11 +105,42 @@ export class StatsComponent implements OnInit {
                     this.bestDay = data.bestDay || 0;
                     this.currentStreak = data.currentStreak || 0;
 
-                    // Process activity data
-                    let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => ({
-                        date: d.date,
-                        count: d.count || 0
-                    }));
+                    // Process activity data - normalize date format
+                    let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => {
+                        // Normalize date to YYYY-MM-DD format
+                        let dateStr: string;
+                        if (typeof d.date === 'string') {
+                            if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                dateStr = d.date;
+                            } else if (d.date.includes('T')) {
+                                dateStr = d.date.split('T')[0];
+                            } else {
+                                const dateObj = new Date(d.date);
+                                if (!isNaN(dateObj.getTime())) {
+                                    const y = dateObj.getFullYear();
+                                    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                                    const day = String(dateObj.getDate()).padStart(2, '0');
+                                    dateStr = `${y}-${m}-${day}`;
+                                } else {
+                                    dateStr = d.date;
+                                }
+                            }
+                        } else {
+                            const dateObj = new Date(d.date);
+                            if (!isNaN(dateObj.getTime())) {
+                                const y = dateObj.getFullYear();
+                                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                                const day = String(dateObj.getDate()).padStart(2, '0');
+                                dateStr = `${y}-${m}-${day}`;
+                            } else {
+                                dateStr = String(d.date);
+                            }
+                        }
+                        return {
+                            date: dateStr,
+                            count: d.count || 0
+                        };
+                    });
 
                     // Calculate initial offset (Total Words - Sum of Fetched Period)
                     const fetchedTotal = allDaysData.reduce((sum, d) => sum + d.count, 0);
@@ -160,13 +191,17 @@ export class StatsComponent implements OnInit {
                         this.allDaysDataForChart = [];
                     }
 
-                    // Last 14 days for bar chart
-                    this.activityData = (data.activityData || []).map((d: any) => ({
+                    // Last 14 days for bar chart - use the last 14 days from allDaysData
+                    // Sort by date descending and take last 14
+                    const sortedAllDays = [...allDaysData].sort((a, b) => 
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    );
+                    this.activityData = sortedAllDays.slice(0, 14).reverse().map((d: any) => ({
                         date: d.date,
                         count: d.count || 0
                     }));
 
-                    // Prepare Charts
+                    // Prepare Charts - use allDaysData (already sorted by date ascending)
                     this.prepareLineChart(allDaysData);
                     this.prepareHeatmap(allDaysData);
                 } else {

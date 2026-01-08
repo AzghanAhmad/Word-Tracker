@@ -109,3 +109,16 @@ CREATE TABLE IF NOT EXISTS challenge_participants (
     UNIQUE KEY unique_participant (challenge_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS challenge_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    challenge_id INT NOT NULL,
+    user_id INT NOT NULL,
+    log_date DATE NOT NULL,
+    word_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_challenge_user_date (challenge_id, user_id, log_date)
+);
+

@@ -5,16 +5,80 @@ import { ActivatedRoute, Router, RouterLink, NavigationEnd } from '@angular/rout
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
+import { OutputStatsChartComponent, WordEntry } from '../stats/output-stats-chart/output-stats-chart.component';
+import { DailyStatsChartComponent } from '../stats/daily-stats-chart/daily-stats-chart.component';
 import { Subscription, filter } from 'rxjs';
 
 @Component({
     selector: 'app-plan-details',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, ContentLoaderComponent],
+    imports: [CommonModule, FormsModule, RouterLink, ContentLoaderComponent, OutputStatsChartComponent, DailyStatsChartComponent],
     templateUrl: './plan-details.component.html',
     styleUrls: ['./plan-details.component.scss']
 })
 export class PlanDetailsComponent implements OnInit, OnDestroy {
+    get cumulativeChartData(): WordEntry[] {
+        return this.allPlanDays.map(day => {
+            // Ensure date is in consistent format (YYYY-MM-DD)
+            let dateStr = day.date;
+            if (typeof dateStr === 'string') {
+                // If it's already in YYYY-MM-DD format, use it
+                if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    dateStr = dateStr;
+                } else if (dateStr.includes('T')) {
+                    // If it's ISO format, extract date part
+                    dateStr = dateStr.split('T')[0];
+                } else {
+                    // Try to parse and format
+                    const date = new Date(dateStr);
+                    if (!isNaN(date.getTime())) {
+                        dateStr = date.toISOString().split('T')[0];
+                    }
+                }
+            } else if (day.dateObj) {
+                // Use dateObj if available
+                dateStr = day.dateObj.toISOString().split('T')[0];
+            }
+            
+            return {
+                date: dateStr,
+            count: day.actual_count || 0,
+            target: day.target_count || 0
+            };
+        });
+    }
+
+    get dailyChartData(): WordEntry[] {
+        return this.allPlanDays.map(day => {
+            // Ensure date is in consistent format (YYYY-MM-DD)
+            let dateStr = day.date;
+            if (typeof dateStr === 'string') {
+                // If it's already in YYYY-MM-DD format, use it
+                if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    dateStr = dateStr;
+                } else if (dateStr.includes('T')) {
+                    // If it's ISO format, extract date part
+                    dateStr = dateStr.split('T')[0];
+                } else {
+                    // Try to parse and format
+                    const date = new Date(dateStr);
+                    if (!isNaN(date.getTime())) {
+                        dateStr = date.toISOString().split('T')[0];
+                    }
+                }
+            } else if (day.dateObj) {
+                // Use dateObj if available
+                dateStr = day.dateObj.toISOString().split('T')[0];
+            }
+            
+            return {
+                date: dateStr,
+            count: day.actual_count || 0,
+            target: day.target_count || 0
+            };
+        });
+    }
+
     isLoading = true;
     planId: number | null = null;
     plan: any = null;
@@ -29,19 +93,38 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     chartPoints: any[] = []; // For tooltips
     chartDimensions = { width: 800, height: 300 };
     maxChartValue: number = 0;
+    maxDailyValue: number = 0;
 
     // Display Toggle
+    activeTab: 'plan' | 'schedule' | 'progress' | 'stats' = 'plan';
     activeView: 'Graph' | 'Table' | 'Calendar' = 'Graph';
+    scheduleViewMode: 'calendar' | 'chart' = 'calendar';
 
     // Form and UI state
     todayDate: string = '';
     newSessionDate: string = '';
     newSessionWords: number = 0;
+    saveSuccess: boolean = false;
     showAddSessionForm: boolean = false;
     activityLogs: any[] = [];
     editingSessionId: number | null = null;
     editingSessionValue: number = 0;
     hoveredPoint: any = null;
+    hoveredChart: 'cumulative' | 'daily' | null = null;
+    planNotes: { [key: string]: string } = {};
+    calendarDays: any[] = [];
+
+    // Expanded Stats Metrics
+    extendedStats: any = {
+        daysSinceStart: 0,
+        bestDay: 0,
+        avgWordsPerDay: 0,
+        statusLabel: 'On Track',
+        statusColor: 'var(--primary-accent)',
+        completionRate: 0,
+        dailyTargetMet: 0
+    };
+
 
     // Subscriptions
     private routeSubscription?: Subscription;
@@ -112,12 +195,46 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         this.apiService.getPlan(this.planId).subscribe({
             next: (response) => {
                 if (response.success && response.data) {
-                    this.plan = response.data;
+                    // Process the plan data before assigning to avoid ExpressionChangedAfterItHasBeenCheckedError
+                    const planData = { ...response.data };
+                    
+                    // Ensure dates are strings, not objects (handle MySqlDateTime serialization)
+                    if (planData.start_date && typeof planData.start_date === 'object') {
+                        const sd = planData.start_date as any;
+                        if (sd.Year && sd.Month && sd.Day) {
+                            planData.start_date = `${sd.Year}-${String(sd.Month).padStart(2, '0')}-${String(sd.Day).padStart(2, '0')}`;
+                        }
+                    }
+                    if (planData.end_date && typeof planData.end_date === 'object') {
+                        const ed = planData.end_date as any;
+                        if (ed.Year && ed.Month && ed.Day) {
+                            planData.end_date = `${ed.Year}-${String(ed.Month).padStart(2, '0')}-${String(ed.Day).padStart(2, '0')}`;
+                        }
+                    }
+                    if (planData.target_finish_date && typeof planData.target_finish_date === 'object') {
+                        const tfd = planData.target_finish_date as any;
+                        if (tfd.Year && tfd.Month && tfd.Day) {
+                            planData.target_finish_date = `${tfd.Year}-${String(tfd.Month).padStart(2, '0')}-${String(tfd.Day).padStart(2, '0')}`;
+                        }
+                    }
+                    
+                    // Assign the processed plan data
+                    this.plan = planData;
+                    
                     this.activeView = (this.plan.display_view_type === 'Table' || this.plan.display_view_type === 'Calendar')
                         ? this.plan.display_view_type
                         : 'Graph';
-                    this.calculateStats();
+                    
+                    // Use setTimeout to defer change detection after all modifications
+                    setTimeout(() => {
                     this.loadActivityLogs();
+                        // Defer calculateStats and isLoading to next tick to avoid change detection errors
+                        setTimeout(() => {
+                            this.calculateStats();
+                            this.isLoading = false;
+                            this.cdr.detectChanges();
+                        }, 0);
+                    }, 0);
                 } else {
                     // Fallback to fetching all plans
                     this.apiService.getPlans().subscribe({
@@ -125,15 +242,43 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             if (allResponse.success && allResponse.data) {
                                 const found = allResponse.data.find((p: any) => p.id === this.planId);
                                 if (found) {
-                                    this.plan = found;
+                                    // Process the plan data before assigning
+                                    const planData = { ...found };
+                                    
+                                    // Ensure dates are strings, not objects
+                                    if (planData.start_date && typeof planData.start_date === 'object') {
+                                        const sd = planData.start_date as any;
+                                        if (sd.Year && sd.Month && sd.Day) {
+                                            planData.start_date = `${sd.Year}-${String(sd.Month).padStart(2, '0')}-${String(sd.Day).padStart(2, '0')}`;
+                                        }
+                                    }
+                                    if (planData.end_date && typeof planData.end_date === 'object') {
+                                        const ed = planData.end_date as any;
+                                        if (ed.Year && ed.Month && ed.Day) {
+                                            planData.end_date = `${ed.Year}-${String(ed.Month).padStart(2, '0')}-${String(ed.Day).padStart(2, '0')}`;
+                                        }
+                                    }
+                                    
+                                    this.plan = planData;
                                     this.activeView = (this.plan.display_view_type === 'Table' || this.plan.display_view_type === 'Calendar')
                                         ? this.plan.display_view_type
                                         : 'Graph';
-                                    this.calculateStats();
-                                    this.loadActivityLogs();
+                                    
+                                    // Use setTimeout to defer change detection
+                                    setTimeout(() => {
+                                        this.loadActivityLogs();
+                                        // Defer calculateStats and isLoading to next tick to avoid change detection errors
+                                        setTimeout(() => {
+                                            this.calculateStats();
+                                            this.isLoading = false;
+                                            this.cdr.detectChanges();
+                                        }, 0);
+                                    }, 0);
                                 } else {
                                     console.error('Plan not found');
                                     this.notificationService.showError('Plan not found');
+                                    this.isLoading = false;
+                                    this.cdr.detectChanges();
                                     this.router.navigate(['/dashboard']);
                                 }
                             } else {
@@ -165,6 +310,67 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         return desc !== '{}' && desc !== '<p><br></p>' && desc !== '';
     }
 
+    generateCalendarDays() {
+        const year = this.currentCalendarDate.getFullYear();
+        const month = this.currentCalendarDate.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const days = [];
+        // Fill previous month days
+        const prevMonthDays = new Date(year, month, 0).getDate();
+        for (let i = firstDay - 1; i >= 0; i--) {
+            const date = new Date(year, month - 1, prevMonthDays - i);
+            days.push({
+                day: prevMonthDays - i,
+                month: 'prev',
+                date,
+                dateKey: date.toISOString().split('T')[0],
+                isToday: false
+            });
+        }
+
+        // Fill current month days
+        for (let i = 1; i <= daysInMonth; i++) {
+            const date = new Date(year, month, i);
+            const dateKey = date.toISOString().split('T')[0];
+            
+            // Find matching plan day - handle both ISO format and YYYY-MM-DD format
+            const planDay = this.allPlanDays.find(d => {
+                const dayDateKey = typeof d.date === 'string' 
+                    ? (d.date.includes('T') ? d.date.split('T')[0] : d.date)
+                    : new Date(d.date).toISOString().split('T')[0];
+                return dayDateKey === dateKey;
+            });
+
+            days.push({
+                day: i,
+                month: 'current',
+                date,
+                dateKey,
+                target: planDay?.target_count || 0,
+                actual: planDay?.actual_count || 0,
+                isWritingDay: (planDay?.target_count || 0) > 0,
+                isToday: dateKey === this.todayDate
+            });
+        }
+
+        // Fill next month days
+        const remaining = 42 - days.length;
+        for (let i = 1; i <= remaining; i++) {
+            const date = new Date(year, month + 1, i);
+            days.push({
+                day: i,
+                month: 'next',
+                date,
+                dateKey: date.toISOString().split('T')[0],
+                isToday: false
+            });
+        }
+
+        this.calendarDays = days;
+    }
+
     loadActivityLogs() {
         if (!this.planId) {
             this.isLoading = false;
@@ -176,37 +382,99 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         this.apiService.getPlanDays(this.planId).subscribe({
             next: (response) => {
                 if (response.success && response.data) {
-                    // Store ALL days for Chart (Sorted Ascending)
-                    this.allPlanDays = response.data.map((d: any) => {
-                        const dateObj = new Date(d.date);
-                        return {
-                            ...d,
-                            dateObj: dateObj,
-                            target_count: d.target_count || 0,
-                            actual_count: d.actual_count || 0
-                        };
-                    }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
-
-                    this.generateChart();
-
                     // Calculate fallback daily target if DB returns 0s
                     const totalTarget = this.plan.target_amount || this.plan.total_word_count || 50000;
                     const fallbackDailyTarget = response.data.length > 0
                         ? Math.round(totalTarget / response.data.length)
                         : 0;
 
-                    // Filter only days where work has been done (actual_count > 0)
-                    // Sort by date descending (most recent first)
-                    // Show only last 10 work days
-                    this.activityLogs = response.data
-                        .filter((d: any) => (d.actual_count || 0) > 0) // Only days with work done
+                    // Filter to only include days within the plan's date range for schedule display
+                    // This ensures we only show the schedule for this specific plan
+                    const planStartDate = new Date(this.plan.start_date);
+                    planStartDate.setHours(0, 0, 0, 0);
+                    const planEndDate = new Date(this.plan.end_date);
+                    planEndDate.setHours(23, 59, 59, 999);
+
+                    // Store ALL days for Chart (Sorted Ascending) - only within plan date range
+                    // Use the actual target_count from the database (plan_days table) for each day
+                    this.allPlanDays = response.data
+                        .filter((d: any) => {
+                            // Only include days within the plan's start and end date range
+                            const dayDate = new Date(d.date);
+                            return dayDate >= planStartDate && dayDate <= planEndDate;
+                        })
                         .map((d: any) => {
-                            const dateObj = new Date(d.date);
+                        const dateObj = new Date(d.date);
+                            // Normalize date to YYYY-MM-DD format for consistent matching
+                            let dateKey: string;
+                            if (typeof d.date === 'string') {
+                                if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                    dateKey = d.date;
+                                } else if (d.date.includes('T')) {
+                                    dateKey = d.date.split('T')[0];
+                                } else {
+                                    dateKey = dateObj.toISOString().split('T')[0];
+                                }
+                            } else {
+                                dateKey = dateObj.toISOString().split('T')[0];
+                            }
+                            
+                            // Use DB target_count directly from plan_days table
+                            // The backend already calculates this based on the writing strategy
+                            let dailyTarget = d.target_count || 0;
+                            
+                            // Load notes into planNotes object
+                            if (d.notes) {
+                                this.planNotes[dateKey] = d.notes;
+                        }
+
+                        return {
+                            ...d,
+                                date: dateKey, // Store normalized date
+                            dateObj: dateObj,
+                                target_count: dailyTarget, // Use actual database value
+                                actual_count: d.actual_count || 0,
+                                notes: d.notes || ''
+                        };
+                    }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
+
+                    this.generateCalendarDays();
+                    this.generateChart();
+
+                    // Filter only days where work has been done (actual_count > 0) - these are "working days"
+                    // Sort by date descending (newest first) and take the last 10 working days
+                    this.activityLogs = response.data
+                        .filter((d: any) => (d.actual_count || 0) > 0)
+                        .map((d: any) => {
+                            // Parse date - handle both YYYY-MM-DD and ISO formats
+                            let dateObj: Date;
+                            if (typeof d.date === 'string') {
+                                // If date is already in YYYY-MM-DD format, parse it correctly
+                                if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                    dateObj = new Date(d.date + 'T00:00:00');
+                                } else {
+                                    dateObj = new Date(d.date);
+                                }
+                            } else {
+                                dateObj = new Date(d.date);
+                            }
+                            
                             let dayTarget = (d.target_count && d.target_count > 0) ? d.target_count : fallbackDailyTarget;
 
-                            // Fix: If daily target erroneously equals total target (and days > 1), use fallback
                             if (this.allPlanDays.length > 1 && dayTarget >= totalTarget) {
                                 dayTarget = fallbackDailyTarget;
+                            }
+
+                            // Ensure rawDate is in YYYY-MM-DD format
+                            let rawDateStr = d.date;
+                            if (typeof rawDateStr === 'string') {
+                                if (rawDateStr.includes('T')) {
+                                    rawDateStr = rawDateStr.split('T')[0];
+                                } else if (rawDateStr.includes(' ')) {
+                                    rawDateStr = dateObj.toISOString().split('T')[0];
+                                }
+                            } else {
+                                rawDateStr = dateObj.toISOString().split('T')[0];
                             }
 
                             return {
@@ -219,14 +487,14 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 words: d.actual_count || 0,
                                 target: dayTarget,
                                 dateObj: dateObj,
-                                rawDate: d.date, // Store original date string for API calls
+                                rawDate: rawDateStr || dateObj.toISOString().split('T')[0],
                                 notes: d.notes || ''
                             };
                         })
-                        .sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime())
-                        .slice(0, 10); // Show only last 10 work days
+                        .sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime()) // Newest first
+                        .slice(0, 10); // Last 10 working days
 
-                    // Update completed amount from logs (only within valid date range)
+                    // Update completed amount from logs
                     let validLogs = response.data;
                     if (this.plan.start_date && this.plan.end_date) {
                         const start = new Date(this.plan.start_date);
@@ -241,41 +509,61 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     }
 
                     const totalFromLogs = validLogs.reduce((sum: number, d: any) => sum + (d.actual_count || 0), 0);
-
-                    // Always update plan completed amount with the accurate log sum
                     if (this.plan) {
                         this.plan.completed_amount = totalFromLogs;
                     }
                 }
-                // Recalculate stats after loading logs
-                this.calculateStats();
-                this.isLoading = false;
-                this.cdr.detectChanges();
+
+                // Defer calculateStats to avoid change detection errors
+                setTimeout(() => {
+                    this.calculateStats();
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }, 0);
             },
             error: (err) => {
                 console.error('Error loading activity logs', err);
                 this.activityLogs = [];
-                this.calculateStats(); // Still calculate stats even if logs fail
-                this.isLoading = false;
-                this.cdr.detectChanges();
+                setTimeout(() => {
+                    this.calculateStats();
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }, 0);
             }
         });
     }
 
     calculateStats() {
         if (!this.plan) return;
+        
+        // All analytics calculations use backend data from allPlanDays
+        // This function is called after loadActivityLogs() completes, ensuring data is available
+
+        // Create new objects to avoid change detection errors
+        const newStats = { ...this.stats };
+        const newExtendedStats = { ...this.extendedStats };
+        const newPlan = { ...this.plan };
 
         // Days Remaining
         const end = new Date(this.plan.end_date).getTime();
         const now = new Date().getTime();
         const diff = Math.ceil((end - now) / (1000 * 3600 * 24));
-        this.stats.daysRemaining = diff > 0 ? diff : 0;
+        newStats.daysRemaining = diff > 0 ? diff : 0;
 
-        // Calculate completed amount from activity logs if available
-        let totalCompleted = this.activityLogs.reduce((sum, log) => sum + log.words, 0);
+        // Calculate completed amount from all plan days (backend data)
+        // This ensures we get the complete picture from the backend
+        let totalCompleted = 0;
+        if (this.allPlanDays && this.allPlanDays.length > 0) {
+            totalCompleted = this.allPlanDays.reduce((sum: number, day: any) => {
+                return sum + (day.actual_count || 0);
+            }, 0);
+        } else {
+            // Fallback to activity logs if allPlanDays not loaded yet
+            totalCompleted = this.activityLogs.reduce((sum, log) => sum + log.words, 0);
+        }
 
-        // If we have explicit plan completion amount in DB, use that
-        if (this.plan.completed_amount > totalCompleted) {
+        // If we have explicit plan completion amount in DB, use that (it's more authoritative)
+        if (this.plan.completed_amount && this.plan.completed_amount > totalCompleted) {
             totalCompleted = this.plan.completed_amount;
         }
 
@@ -292,10 +580,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
         // Words Per Day needed
         const remainingWords = targetAmount - totalCompleted;
-        if (remainingWords > 0 && this.stats.daysRemaining > 0) {
-            this.stats.wordsPerDay = Math.ceil(remainingWords / this.stats.daysRemaining);
+        if (remainingWords > 0 && newStats.daysRemaining > 0) {
+            newStats.wordsPerDay = Math.ceil(remainingWords / newStats.daysRemaining);
         } else {
-            this.stats.wordsPerDay = 0;
+            newStats.wordsPerDay = 0;
         }
 
         // Progress percentage for display
@@ -304,14 +592,79 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             : 0;
 
         // Use manual progress if set, otherwise fall back to calculated
-        this.plan.progress = (this.plan.current_progress && this.plan.current_progress > 0)
+        newPlan.progress = (this.plan.current_progress && this.plan.current_progress > 0)
             ? this.plan.current_progress
             : calculatedProgress;
 
         // Update completed_amount for display
-        this.plan.completed_amount = (targetAmount > 0)
+        newPlan.completed_amount = (targetAmount > 0)
             ? Math.min(totalCompleted, targetAmount)
             : totalCompleted;
+
+        // Calculate Days Since Start
+        const start = new Date(this.plan.start_date).getTime();
+        const startDiff = Math.floor((now - start) / (1000 * 3600 * 24));
+        newExtendedStats.daysSinceStart = Math.max(0, startDiff);
+
+        // Calculate Best Day and Avg
+        const writingDays = this.allPlanDays.filter(d => (d.actual_count || 0) > 0);
+        newExtendedStats.bestDay = writingDays.length > 0
+            ? Math.max(...writingDays.map(d => d.actual_count))
+            : 0;
+
+        // Calculate average words per day from actual writing days (not total days)
+        newExtendedStats.avgWordsPerDay = writingDays.length > 0
+            ? Math.round(totalCompleted / writingDays.length)
+            : 0;
+        
+        // Ensure we have valid data for analytics
+        if (this.allPlanDays.length === 0) {
+            console.warn('No plan days data available for analytics calculations');
+        }
+
+        // On Track / Behind Status
+        // Find today's cumulative stats
+        const todayStr = this.todayDate;
+        const pastAndTodayDays = this.allPlanDays.filter(d => {
+            const dayDateKey = typeof d.date === 'string' 
+                ? (d.date.includes('T') ? d.date.split('T')[0] : d.date)
+                : new Date(d.date).toISOString().split('T')[0];
+            return dayDateKey <= todayStr;
+        });
+
+        let cumTargetToday = 0;
+        let cumActualToday = 0;
+        pastAndTodayDays.forEach(d => {
+            cumTargetToday += (d.target_count || 0);
+            cumActualToday += (d.actual_count || 0);
+        });
+
+        if (cumActualToday >= cumTargetToday) {
+            newExtendedStats.statusLabel = 'On Track';
+            newExtendedStats.statusColor = '#10b981'; // Success Green
+        } else if (cumActualToday < cumTargetToday * 0.8) {
+            newExtendedStats.statusLabel = 'Behind Plan';
+            newExtendedStats.statusColor = '#f59e0b'; // Amber
+        } else {
+            newExtendedStats.statusLabel = 'Slightly Behind';
+            newExtendedStats.statusColor = '#1C2E4A';
+        }
+
+        // Daily Target Met % (Average of writing days performance)
+        const perfRates = writingDays
+            .filter(d => (d.target_count || 0) > 0)
+            .map(d => Math.round(((d.actual_count || 0) / (d.target_count || 1)) * 100));
+
+        newExtendedStats.dailyTargetMet = perfRates.length > 0
+            ? Math.round(perfRates.reduce((a, b) => a + b, 0) / perfRates.length)
+            : 0;
+
+        newExtendedStats.completionRate = newPlan.progress;
+
+        // Assign all changes at once to avoid change detection errors
+        this.stats = newStats;
+        this.extendedStats = newExtendedStats;
+        this.plan = { ...this.plan, ...newPlan };
     }
 
     toggleArchive() {
@@ -378,6 +731,42 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         }
     }
 
+    archivePlan() {
+        if (!this.planId) return;
+
+        const isArchived = this.plan.status?.toLowerCase() === 'archived';
+        const action = isArchived ? 'restore' : 'archive';
+        const confirmMessage = isArchived 
+            ? 'Are you sure you want to restore this plan?'
+            : 'Are you sure you want to archive this plan? It will be moved to archived plans.';
+
+        if (confirm(confirmMessage)) {
+            this.isLoading = true;
+            this.cdr.detectChanges();
+
+            this.apiService.archivePlan(this.planId, !isArchived).subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        this.notificationService.showSuccess(response.message || `Plan ${action}d successfully`);
+                        // Reload plan details to reflect the new status
+                        this.loadPlanDetails();
+                    } else {
+                        this.notificationService.showError(response.message || `Failed to ${action} plan`);
+                        this.isLoading = false;
+                        this.cdr.detectChanges();
+                    }
+                },
+                error: (err) => {
+                    console.error(`Error ${action}ing plan`, err);
+                    const errorMsg = err.error?.message || `Failed to ${action} plan`;
+                    this.notificationService.showError(errorMsg);
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }
+            });
+        }
+    }
+
     navigateToEdit() {
         if (this.planId) {
             this.router.navigate(['/plans/edit', this.planId]);
@@ -410,17 +799,29 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         if (!this.planId) return;
 
         const words = Math.max(0, this.editingSessionValue || 0);
-        const dateStr = log.rawDate || log.dateObj.toISOString().split('T')[0];
+        // Ensure date is in YYYY-MM-DD format
+        let dateStr = log.rawDate;
+        if (!dateStr && log.dateObj) {
+            dateStr = log.dateObj.toISOString().split('T')[0];
+        } else if (dateStr && dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];
+        }
+        
+        if (!dateStr) {
+            this.notificationService.showError('Invalid date for session');
+            return;
+        }
 
         this.apiService.logProgress(this.planId, dateStr, words, log.notes || '').subscribe({
             next: (response) => {
                 if (response.success) {
-                    // Update the log in the array
+                    // Update the log in the array immediately for better UX
                     log.words = words;
                     this.editingSessionId = null;
+                    this.editingSessionValue = 0;
                     this.notificationService.showSuccess('Session updated successfully');
 
-                    // Reload plan details to get updated progress percentage
+                    // Reload plan details to get updated progress percentage and refresh recent activity
                     this.loadPlanDetails();
                 } else {
                     this.notificationService.showError('Failed to update session');
@@ -437,14 +838,30 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         if (!this.planId) return;
 
         if (confirm(`Are you sure you want to delete this session from ${log.date}?`)) {
-            const dateStr = log.rawDate || log.dateObj.toISOString().split('T')[0];
+            // Ensure date is in YYYY-MM-DD format
+            let dateStr = log.rawDate;
+            if (!dateStr && log.dateObj) {
+                dateStr = log.dateObj.toISOString().split('T')[0];
+            } else if (dateStr && dateStr.includes('T')) {
+                dateStr = dateStr.split('T')[0];
+            }
+            
+            if (!dateStr) {
+                this.notificationService.showError('Invalid date for session');
+                return;
+            }
 
             // Set words to 0 to effectively delete the session
-            this.apiService.logProgress(this.planId, dateStr, 0, '').subscribe({
+            this.apiService.logProgress(this.planId, dateStr, 0, log.notes || '').subscribe({
                 next: (response) => {
                     if (response.success) {
                         this.notificationService.showSuccess('Session deleted successfully');
-                        // Reload plan details to get updated progress percentage
+                        // Remove from activity logs immediately for better UX
+                        const index = this.activityLogs.findIndex(l => l.id === log.id);
+                        if (index !== -1) {
+                            this.activityLogs.splice(index, 1);
+                        }
+                        // Reload plan details to get updated progress percentage and refresh all data
                         this.loadPlanDetails();
                     } else {
                         this.notificationService.showError('Failed to delete session');
@@ -458,29 +875,86 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         }
     }
 
+    prepareEditSession(session: any) {
+        this.newSessionDate = session.date.split('T')[0];
+        this.newSessionWords = session.word_count;
+        this.saveSuccess = false;
+        // Scroll to top of progress tab smoothly
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     addNewSession() {
-        if (!this.planId || !this.newSessionDate || !this.newSessionWords || this.newSessionWords <= 0) {
+        if (!this.planId || !this.newSessionDate || (this.newSessionWords === null || this.newSessionWords === undefined)) {
             this.notificationService.showError('Please enter a valid date and word count');
             return;
         }
 
-        this.apiService.logProgress(this.planId, this.newSessionDate, this.newSessionWords, '').subscribe({
+        if (this.newSessionWords < 0) {
+            this.notificationService.showError('Word count cannot be negative');
+            return;
+        }
+
+        // Ensure date is in YYYY-MM-DD format
+        let dateStr = this.newSessionDate;
+        if (dateStr && dateStr.includes('T')) {
+            dateStr = dateStr.split('T')[0];
+        }
+
+        // Validate date is not in the future
+        const selectedDate = new Date(dateStr + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedDate > today) {
+            this.notificationService.showError('Cannot log progress for future dates');
+            return;
+        }
+
+        this.apiService.logProgress(this.planId, dateStr, this.newSessionWords, '').subscribe({
             next: (response) => {
                 if (response.success) {
-                    this.notificationService.showSuccess('Session added successfully');
-                    // Reset form
-                    this.newSessionDate = this.todayDate; // Reset to today
+                    this.notificationService.showSuccess('Progress recorded successfully');
+                    this.saveSuccess = true;
+                    setTimeout(() => this.saveSuccess = false, 3000);
+
+                    // Immediately add the new entry to the top of Recent Activity for instant feedback
+                    const dateObj = new Date(dateStr + 'T00:00:00');
+                    const newEntry = {
+                        id: Date.now(), // Temporary ID until reload
+                        date: dateObj.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        }),
+                        words: this.newSessionWords,
+                        target: 0, // Will be updated on reload
+                        dateObj: dateObj,
+                        rawDate: dateStr,
+                        notes: ''
+                    };
+                    
+                    // Add the new entry to activityLogs array
+                    this.activityLogs.push(newEntry);
+                    
+                    // Sort by date descending (newest first) and keep only the most recent 10 entries
+                    this.activityLogs.sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime());
+                    if (this.activityLogs.length > 10) {
+                        this.activityLogs = this.activityLogs.slice(0, 10);
+                    }
+
+                    // Reset words for next entry, but keep the selected date
+                    // This allows users to add multiple entries for the same date if needed
                     this.newSessionWords = 0;
-                    this.showAddSessionForm = false;
-                    // Reload plan details to get updated progress percentage and refresh sessions list
+
+                    // Reload plan details to refresh stats, history, and ensure data is in sync
                     this.loadPlanDetails();
                 } else {
-                    this.notificationService.showError('Failed to add session');
+                    this.notificationService.showError('Failed to save progress');
                 }
             },
             error: (err) => {
-                console.error('Error adding session', err);
-                const errorMsg = err.error?.message || 'Failed to add session';
+                console.error('Error saving progress', err);
+                const errorMsg = err.error?.message || 'Failed to save progress';
                 this.notificationService.showError(errorMsg);
             }
         });
@@ -499,17 +973,16 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             : 0;
 
         // Calculate cumulative points
+        // Use the actual target_count from the database (plan_days table)
         const points = this.allPlanDays.map((day, index) => {
-            // Use DB target if available, otherwise fallback
-            let dailyTarget = (day.target_count && day.target_count > 0) ? day.target_count : fallbackDailyTarget;
-
-            // Fix: If daily target erroneously equals total target (and days > 1), use fallback
-            if (this.allPlanDays.length > 1 && dailyTarget >= totalTarget) {
-                dailyTarget = fallbackDailyTarget;
-            }
+            // Use the actual target_count from the database
+            // This is the target that was set when the plan was created/updated
+            let dailyTarget = day.target_count || 0;
 
             cumulativeTarget += dailyTarget;
             cumulativeActual += (day.actual_count || 0);
+
+            const diff = cumulativeActual - cumulativeTarget;
 
             return {
                 index,
@@ -517,13 +990,19 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 cumTarget: cumulativeTarget,
                 cumActual: cumulativeActual,
                 dayTarget: dailyTarget,
-                dayActual: day.actual_count || 0
+                dayActual: day.actual_count || 0,
+                diff: diff,
+                isWritingDay: dailyTarget > 0,
+                statusHeader: dailyTarget > 0 ? 'Writing Day' : 'Day Off'
             };
         });
 
         // Determine Max Y Calculation
         this.maxChartValue = Math.max(totalTarget, cumulativeTarget, cumulativeActual);
         if (this.maxChartValue === 0) this.maxChartValue = 1000;
+
+        this.maxDailyValue = Math.max(...points.map(p => p.dayActual), ...points.map(p => p.dayTarget));
+        if (this.maxDailyValue === 0) this.maxDailyValue = 1000;
 
         // Dimensions
         const width = this.chartDimensions.width;
@@ -538,9 +1017,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
         }).join(' ');
 
-        // Actual Line
-        this.chartData.actual = points.map((p, i) => {
-            const x = i * stepX;
+        // Actual Line (only show up to today)
+        const todayStr = new Date().toISOString().split('T')[0];
+        const actualPoints = points.filter(p => p.date <= todayStr);
+
+        this.chartData.actual = actualPoints.map((p, i) => {
+            const x = p.index * stepX;
             const y = this.getChartY(p.cumActual, height);
             return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
         }).join(' ');
@@ -552,9 +1034,179 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             yTarget: this.getChartY(p.cumTarget, height),
             data: p
         }));
+
+        // Generate Daily Bar Chart Data
+        const dailyMax = Math.max(...points.map(p => p.dayActual), ...points.map(p => p.dayTarget), 100);
+        this.maxDailyValue = dailyMax;
     }
 
     getChartY(value: number, height: number): number {
         return height - (value / this.maxChartValue) * height;
+    }
+
+    // Schedule Tab Calendar Helpers
+    currentCalendarDate: Date = new Date();
+
+
+    changeCalendarMonth(delta: number) {
+        this.currentCalendarDate = new Date(
+            this.currentCalendarDate.getFullYear(),
+            this.currentCalendarDate.getMonth() + delta,
+            1
+        );
+        this.generateCalendarDays();
+    }
+
+    savePlanNote(dateKey: string, note: string) {
+        if (!this.planId) return;
+        
+        this.planNotes[dateKey] = note;
+        
+        // Find the plan day to get actual_count
+        const planDay = this.allPlanDays.find(d => d.date.split('T')[0] === dateKey);
+        const actualCount = planDay?.actual_count || 0;
+        
+        // Save note to backend
+        this.apiService.logProgress(this.planId, dateKey, actualCount, note).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    // Update the plan day's notes in local data
+                    if (planDay) {
+                        planDay.notes = note;
+                    }
+                }
+            },
+            error: (err) => {
+                console.error('Error saving note', err);
+                this.notificationService.showError('Failed to save note');
+            }
+        });
+    }
+
+    updateWritingStrategy(strategy: string) {
+        if (!this.planId || !this.plan) return;
+        
+        // Map frontend strategy names to backend values
+        // Based on descriptions:
+        // - "Weekdays Only": Monday-Friday only, weekends are rest days
+        // - "The Usual": All days including weekends
+        // - "Adaptive rest": Flexible scheduling, weekends are rest days
+        const strategyMap: { [key: string]: string } = {
+            'Weekdays Only': 'Weekdays Only',  // Only weekdays (Mon-Fri) get word targets
+            'The Usual': 'The Usual',          // All days (Mon-Sun) get word targets
+            'Adaptive rest': 'None'            // Weekends are rest days (Mon-Fri only)
+        };
+        
+        const backendStrategy = strategyMap[strategy] || strategy;
+        
+        // Helper function to ensure date is in YYYY-MM-DD format
+        const formatDate = (date: any): string => {
+            if (!date) return '';
+            if (typeof date === 'string') {
+                // If it's already a string, ensure it's in YYYY-MM-DD format
+                if (date.includes('T')) {
+                    return date.split('T')[0];
+                }
+                return date;
+            }
+            if (date instanceof Date) {
+                return date.toISOString().split('T')[0];
+            }
+            // If it's an object, try to extract date
+            if (typeof date === 'object' && date !== null) {
+                if ('Year' in date && 'Month' in date && 'Day' in date) {
+                    // MySqlDateTime-like object
+                    const year = (date as any).Year;
+                    const month = String((date as any).Month).padStart(2, '0');
+                    const day = String((date as any).Day).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            return '';
+        };
+        
+        // Update plan with new weekend approach
+        const updateData = {
+            title: this.plan.title || this.plan.plan_name,
+            total_word_count: this.plan.total_word_count || this.plan.target_amount,
+            start_date: formatDate(this.plan.start_date),
+            end_date: formatDate(this.plan.end_date),
+            algorithm_type: this.plan.algorithm_type || 'steady',
+            description: this.plan.description,
+            is_private: this.plan.is_private || false,
+            starting_point: this.plan.starting_point || 0,
+            measurement_unit: this.plan.measurement_unit || 'words',
+            is_daily_target: this.plan.is_daily_target || false,
+            fixed_deadline: this.plan.fixed_deadline !== undefined ? this.plan.fixed_deadline : true,
+            target_finish_date: this.plan.target_finish_date ? formatDate(this.plan.target_finish_date) : null,
+            strategy_intensity: this.plan.strategy_intensity || 'Average',
+            weekend_approach: backendStrategy,
+            reserve_days: this.plan.reserve_days || 0,
+            display_view_type: this.plan.display_view_type || 'Table',
+            week_start_day: this.plan.week_start_day || 'Mondays',
+            grouping_type: this.plan.grouping_type || 'Day',
+            dashboard_color: this.plan.dashboard_color || this.plan.color_code || '#000000',
+            show_historical_data: this.plan.show_historical_data !== undefined ? this.plan.show_historical_data : true,
+            progress_tracking_type: this.plan.progress_tracking_type || 'Daily Goals',
+            activity_type: this.plan.activity_type || 'Writing',
+            content_type: this.plan.content_type || 'Novel',
+            status: (() => {
+                const status = this.plan.db_status || this.plan.status;
+                if (!status) return 'active';
+                if (typeof status === 'string') {
+                    return status.toLowerCase();
+                }
+                // If status is an object or other type, default to active
+                return 'active';
+            })(),
+            current_progress: this.plan.current_progress || this.plan.progress || 0
+        };
+        
+        this.isLoading = true;
+        this.cdr.detectChanges();
+        
+        console.log('Updating plan with data:', updateData);
+        
+        this.apiService.updatePlan(this.planId, updateData).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.notificationService.showSuccess('Writing strategy updated successfully');
+                    // Reload plan details to get updated schedule
+                    this.loadPlanDetails();
+                } else {
+                    console.error('Update failed:', response);
+                    this.notificationService.showError(response.message || 'Failed to update writing strategy');
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (err) => {
+                console.error('Error updating writing strategy', err);
+                console.error('Error details:', err.error);
+                console.error('Request data:', updateData);
+                const errorMsg = err.error?.message || err.message || 'Failed to update writing strategy';
+                this.notificationService.showError(errorMsg);
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    isToday(date: Date): boolean {
+        return date.toISOString().split('T')[0] === this.todayDate;
+    }
+
+    formatDateKey(date: Date): string {
+        return date.toISOString().split('T')[0];
+    }
+
+    onMouseEnterPoint(point: any, chart: 'cumulative' | 'daily') {
+        this.hoveredPoint = point;
+        this.hoveredChart = chart;
+    }
+
+    onMouseLeavePoint() {
+        this.hoveredPoint = null;
+        this.hoveredChart = null;
     }
 }

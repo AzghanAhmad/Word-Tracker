@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
+import { filter } from 'rxjs/operators';
 
 interface ChecklistItem {
     id: number;
@@ -25,10 +26,11 @@ interface Checklist {
     templateUrl: './my-checklists.component.html',
     styleUrls: ['./my-checklists.component.scss']
 })
-export class MyChecklistsComponent implements OnInit {
+export class MyChecklistsComponent implements OnInit, OnDestroy {
     checklists: Checklist[] = [];
     username: string = 'User';
     isLoading = true;
+    private routerSubscription: any;
 
     // Pagination
     currentPage = 1;
@@ -38,12 +40,34 @@ export class MyChecklistsComponent implements OnInit {
 
     constructor(
         private apiService: ApiService,
-        private cdr: ChangeDetectorRef
+        private cdr: ChangeDetectorRef,
+        private router: Router
     ) { }
 
     ngOnInit() {
         this.username = localStorage.getItem('username') || 'User';
+        // Load data immediately
         this.loadChecklists();
+
+        // Reload on navigation back to this page
+        this.routerSubscription = this.router.events.pipe(
+            filter(event => event instanceof NavigationEnd)
+        ).subscribe((event: any) => {
+            if (event.urlAfterRedirects === '/my-checklists' || event.urlAfterRedirects.startsWith('/my-checklists')) {
+                console.log('Reloading checklists data on navigation');
+                // Use setTimeout to ensure component is ready
+                setTimeout(() => {
+                    this.loadChecklists();
+                }, 100);
+            }
+        });
+    }
+
+    ngOnDestroy() {
+        // Clean up subscription
+        if (this.routerSubscription) {
+            this.routerSubscription.unsubscribe();
+        }
     }
 
     loadChecklists() {
@@ -55,6 +79,7 @@ export class MyChecklistsComponent implements OnInit {
                 if (response.success && response.data) {
                     const allChecklists = response.data.map((list: any) => ({
                         ...list,
+                        created_at: this.parseDate(list.created_at), // Parse date properly
                         items: list.items ? list.items.map((item: any) => ({
                             ...item,
                             is_done: item.is_done !== undefined ? item.is_done :
@@ -165,5 +190,46 @@ export class MyChecklistsComponent implements OnInit {
                 }
             });
         }
+    }
+
+    /**
+     * Parse date from various formats (string, object, MySqlDateTime)
+     */
+    private parseDate(dateValue: any): Date | null {
+        if (!dateValue) return null;
+        
+        // Handle JSON string containing MySqlDateTime object
+        if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(dateValue);
+                if (parsed.Year && parsed.Month && parsed.Day) {
+                    return new Date(parsed.Year, parsed.Month - 1, parsed.Day);
+                }
+            } catch (e) {
+                // If JSON parse fails, continue to other formats
+            }
+        }
+        
+        // Handle string dates (YYYY-MM-DD format from backend)
+        if (typeof dateValue === 'string') {
+            const dateStr = dateValue.split('T')[0]; // Remove time if present
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            }
+            // Try standard Date parsing
+            const parsed = new Date(dateValue);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }
+        
+        // Handle MySqlDateTime-like objects (already parsed)
+        if (dateValue && typeof dateValue === 'object') {
+            if (dateValue.Year && dateValue.Month && dateValue.Day) {
+                return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
+            }
+        }
+        
+        // Try standard Date parsing as fallback
+        const parsed = new Date(dateValue);
+        return isNaN(parsed.getTime()) ? null : parsed;
     }
 }

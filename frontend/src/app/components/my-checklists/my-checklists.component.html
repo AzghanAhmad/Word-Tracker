@@ -61,7 +61,7 @@
                 </div>
 
                 <div class="card-footer">
-                    <span class="date">{{ list.created_at | date:'mediumDate' }}</span>
+                    <span class="date" *ngIf="list.created_at">{{ list.created_at | date:'mediumDate' }}</span>
                     <button class="btn-secondary small" [routerLink]="['/create-checklist']"
                         [queryParams]="{edit: list.id}">
                         View / Edit

@@ -143,6 +143,18 @@ export class CalendarGridComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['currentDate'] || changes['targets'] || changes['dailyLogs'] || changes['deadlines'] || changes['plansByDate'] || changes['viewMode'] || changes['timeFilter'] || changes['calendarView']) {
+      // Log when plansByDate changes
+      if (changes['plansByDate']) {
+        const current = changes['plansByDate'].currentValue;
+        if (current) {
+          const keys = Object.keys(current);
+          console.log('Calendar Grid - plansByDate updated:', keys.length, 'dates');
+          if (keys.length > 0) {
+            const sampleKey = keys[0];
+            console.log('Calendar Grid - Sample date plans:', sampleKey, current[sampleKey]?.length || 0, 'plans');
+          }
+        }
+      }
       this.generateGrid();
     }
   }
@@ -218,6 +230,13 @@ export class CalendarGridComponent implements OnChanges {
   createCell(date: Date, dayNumber: number, isCurrentMonth: boolean, today: Date): CalendarCell {
     const isToday = date.getTime() === today.getTime();
     const isSelected = this.selectedDate ? date.getTime() === this.selectedDate.getTime() : false;
+    const plans = this.getPlansForDate(date);
+
+    // Debug log for current month cells with plans
+    if (isCurrentMonth && plans.length > 0) {
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      console.log(`Calendar Grid - Cell ${dayNumber} (${dateStr}): ${plans.length} plans`, plans.map(p => p.title || p.plan_name));
+    }
 
     return {
       date,
@@ -229,7 +248,7 @@ export class CalendarGridComponent implements OnChanges {
       actual: this.getActualForDate(date),
       events: this.getEventsForDate(date),
       isDeadline: this.isDeadlineDate(date),
-      plans: this.getPlansForDate(date)
+      plans: plans
     };
   }
 
@@ -239,11 +258,18 @@ export class CalendarGridComponent implements OnChanges {
       return 0;
     }
 
+    // For daily-total mode, we'll show plans individually, so return 0 for actual
+    // The plans will be shown via getPlansForDate instead
+    if (this.viewMode === 'daily-total') {
+      return 0;
+    }
+
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    return this.dailyLogs[dateStr] || 0;
+    const actual = this.dailyLogs && this.dailyLogs[dateStr] ? this.dailyLogs[dateStr] : 0;
+    return actual;
   }
 
   getPlansForDate(date: Date): any[] {
@@ -257,7 +283,14 @@ export class CalendarGridComponent implements OnChanges {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    return this.plansByDate[dateStr] || [];
+    
+    // Return plans for this date - works for both daily-total and progress-vs-plan modes
+    if (!this.plansByDate || typeof this.plansByDate !== 'object') {
+      return [];
+    }
+    
+    const plans = this.plansByDate[dateStr] || [];
+    return plans;
   }
 
   getTargetForDate(date: Date): number {
@@ -271,6 +304,13 @@ export class CalendarGridComponent implements OnChanges {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
+    
+    // For daily-total mode, we'll show plans individually, so return 0 for target
+    // The plans will be shown via getPlansForDate instead
+    if (this.viewMode === 'daily-total') {
+      return 0;
+    }
+    
     return this.targets[dateStr] || 0;
   }
 

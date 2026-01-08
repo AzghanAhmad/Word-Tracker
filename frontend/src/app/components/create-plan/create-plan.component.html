@@ -20,14 +20,16 @@
 
     <!-- Tabs Navigation -->
     <nav class="plan-tabs">
-        <button [class.active]="viewMode === 'schedule'" (click)="setViewMode('schedule')">Schedule</button>
-        <button [class.active]="viewMode === 'progress'" (click)="setViewMode('progress')">Progress</button>
-        <button [class.active]="viewMode === 'stats'" (click)="setViewMode('stats')">Stats</button>
+        <button type="button" [class.active]="viewMode === 'schedule'"
+            (click)="setViewMode('schedule')">Schedule</button>
+        <button type="button" [class.active]="viewMode === 'progress'"
+            (click)="setViewMode('progress')">Progress</button>
+        <button type="button" [class.active]="viewMode === 'stats'" (click)="setViewMode('stats')">Stats</button>
     </nav>
 
     <div class="plan-content">
         <!-- Sidebar -->
-        <aside class="plan-sidebar">
+        <aside class="plan-sidebar" *ngIf="viewMode !== 'plan'">
             <div class="sidebar-card">
                 <div class="card-header">
                     <span>Plan Info</span>
@@ -40,7 +42,7 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group half">
-                            <label>Target word count :</label>
+                            <label>Target word :</label>
                             <input type="number" [(ngModel)]="targetWordCount" (ngModelChange)="onTargetChange()">
                         </div>
                         <div class="form-group half">
@@ -111,69 +113,97 @@
 
                     <!-- Premium Offer (Hidden by default) -->
                     <div class="premium-prompt mt-3" style="display: none; font-size: 0.85rem; color: #64748b;">
-                        Sign up for <a href="/premium" style="color: #6366f1; font-weight: 500;">Pacemaker Premium</a>
+                        Sign up for <a href="/premium" style="color: #1C2E4A; font-weight: 500;">Pacemaker Premium</a>
                         to use these settings.
                     </div>
                 </div>
             </div>
 
             <!-- Goals Section -->
-            <div class="sidebar-card">
+            <div class="sidebar-card goals-card">
                 <div class="card-header">
-                    <h3>Goals</h3>
+                    <h3>GOALS</h3>
                     <i class="fas fa-arrows-alt-v"></i>
                 </div>
                 <div class="card-body">
                     <div class="form-row">
                         <div class="form-group half">
-                            <label>Starting Point <i class="fas fa-info-circle"></i></label>
-                            <input type="number" [(ngModel)]="startingPoint">
+                            <label>STARTING POINT <i class="fas fa-info-circle text-muted ml-1"
+                                    style="font-size: 0.8rem;"></i></label>
+                            <input type="number" [(ngModel)]="startingPoint" class="white-bg-input">
                         </div>
                         <div class="form-group half">
-                            <label>Target</label>
-                            <input type="number" [(ngModel)]="targetWordCount">
+                            <label>TARGET</label>
+                            <input type="number" [(ngModel)]="targetWordCount" class="white-bg-input">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>How It's Measured</label>
-                        <select [(ngModel)]="measurementUnit">
-                            <option value="words">words</option>
-                            <option value="pages">pages</option>
-                        </select>
+                        <label>HOW IT'S MEASURED</label>
+                        <input type="text" [(ngModel)]="measurementUnit" value="words" class="white-bg-input">
                     </div>
                     <div class="form-group">
-                        <label>Is this an overall goal or a daily target : <i class="fas fa-info-circle"></i></label>
-                        <div class="radio-group">
-                            <label><input type="radio" [value]="false" [(ngModel)]="isDailyTarget"> Overall
-                                Target</label>
-                            <label><input type="radio" [value]="true" [(ngModel)]="isDailyTarget"> Daily</label>
+                        <label style="line-height: 1.4; margin-bottom: 0.5rem; display: block;">
+                            IS THIS AN OVERALL GOAL OR A DAILY TARGET :
+                            <i class="fas fa-info-circle text-muted ml-1"></i>
+                        </label>
+                        <div class="toggle-container">
+                            <div class="toggle-option" [class.active]="!isDailyTarget" (click)="isDailyTarget = false">
+                                OVERALL TARGET
+                            </div>
+                            <div class="toggle-option" [class.active]="isDailyTarget" (click)="isDailyTarget = true">
+                                DAILY
+                            </div>
                         </div>
                     </div>
-                    <div class="date-info">
-                        <span>Your Start Date: {{ formatDate(startDate) || 'Not set' }}</span>
+
+                    <div class="date-display-green">
+                        Your Start Date: {{ startDate | date:'MM/dd/yyyy' }}
                     </div>
-                    <div class="form-group">
-                        <label>Fixed deadline?</label>
-                        <div class="radio-group">
-                            <label><input type="radio" [value]="true" [(ngModel)]="fixedDeadline"
-                                    (change)="onFixedDeadlineChange()"> Yes</label>
-                            <label><input type="radio" [value]="false" [(ngModel)]="fixedDeadline"
-                                    (change)="onFixedDeadlineChange()"> No</label>
+
+                    <div class="form-group mt-3">
+                        <label>FIXED DEADLINE?</label>
+                        <div class="toggle-container">
+                            <div class="toggle-option" [class.active]="fixedDeadline"
+                                (click)="fixedDeadline = true; onFixedDeadlineChange()">
+                                YES
+                            </div>
+                            <div class="toggle-option" [class.active]="!fixedDeadline"
+                                (click)="fixedDeadline = false; onFixedDeadlineChange()">
+                                NO
+                            </div>
                         </div>
                     </div>
+
                     <div class="form-group" *ngIf="fixedDeadline">
-                        <label>Target Finish Date</label>
-                        <input type="date" [(ngModel)]="targetFinishDate" (change)="onTargetFinishDateChange()">
-                    </div>
-                    <div class="date-info" *ngIf="!fixedDeadline && targetFinishDate">
-                        <span>Target Finish Date: {{ formatDate(targetFinishDate) }}</span>
+                        <label>TARGET FINISH DATE</label>
+                        <input type="date" [(ngModel)]="targetFinishDate" (change)="onTargetFinishDateChange()"
+                            class="white-bg-input">
                     </div>
                 </div>
             </div>
-
-
-
-
+            <!-- Progress Section (NEW) -->
+            <div class="sidebar-card progress-card">
+                <div class="card-header">
+                    <h3>PROGRESS</h3>
+                    <i class="fas fa-list-check"></i>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>TRACKING TYPE</label>
+                        <select [(ngModel)]="progressTrackingType" class="white-bg-input">
+                            <option value="Daily Goals">Daily Goals</option>
+                            <option value="Total Goal">Total Goal</option>
+                            <option value="Milestones">Milestones</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-1">
+                        <label>MANUAL PROGRESS (%)</label>
+                        <input type="number" [(ngModel)]="currentProgress" placeholder="23" min="0" max="100"
+                            class="white-bg-input">
+                    </div>
+                    <p class="hint">Enter 1-100 to update.</p>
+                </div>
+            </div>
 
 
             <!-- Strategy (NEW) -->
@@ -217,11 +247,10 @@
                 <div class="card-body">
                     <div class="form-group">
                         <label>Weekend Approach</label>
-                        <select [(ngModel)]="weekendApproach">
+                        <select [(ngModel)]="weekendApproach" (change)="generatePlanData()">
+                            <option value="Weekdays Only">Weekdays Only</option>
                             <option value="The Usual">The Usual</option>
-                            <option value="Lighter">Lighter</option>
-                            <option value="Heavier">Heavier</option>
-                            <option value="None">None (Days Off)</option>
+                            <option value="None">Adaptive rest</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -237,82 +266,482 @@
             <div class="sidebar-card">
                 <div class="card-header">
                     <h3>Display</h3>
-                    <i class="fas fa-desktop"></i>
+                    <i class="fas fa-arrows-alt-v"></i>
                 </div>
                 <div class="card-body">
-                    <div class="form-group">
-                        <label>Theme Color</label>
-                        <div class="color-picker-row">
-                            <input type="color" [(ngModel)]="dashboardColor" class="dashboard-color-input">
-                            <span class="color-value">{{ dashboardColor }}</span>
+                    <div class="form-group mb-4">
+                        <label class="mb-2">View as :</label>
+                        <div class="view-type-toggle-group">
+                            <button type="button" class="view-type-btn" [class.active]="displayViewType === 'Table'"
+                                (click)="displayViewType = 'Table'">
+                                <i class="fas fa-list-ul"></i>
+                                <span>Table</span>
+                            </button>
+                            <button type="button" class="view-type-btn" [class.active]="displayViewType === 'Graph'"
+                                (click)="displayViewType = 'Graph'">
+                                <i class="fas fa-chart-area"></i>
+                                <span>Graph</span>
+                            </button>
+                            <button type="button" class="view-type-btn" [class.active]="displayViewType === 'Calendar'"
+                                (click)="displayViewType = 'Calendar'">
+                                <i class="fas fa-calendar-day"></i>
+                                <span>Calendar</span>
+                            </button>
+                            <button type="button" class="view-type-btn" [class.active]="displayViewType === 'Bar'"
+                                (click)="displayViewType = 'Bar'">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Bar</span>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group half">
-                            <label>Week Starts</label>
-                            <select [(ngModel)]="weekStartDay">
-                                <option value="Mondays">Monday</option>
-                                <option value="Sundays">Sunday</option>
-                            </select>
-                        </div>
-                        <div class="form-group half">
-                            <label>Grouping</label>
-                            <select [(ngModel)]="groupingType">
-                                <option value="Day">Day</option>
-                                <option value="Week">Week</option>
-                                <option value="Month">Month</option>
-                            </select>
+                    <div class="form-group mb-4">
+                        <label class="mb-2">Weeks begin on :</label>
+                        <div class="radio-inline-group">
+                            <label class="radio-item">
+                                <input type="radio" value="Sundays" [(ngModel)]="weekStartDay" name="weekStartDay">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Sundays</span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" value="Mondays" [(ngModel)]="weekStartDay" name="weekStartDay">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Mondays</span>
+                            </label>
                         </div>
                     </div>
 
-                    <hr class="separator-line">
+                    <div class="form-group mb-4">
+                        <label class="mb-2">Group schedule and progress by :</label>
+                        <div class="radio-inline-group flex-wrap">
+                            <label class="radio-item">
+                                <input type="radio" value="Day" [(ngModel)]="groupingType" name="groupingType">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Day</span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" value="Week" [(ngModel)]="groupingType" name="groupingType">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Week</span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" value="Month" [(ngModel)]="groupingType" name="groupingType">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Month</span>
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" value="Year" [(ngModel)]="groupingType" name="groupingType">
+                                <span class="checkmark"></span>
+                                <span class="label-text">Year</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="mb-2">Color on Dashboard Calendar :</label>
+                        <div class="color-picker-modern" (click)="colorInput.click()">
+                            <input type="color" [(ngModel)]="dashboardColor" #colorInput
+                                style="position: absolute; opacity: 0; width: 0; height: 0;">
+                            <div class="color-preview" [style.background-color]="dashboardColor"></div>
+                            <span class="color-hex">{{ dashboardColor }}</span>
+                        </div>
+                    </div>
+
+                    <hr class="separator-line mb-3">
 
                     <div class="form-group">
-                        <label>Privacy</label>
+                        <label class="mb-2">Privacy</label>
                         <div class="privacy-toggle-modern" (click)="togglePlanVisibility()">
                             <div class="toggle-switch" [class.active]="isPrivate">
                                 <div class="slider"></div>
                             </div>
                             <span class="toggle-label">{{ isPrivate ? 'Private Plan' : 'Public Plan' }}</span>
-                            <span class="toggle-sublabel">{{ isPrivate ? 'Visible only to you' : 'Visible to everyone'
-                                }}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Progress -->
+            <!-- Plan Behavior (Moving from Progress) -->
             <div class="sidebar-card">
                 <div class="card-header">
-                    <h3>Progress</h3>
-                    <i class="fas fa-tasks"></i>
+                    <h3>Plan Behavior</h3>
+                    <i class="fas fa-cog"></i>
                 </div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label>Tracking Type</label>
-                        <select [(ngModel)]="progressTrackingType">
-                            <option value="Daily Goals">Daily Goals</option>
-                            <option value="Total Count">Total Count</option>
+                        <label>Adaptation</label>
+                        <select [(ngModel)]="planAdjustment">
+                            <option value="adjust">Auto-Adjust Plan</option>
+                            <option value="fixed">Stay Fixed</option>
                         </select>
+                        <p class="hint mt-1" style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">
+                            {{ planAdjustment === 'adjust' ? 'Future targets change to keep deadline.' : 'Targets stay
+                            constant.' }}
+                        </p>
                     </div>
 
-
                     <div class="form-group">
-                        <label>Manual Progress (%)</label>
-                        <input type="number" [(ngModel)]="currentProgress"
-                            (ngModelChange)="onManualProgressChange($event)" min="0" max="100" placeholder="0 - 100">
-                        <p class="hint mt-1" style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Enter 1-100
-                            to update.</p>
+                        <label>Logging Style</label>
+                        <select [(ngModel)]="recordingType">
+                            <option value="overall">Cumulative (Total Reach)</option>
+                            <option value="daily">Daily Sprints (Session)</option>
+                        </select>
+                        <p class="hint mt-1" style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">
+                            {{ recordingType === 'overall' ? 'Record novel word count reached so far.' : 'Record words
+                            written in each session.' }}
+                        </p>
                     </div>
                 </div>
             </div>
+
 
         </aside>
 
         <!-- Main Content -->
         <main class="plan-main">
-            <!-- Schedule/Stats View -->
+            <!-- Planning Section (NEW REDESIGN) -->
+            <div *ngIf="viewMode === 'plan'" class="planning-view">
+
+                <!-- 📌 Project Information -->
+                <div class="planning-block">
+                    <div class="block-header" (click)="sections.projectInfo = !sections.projectInfo">
+                        <div class="title-group">
+                            <div class="block-icon"><i class="fas fa-info-circle"></i></div>
+                            <h2>Project Information</h2>
+                        </div>
+                        <i class="fas fa-chevron-down toggle-icon" [class.open]="sections.projectInfo"></i>
+                    </div>
+                    <div class="block-content" *ngIf="sections.projectInfo">
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Project Title</label>
+                                <p class="explanation">Give your project a name that inspires you. This will be the
+                                    primary label for your writing goal throughout the app.</p>
+                            </div>
+                            <div class="option-control">
+                                <input type="text" [(ngModel)]="planName" placeholder="e.g. The Great American Novel">
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Project Type</label>
+                                <p class="explanation">What kind of work are you creating? Selecting the right type
+                                    helps us provide better context for your progress.</p>
+                            </div>
+                            <div class="option-control">
+                                <select [(ngModel)]="contentType">
+                                    <option value="Novel">Novel — A long-form fictional work.</option>
+                                    <option value="Novella">Novella — A shorter fictional narrative.</option>
+                                    <option value="Short Story">Short Story — A brief work of fiction.</option>
+                                    <option value="Series">Series — A collection of related works.</option>
+                                    <option value="Non-Fiction">Non-Fiction — Informational or factual writing.</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Project Timeline</label>
+                                <p class="explanation">Define when you plan to start writing and when you aim to be
+                                    finished. This timeframe is the foundation of your entire schedule.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="form-row">
+                                    <div class="half">
+                                        <label class="static-label" style="font-size: 0.75rem; color: #64748b;">START
+                                            DATE</label>
+                                        <input type="date" [(ngModel)]="startDate" (change)="onDateChange()">
+                                    </div>
+                                    <div class="half">
+                                        <label class="static-label" style="font-size: 0.75rem; color: #64748b;">END
+                                            DATE</label>
+                                        <input type="date" [(ngModel)]="endDate" (change)="onTargetFinishDateChange()">
+                                    </div>
+                                </div>
+                                <div class="hint-box">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>Your project spans <strong>{{ totalDays }} days</strong>.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🎯 Goal Definition -->
+                <div class="planning-block">
+                    <div class="block-header" (click)="sections.goalDefinition = !sections.goalDefinition">
+                        <div class="title-group">
+                            <div class="block-icon"><i class="fas fa-bullseye"></i></div>
+                            <h2>Goal Definition</h2>
+                        </div>
+                        <i class="fas fa-chevron-down toggle-icon" [class.open]="sections.goalDefinition"></i>
+                    </div>
+                    <div class="block-content" *ngIf="sections.goalDefinition">
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Total Word Count Goal</label>
+                                <p class="explanation">Set the final destination for your project. This is the total
+                                    number of words you want to write by your deadline.</p>
+                            </div>
+                            <div class="option-control">
+                                <input type="number" [(ngModel)]="targetWordCount" (ngModelChange)="onTargetChange()"
+                                    placeholder="e.g. 50000">
+                                <div class="hint-box" *ngIf="targetWordCount > 0">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span>Based on your timeline, you need to average <strong>{{ dailyAvg | number }}
+                                            words</strong> per day.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Measurement Unit</label>
+                                <p class="explanation">Choose how you want to track your progress. Most authors use
+                                    words, but you can also track by pages if that fits your workflow better.</p>
+                            </div>
+                            <div class="option-control">
+                                <select [(ngModel)]="measurementUnit">
+                                    <option value="words">Words — Track every single word you write.</option>
+                                    <option value="pages">Pages — Track your progress based on completed pages.</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Starting Point</label>
+                                <p class="explanation">Are you starting from scratch, or do you already have some
+                                    progress? Entering a starting count ensures your total remains accurate.</p>
+                            </div>
+                            <div class="option-control">
+                                <input type="number" [(ngModel)]="startingPoint" (ngModelChange)="onTargetChange()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🗓 Writing Schedule Rules -->
+                <div class="planning-block">
+                    <div class="block-header" (click)="sections.scheduleRules = !sections.scheduleRules">
+                        <div class="title-group">
+                            <div class="block-icon"><i class="fas fa-calendar-check"></i></div>
+                            <h2>Writing Schedule Rules</h2>
+                        </div>
+                        <i class="fas fa-chevron-down toggle-icon" [class.open]="sections.scheduleRules"></i>
+                    </div>
+                    <div class="block-content" *ngIf="sections.scheduleRules">
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Weekend Approach</label>
+                                <p class="explanation">Determine how you handle writing on Saturdays and Sundays. You
+                                    can choose to write more, less, or take those days off entirely.</p>
+                            </div>
+                            <div class="option-control">
+                                <select [(ngModel)]="weekendApproach" (change)="generatePlanData()">
+                                    <option value="Weekdays Only">Weekdays Only — Focused sessions on Monday through Friday. Your weekends are preserved for rest and recovery.</option>
+                                    <option value="The Usual">The Usual — Writing every day, including weekends. Best for building a consistent, unwavering daily habit.</option>
+                                    <option value="None">Adaptive rest — Flexible scheduling where targets are adjusted based on your historical pace and energy.</option>
+                                </select>
+                                <div class="hint-box" *ngIf="weekendApproach === 'None' || weekendApproach === 'Weekdays Only'">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>Weekends will show <strong>zero progress</strong> in your charts and schedule.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Pace Algorithm</label>
+                                <p class="explanation">Choose the "shape" of your writing journey. This algorithm
+                                    determines if you write the same amount every day or if your workload changes.</p>
+                            </div>
+                            <div class="option-control">
+                                <select [(ngModel)]="strategyType" (change)="onStrategyChange()">
+                                    <option value="Steady">Steady — Write an equal amount every single day.</option>
+                                    <option value="Back-load">Rising (Back-load) — Start small and increase your pace as
+                                        you approach the deadline.</option>
+                                    <option value="Front-load">Front-load — Start with high intensity and taper off
+                                        towards the end.</option>
+                                    <option value="Mountain">Mountain — Build up to a peak intensity mid-project, then
+                                        gradually slow down.</option>
+                                    <option value="Valley">Valley — Fast start, quiet middle, and a strong finish.
+                                    </option>
+                                    <option value="Oscillating">Oscillating — Alternate between high-intensity and
+                                        low-intensity periods.</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Strategy Intensity</label>
+                                <p class="explanation">How dramatic should the changes in your daily targets be? Higher
+                                    intensity leads to steeper increases or decreases in your daily word goals.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="radio-group-modern">
+                                    <label><input type="radio" value="Low" [(ngModel)]="strategyIntensity"
+                                            (change)="onStrategyChange()"> Low</label>
+                                    <label><input type="radio" value="Average" [(ngModel)]="strategyIntensity"
+                                            (change)="onStrategyChange()"> Average</label>
+                                    <label><input type="radio" value="High" [(ngModel)]="strategyIntensity"
+                                            (change)="onStrategyChange()"> High</label>
+                                    <label><input type="radio" value="Extreme" [(ngModel)]="strategyIntensity"
+                                            (change)="onStrategyChange()"> Extreme</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Reserve Days</label>
+                                <p class="explanation">Life happens. Reserve days act as an emergency buffer. They are
+                                    excluded from your plan to give you 100% "off" days if needed.</p>
+                            </div>
+                            <div class="option-control">
+                                <input type="number" [(ngModel)]="reserveDays" (ngModelChange)="generatePlanData()"
+                                    min="0" max="14">
+                                <div class="hint-box">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>Plan excludes <strong>{{ reserveDays }} days</strong> from your writing
+                                        schedule.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ⚙️ Planning Preferences -->
+                <div class="planning-block">
+                    <div class="block-header" (click)="sections.preferences = !sections.preferences">
+                        <div class="title-group">
+                            <div class="block-icon"><i class="fas fa-sliders-h"></i></div>
+                            <h2>Planning Preferences</h2>
+                        </div>
+                        <i class="fas fa-chevron-down toggle-icon" [class.open]="sections.preferences"></i>
+                    </div>
+                    <div class="block-content" *ngIf="sections.preferences">
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Fixed Deadline</label>
+                                <p class="explanation">A fixed deadline forces the schedule to fit within your dates.
+                                    Use this if you have a strict submission date or goal.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="radio-group-modern">
+                                    <label><input type="radio" [value]="true" [(ngModel)]="fixedDeadline"
+                                            (change)="onFixedDeadlineChange()"> Strict</label>
+                                    <label><input type="radio" [value]="false" [(ngModel)]="fixedDeadline"
+                                            (change)="onFixedDeadlineChange()"> Flexible</label>
+                                </div>
+                                <div class="hint-box">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>{{ fixedDeadline ? 'Your end date will not move even if you fallback.' : 'Your
+                                        deadline will automatically extend if you miss targets.' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Plan Privacy</label>
+                                <p class="explanation">Decide who can see your writing progress. Private plans are only
+                                    visible to you, while public plans can be shared with your community.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="radio-group-modern">
+                                    <label><input type="radio" [value]="true" [(ngModel)]="isPrivate"> Private</label>
+                                    <label><input type="radio" [value]="false" [(ngModel)]="isPrivate"> Public</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Theme Identity</label>
+                                <p class="explanation">Personalize your project's visual identity. This color will be
+                                    used for your charts, milestones, and dashboard cards.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="color-picker-row"
+                                    style="padding: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 12px; display: inline-flex; align-items: center; gap: 1rem;">
+                                    <input type="color" [(ngModel)]="dashboardColor"
+                                        style="width: 50px; height: 50px; border: none; background: none; cursor: pointer;">
+                                    <span style="font-weight: 600; font-family: monospace; color: #64748b;">{{
+                                        dashboardColor }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🔄 Progress & Adjustment -->
+                <div class="planning-block">
+                    <div class="block-header" (click)="sections.progressBehavior = !sections.progressBehavior">
+                        <div class="title-group">
+                            <div class="block-icon"><i class="fas fa-tasks"></i></div>
+                            <h2>Progress & Adjustment</h2>
+                        </div>
+                        <i class="fas fa-chevron-down toggle-icon" [class.open]="sections.progressBehavior"></i>
+                    </div>
+                    <div class="block-content" *ngIf="sections.progressBehavior">
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Adaptation Strategy</label>
+                                <p class="explanation">Decide how the plan recalculates as you write. Auto-adjust will
+                                    keep your finish date steady by changing future targets.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="radio-group-modern">
+                                    <label><input type="radio" value="adjust" [(ngModel)]="planAdjustment"> Auto-Adjust
+                                        Plan</label>
+                                    <label><input type="radio" value="fixed" [(ngModel)]="planAdjustment"> Stay
+                                        Fixed</label>
+                                </div>
+                                <div class="hint-box">
+                                    <i class="fas fa-magic"></i>
+                                    <span>{{ planAdjustment === 'adjust' ? 'Plan will automatically redistribute
+                                        missed/extra words.' : 'Targets remain exactly as originally scheduled.'
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="option-row">
+                            <div class="option-label-group">
+                                <label>Recording Method</label>
+                                <p class="explanation">Choose your preferred logging style. Whether you track your total
+                                    novel's count or just what you wrote in a session.</p>
+                            </div>
+                            <div class="option-control">
+                                <div class="radio-group-modern">
+                                    <label><input type="radio" value="overall" [(ngModel)]="recordingType">
+                                        Cumulative</label>
+                                    <label><input type="radio" value="daily" [(ngModel)]="recordingType"> Daily
+                                        Sprints</label>
+                                </div>
+                                <div class="hint-box">
+                                    <i class="fas fa-save"></i>
+                                    <span>{{ recordingType === 'overall' ? 'Record your total word count reached so
+                                        far.' : 'Record exactly how many words you wrote today.' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Action -->
+                <div style="display: flex; justify-content: center; margin-top: 1rem;">
+                    <button class="btn-save" style="padding: 1.25rem 4rem; font-size: 1.125rem;" (click)="savePlan()"
+                        [disabled]="isLoading">
+                        {{ isEditMode ? 'Update My Plan' : 'Create My Writing Plan' }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Existing Schedule View -->
             <div *ngIf="viewMode === 'schedule'">
                 <div class="schedule-summary">
                     <div class="word-badge">
@@ -385,110 +814,49 @@
                         </div>
                     </div>
 
-                    <!-- Graph View -->
-                    <div *ngSwitchCase="'Graph'" class="view-card graph-view">
-                        <div class="chart-container">
-                            <h3 class="chart-title">Daily Work</h3>
-                            <div class="svg-container">
-                                <svg viewBox="0 0 800 200" preserveAspectRatio="none" class="chart-svg">
-                                    <!-- Grid Lines -->
-                                    <line *ngFor="let line of getGridLines(getMaxDailyTarget())" x1="0"
-                                        [attr.y1]="getYPos(line, getMaxDailyTarget())" x2="800"
-                                        [attr.y2]="getYPos(line, getMaxDailyTarget())" class="grid-line"></line>
+                    <!-- Graph View (Redesigned) -->
+                    <div *ngSwitchCase="'Graph'" class="view-card graph-view"
+                        style="background: transparent; padding: 0; box-shadow: none; border: none;">
 
-                                    <path [attr.d]="getLinePath()" fill="none" class="target-path"></path>
-
-                                    <!-- Data Dots -->
-                                    <circle *ngFor="let pt of getDailyPoints()" [attr.cx]="pt.x" [attr.cy]="pt.y" r="4"
-                                        class="data-dot" (mouseenter)="hoveredDay = pt.day"
-                                        (mouseleave)="hoveredDay = null"></circle>
-                                </svg>
-
-                                <div class="chart-axes">
-                                    <div class="y-axis">
-                                        <span *ngFor="let line of getGridLines(getMaxDailyTarget()).reverse()"
-                                            class="axis-label">{{ line | number:'1.0-1' }}</span>
-                                    </div>
-                                    <div class="x-axis">
-                                        <ng-container *ngFor="let day of planDays; let i = index">
-                                            <span *ngIf="i % (totalDays > 10 ? 3 : 1) === 0" class="axis-label">{{
-                                                day.dateObj
-                                                | date:'yyyy-MM-dd' }}</span>
-                                        </ng-container>
-                                    </div>
-                                </div>
-
-                                <!-- Tooltip Popover -->
-                                <div *ngIf="hoveredDay" class="chart-tooltip"
-                                    [style.left.px]="(planDays.indexOf(hoveredDay) * (800 / (planDays.length - 1 || 1))) - 60"
-                                    [style.bottom.px]="150">
-                                    <div class="tooltip-header">{{ hoveredDay.dateObj | date:'MM/dd/yyyy' }}</div>
-                                    <div class="tooltip-row green">Work you logged on this day: {{
-                                        hoveredDay.actualWorkDone || 0 | number }}</div>
-                                    <div class="tooltip-row blue">Target Quota For This Day: {{
-                                        hoveredDay.workToComplete }}</div>
+                        <!-- Chart 1: Plan Cumulative Growth -->
+                        <div class="chart-card-clean">
+                            <div class="chart-header">
+                                <h3>Plan Cumulative Growth</h3>
+                                <div class="chart-legend">
+                                    <span class="dot" [style.background]="dashboardColor"></span>
+                                    Cumulative Progress
                                 </div>
                             </div>
-                            <div class="legend">
-                                <span class="dot target"></span> Target Daily
+
+                            <!-- Overall Progress Chart -->
+                            <div class="chart-body">
+                                <app-output-stats-chart [data]="scheduledWorkData"
+                                    [color]="selectedColor || dashboardColor">
+                                </app-output-stats-chart>
                             </div>
                         </div>
 
-                        <div class="chart-container mt-8">
-                            <h3 class="chart-title">Overall Progress</h3>
-                            <div class="svg-container">
-                                <svg viewBox="0 0 800 200" preserveAspectRatio="none" class="chart-svg">
-                                    <!-- Grid Lines -->
-                                    <line *ngFor="let line of getGridLines(targetWordCount)" x1="0"
-                                        [attr.y1]="getYPos(line, targetWordCount)" x2="800"
-                                        [attr.y2]="getYPos(line, targetWordCount)" class="grid-line"></line>
-
-                                    <path [attr.d]="getCumulativeTargetPath()" fill="none" class="progress-path"></path>
-
-                                    <!-- Data Dots -->
-                                    <circle *ngFor="let pt of getCumulativePoints()" [attr.cx]="pt.x" [attr.cy]="pt.y"
-                                        r="4" class="data-dot" (mouseenter)="hoveredDay = pt.day"
-                                        (mouseleave)="hoveredDay = null"></circle>
-                                </svg>
-
-                                <div class="chart-axes">
-                                    <div class="y-axis">
-                                        <span *ngFor="let line of getGridLines(targetWordCount).reverse()"
-                                            class="axis-label">{{ line | number:'1.0-1' }}</span>
-                                    </div>
-                                    <div class="x-axis">
-                                        <ng-container *ngFor="let day of planDays; let i = index">
-                                            <span *ngIf="i % (totalDays > 10 ? 3 : 1) === 0" class="axis-label">{{
-                                                day.dateObj
-                                                | date:'yyyy-MM-dd' }}</span>
-                                        </ng-container>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="legend">
-                                <span class="dot progress"></span> Cumulative Progress
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Bar View -->
-                    <div *ngSwitchCase="'Bar'" class="view-card bar-view">
-                        <div class="chart-container">
-                            <h3>Daily Workload</h3>
-                            <div class="bar-chart">
-                                <div *ngFor="let day of planDays" class="bar-wrapper"
-                                    [title]="day.date + ': ' + day.workToComplete + ' words'">
-                                    <div class="bar" [style.height.%]="(day.workToComplete / getMaxDailyTarget()) * 100"
-                                        [style.background]="dashboardColor"></div>
-                                    <span class="bar-label">{{ day.num }}</span>
+                    <div *ngSwitchCase="'Bar'" class="view-card"
+                        style="background: transparent; padding: 0; box-shadow: none; border: none;">
+                        <div class="chart-card-clean">
+                            <div class="chart-header">
+                                <div class="header-left">
+                                    <h3>Daily Quota vs. Actual</h3>
+                                    <p class="chart-subtitle">How your daily performance stacks up against your target
+                                    </p>
+                                </div>
+                                <div class="chart-legend">
+                                    <span class="dot" [style.background]="selectedColor || dashboardColor"></span>
+                                    Planned Target
                                 </div>
                             </div>
-                            <div class="chart-axes">
-                                <div class="y-axis">
-                                    <span>{{ getMaxDailyTarget() | number }}</span>
-                                    <span>{{ (getMaxDailyTarget() / 2) | number }}</span>
-                                    <span>0</span>
-                                </div>
+                            <div class="chart-body">
+                                <app-daily-stats-chart [data]="scheduledWorkData" mode="bar"
+                                    [color]="selectedColor || dashboardColor" [useSlicing]="false">
+                                </app-daily-stats-chart>
                             </div>
                         </div>
                     </div>
@@ -496,27 +864,24 @@
             </div>
 
             <!-- Progress Tab View -->
-            <div *ngIf="viewMode === 'progress'" class="progress-view-content">
-                <div class="progress-overview-banner">
-                    <div class="overview-left">
-                        <div class="badge-row">
-                            <span class="status-pill active">Overall Completion</span>
-                            <span class="status-pill streak" *ngIf="currentStreak > 0">
-                                <i class="fas fa-fire"></i> {{ currentStreak }} Day Streak
-                            </span>
+            <div *ngIf="viewMode === 'progress'" class="progress-view-redesign">
+
+                <!-- 📊 Redesigned Overall Completion Card -->
+                <div class="progress-completion-card">
+                    <div class="card-header-label">OVERALL COMPLETION</div>
+                    <div class="stats-row">
+                        <div class="percentage">{{ currentProgress }}%</div>
+                        <div class="word-counts">
+                            {{ totalWordsLogged | number }} / {{ targetWordCount | number }} words
                         </div>
-                        <div class="big-progress-container">
-                            <div class="progress-info">
-                                <span class="percent-text">{{ currentProgress }}%</span>
-                                <span class="words-text">{{ totalWordsLogged | number }} / {{ targetWordCount | number
-                                    }} words</span>
-                            </div>
-                            <div class="big-progress-bar">
-                                <div class="fill" [style.width.%]="currentProgress"></div>
-                            </div>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" [style.width.%]="currentProgress"></div>
                         </div>
                     </div>
                 </div>
+
                 <div class="progress-list-section mt-6">
                     <div class="section-header">
                         <h3>Daily Updates</h3>
@@ -524,7 +889,7 @@
                     </div>
 
                     <div class="progress-grid" *ngIf="progressEntries.length > 0">
-                        <div class="progress-update-card" *ngFor="let entry of progressEntries">
+                        <div class="progress-update-card" *ngFor="let entry of progressEntries.slice(0, 20)">
                             <div class="card-left">
                                 <div class="entry-date">{{ entry.date | date:'EEE, MMM d' }}</div>
                                 <div class="entry-target" style="font-size: 0.8rem; color: #94a3b8;">Target: {{
@@ -616,8 +981,8 @@
                 <div class="chart-card daily-performance-chart mt-6">
                     <div class="card-header">
                         <div class="title-group">
-                            <h3>Daily Quota vs. Actual</h3>
-                            <p>How your daily performance stacks up against your target</p>
+                            <h3>Goal vs. Actual Progress</h3>
+                            <p>A day-by-day comparison of your writing output against your plan</p>
                         </div>
                     </div>
                     <app-daily-stats-chart [data]="chartData" [useSlicing]="false"></app-daily-stats-chart>
@@ -653,7 +1018,8 @@
                             <span class="dot"></span> Cumulative Progress
                         </div>
                     </div>
-                    <app-output-stats-chart [data]="chartData" [totalTarget]="targetWordCount"></app-output-stats-chart>
+                    <app-output-stats-chart [data]="chartData" [totalTarget]="targetWordCount"
+                        [color]="selectedColor || dashboardColor"></app-output-stats-chart>
                 </div>
             </div>
         </main>

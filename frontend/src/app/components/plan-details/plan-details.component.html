@@ -1,6 +1,7 @@
 <div class="details-container" *ngIf="!isLoading && plan">
+    <!-- Breadcrumb -->
     <div class="breadcrumb">
-        <a routerLink="/dashboard"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        <a routerLink="/dashboard"><i class="fas fa-arrow-left"></i> Projects</a>
         <span>/</span>
         <span class="current">{{ plan.plan_name || plan.title }}</span>
     </div>
@@ -8,421 +9,500 @@
     <!-- Header Section -->
     <div class="details-header">
         <div class="header-info">
-            <div class="status-badge" [ngClass]="{
-                'status-active': plan.status === 'In Progress',
-                'status-completed': plan.status === 'Completed',
-                'status-paused': plan.status === 'On Hold',
-                'status-archived': plan.status === 'Archived'
-            }">{{ plan.status }}</div>
+            <div class="header-status-row">
+                <div class="status-badge" [ngClass]="{
+                    'status-active': plan.status === 'In Progress' || plan.status === 'active',
+                    'status-completed': plan.status === 'Completed',
+                    'status-paused': plan.status === 'On Hold',
+                    'status-archived': plan.status === 'Archived' || plan.status === 'archived'
+                }">{{ plan.status }}</div>
+
+                <div class="ahead-behind-pill" *ngIf="extendedStats"
+                    [style.background-color]="extendedStats.statusColor + '15'"
+                    [style.color]="extendedStats.statusColor">
+                    <i class="fas" [class.fa-check-circle]="extendedStats.statusLabel === 'On Track'"
+                        [class.fa-exclamation-circle]="extendedStats.statusLabel !== 'On Track'"></i>
+                    {{ extendedStats.statusLabel }}
+                </div>
+            </div>
             <h1>{{ plan.plan_name || plan.title }}</h1>
             <div class="meta-row">
                 <span><i class="fas fa-book"></i> {{ plan.content_type || 'Novel' }}</span>
-                <span><i class="fas fa-calendar-alt"></i> {{ getFormattedDate(plan.start_date) }} - {{
+                <span><i class="fas fa-calendar-alt"></i> {{ getFormattedDate(plan.start_date) }} — {{
                     getFormattedDate(plan.end_date) }}</span>
             </div>
         </div>
-        <div class="header-actions">
-            <a [routerLink]="['/calendar']" [queryParams]="{planId: plan.id}" class="btn-calendar">
-                <i class="fas fa-calendar"></i> View Calendar
-            </a>
-            <button (click)="navigateToEdit()" class="btn-calendar"
-                style="background-color: #6366f1; color: white; border: none; cursor: pointer;">
-                <i class="fas fa-edit"></i> Edit / Track
+
+        <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+            <button (click)="navigateToEdit()" class="btn-config">
+                <i class="fas fa-cog"></i> Project Configuration
             </button>
-            <button class="btn-delete" (click)="deletePlan()" title="Delete Plan">
-                <i class="fas fa-trash"></i>
+            <button (click)="archivePlan()" class="btn-archive" 
+                [style.background-color]="plan.status?.toLowerCase() === 'archived' ? 'var(--primary-accent)' : '#6b7280'">
+                <i class="fas" [class.fa-box-open]="plan.status?.toLowerCase() === 'archived'" [class.fa-archive]="plan.status?.toLowerCase() !== 'archived'"></i>
+                {{ plan.status?.toLowerCase() === 'archived' ? 'Restore' : 'Archive' }}
             </button>
-            <button class="btn-archive" (click)="toggleArchive()"
-                [title]="(plan.status === 'Archived' || plan.status === 'archived') ? 'Restore Plan' : 'Archive Plan'">
-                <i class="fas"
-                    [ngClass]="(plan.status === 'Archived' || plan.status === 'archived') ? 'fa-undo' : 'fa-archive'"></i>
+            <button (click)="deletePlan()" class="btn-delete">
+                <i class="fas fa-trash"></i> Delete
             </button>
         </div>
     </div>
 
-    <div class="content-grid">
-        <!-- Main Progress Column -->
-        <div class="main-column">
-            <!-- Description Card -->
-            <div class="card description-card" *ngIf="hasDescription">
-                <h2><i class="fas fa-align-left"></i> Plan Description</h2>
-                <div class="description-content">
-                    <div [innerHTML]="plan.description"></div>
+    <!-- Global Navigation Tabs -->
+    <div class="tab-navigation">
+        <div class="tab-item" [class.active]="activeTab === 'plan'" (click)="activeTab = 'plan'"><i
+                class="fas fa-cog"></i> Plan</div>
+        <div class="tab-item" [class.active]="activeTab === 'schedule'" (click)="activeTab = 'schedule'"><i
+                class="fas fa-calendar-alt"></i> Schedule</div>
+        <div class="tab-item" [class.active]="activeTab === 'progress'" (click)="activeTab = 'progress'"><i
+                class="fas fa-pen-nib"></i> Progress</div>
+        <div class="tab-item" [class.active]="activeTab === 'stats'" (click)="activeTab = 'stats'"><i
+                class="fas fa-chart-bar"></i> Analytics</div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" [ngSwitch]="activeTab">
+
+        <!-- Page 1: PLAN -->
+        <div class="plan-tab" *ngSwitchCase="'plan'">
+            <div class="project-section">
+                <h3><i class="fas fa-info-circle"></i> Project Overview</h3>
+                <div class="info-grid">
+                    <div class="info-block">
+                        <label>Title</label>
+                        <div class="value">{{ plan.plan_name || plan.title }}</div>
+                    </div>
+                    <div class="info-block">
+                        <label>Timeline</label>
+                        <div class="value">{{ getFormattedDate(plan.start_date) }} to {{ getFormattedDate(plan.end_date)
+                            }}</div>
+                        <div class="explanation">This project spans from your chosen starting point to your final
+                            deadline.</div>
+                    </div>
+                </div>
+
+                <div class="info-block" style="margin-top: 2rem;">
+                    <label>Description</label>
+                    <div class="description-text" [innerHTML]="plan.description || 'No description provided.'"></div>
                 </div>
             </div>
 
-            <!-- Goals Card -->
-            <div class="card goals-card">
-                <h2><i class="fas fa-bullseye"></i> Goals</h2>
-                <div class="goals-grid">
-                    <div class="goal-item">
-                        <span class="label">Goal Type</span>
-                        <span class="value">{{ plan.is_daily_target ? 'Daily Target' : 'Overall Target' }}</span>
+            <div class="project-section">
+                <h3><i class="fas fa-bullseye"></i> Goal Configuration</h3>
+                <div class="info-grid">
+                    <div class="info-block">
+                        <label>Total Word Goal</label>
+                        <div class="value">{{ plan.target_amount | number }} words</div>
+                        <div class="explanation">This is the total volume of writing you aim to complete by the
+                            deadline.</div>
                     </div>
-                    <div class="goal-item">
-                        <span class="label">Target Word Count</span>
-                        <span class="value">{{ plan.target_amount | number }} words</span>
+                    <div class="info-block">
+                        <label>Daily Target</label>
+                        <div class="value">{{ stats.wordsPerDay | number }} words / day</div>
+                        <div class="explanation">To stay on track, we have calculated that you need to write this much
+                            every active day.</div>
                     </div>
-                    <div class="goal-item">
-                        <span class="label">Daily Target</span>
-                        <span class="value">{{ stats.wordsPerDay | number }} words/day</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Start Date</span>
-                        <span class="value">{{ getFormattedDate(plan.start_date) }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Fixed Deadline</span>
-                        <span class="value">{{ plan.fixed_deadline ? 'Yes' : 'No' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Target Finish Date</span>
-                        <span class="value">{{ plan.fixed_deadline ? getFormattedDate(plan.end_date) : 'Adaptive
-                            Scheduling'
-                            }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Content Type</span>
-                        <span class="value">{{ plan.content_type || 'General' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Tracking Type</span>
-                        <span class="value">{{ plan.progress_tracking_type || 'Daily Goals' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Show Historical Data</span>
-                        <span class="value">{{ plan.show_historical_data ? 'Yes' : 'No' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Current Progress</span>
-                        <span class="value">{{ plan.current_progress || 0 }}%</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Theme Color</span>
-                        <div class="value color-swatch"
-                            [style.background-color]="plan.dashboard_color || plan.color_code || '#000000'"
-                            style="width: 20px; height: 20px; border-radius: 50%; display: inline-block; vertical-align: middle; border: 1px solid #ddd;">
+                </div>
+            </div>
+
+            <div class="project-section">
+                <h3><i class="fas fa-calendar-check"></i> Writing Strategy</h3>
+                <div class="info-block">
+                    <label>Writing Days Selector</label>
+                    <div class="selector-grid">
+                        <div class="selector-option" 
+                            [class.active]="plan.weekend_approach === 'Weekdays Only'"
+                            style="cursor: default; opacity: 0.9;">
+                            <h4>Weekdays Only</h4>
+                            <p>Focused sessions on Monday through Friday. Your weekends are preserved for rest and
+                                recovery.</p>
+                        </div>
+                        <div class="selector-option"
+                            [class.active]="plan.weekend_approach === 'Custom days' || plan.weekend_approach === 'The Usual'"
+                            style="cursor: default; opacity: 0.9;">
+                            <h4>The Usual</h4>
+                            <p>Writing every day, including weekends. Best for building a consistent, unwavering daily
+                                habit.</p>
+                        </div>
+                        <div class="selector-option"
+                            [class.active]="plan.weekend_approach === 'None' || plan.weekend_approach === 'Rest Days'"
+                            style="cursor: default; opacity: 0.9;">
+                            <h4>Adaptive rest</h4>
+                            <p>Flexible scheduling where targets are adjusted based on your historical pace and energy.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Configuration Card (New) -->
-            <div class="card config-card">
-                <h2><i class="fas fa-sliders-h"></i> Configuration</h2>
-                <div class="goals-grid">
-                    <div class="goal-item">
-                        <span class="label">Strategy</span>
-                        <span class="value" style="text-transform: capitalize;">{{ plan.algorithm_type || 'Steady'
-                            }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Intensity</span>
-                        <span class="value">{{ plan.strategy_intensity || 'Average' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Weekend Approach</span>
-                        <span class="value">{{ plan.weekend_approach || 'The Usual' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Reserve Days</span>
-                        <span class="value">{{ plan.reserve_days || 0 }} days</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Week Starts</span>
-                        <span class="value">{{ plan.week_start_day || 'Mondays' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Grouping</span>
-                        <span class="value">{{ plan.grouping_type || 'Day' }}</span>
-                    </div>
-                    <div class="goal-item">
-                        <span class="label">Visibility</span>
-                        <span class="value">{{ plan.is_private ? 'Private' : 'Public' }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Progress Card -->
-            <div class="card progress-card">
-                <h2><i class="fas fa-chart-pie"></i> Progress</h2>
-                <div class="progress-circle-container">
-                    <svg class="progress-ring" width="160" height="160">
-                        <circle class="progress-ring__circle-bg" stroke="#f1f5f9" stroke-width="12" fill="transparent"
-                            r="70" cx="80" cy="80" />
-                        <circle class="progress-ring__circle" [attr.stroke-dasharray]="440"
-                            [attr.stroke-dashoffset]="440 - (440 * plan.progress) / 100"
-                            [style.stroke]="plan.color_code || '#667eea'" stroke-width="12" fill="transparent" r="70"
-                            cx="80" cy="80" />
-                    </svg>
-                    <div class="progress-text">
-                        <span class="percent">{{ plan.progress }}%</span>
-                        <span class="label">Complete</span>
-                    </div>
-                </div>
-
-                <div class="progress-stats">
-                    <div class="stat-item">
-                        <span class="value">{{ plan.completed_amount | number }}</span>
-                        <span class="label">Words Written</span>
-                    </div>
-                    <div class="divider"></div>
-                    <div class="stat-item">
-                        <span class="value">{{ plan.target_amount | number }}</span>
-                        <span class="label">Target Goal</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Visualization Card -->
-            <div class="card visualization-card">
-                <div class="card-header-with-action">
-                    <h2><i class="fas fa-chart-line"></i> Plan Trajectory</h2>
-                    <div class="view-toggles">
-                        <button [class.active]="activeView === 'Graph'" (click)="activeView = 'Graph'"><i
-                                class="fas fa-chart-area"></i> Graph</button>
-                        <button [class.active]="activeView === 'Table'" (click)="activeView = 'Table'"><i
-                                class="fas fa-table"></i> Table</button>
-                    </div>
-                </div>
-
-                <!-- Graph View -->
-                <div class="chart-container" *ngIf="activeView === 'Graph'">
-                    <div class="chart-wrapper">
-                        <svg viewBox="0 0 800 300" preserveAspectRatio="none" class="main-chart"
-                            (mouseleave)="hoveredPoint = null">
-                            <!-- Background Grid -->
-                            <line x1="0" y1="75" x2="800" y2="75" stroke="#f1f5f9" stroke-width="1"></line>
-                            <line x1="0" y1="150" x2="800" y2="150" stroke="#f1f5f9" stroke-width="1"></line>
-                            <line x1="0" y1="225" x2="800" y2="225" stroke="#f1f5f9" stroke-width="1"></line>
-
-                            <!-- Target Path (Dotted) -->
-                            <path [attr.d]="chartData.target" fill="none" stroke="#cbd5e1" stroke-width="2"
-                                stroke-dasharray="8,4"></path>
-
-                            <!-- Actual Path (Solid Color) -->
-                            <path [attr.d]="chartData.actual" fill="none"
-                                [attr.stroke]="plan.dashboard_color || '#6366f1'" stroke-width="3"
-                                stroke-linecap="round" stroke-linejoin="round"></path>
-
-                            <!-- Interaction Layer -->
-                            <g *ngFor="let point of chartPoints" (mouseenter)="hoveredPoint = point"
-                                style="cursor: pointer;">
-                                <!-- Invisible Hit Area -->
-                                <rect [attr.x]="point.x - 20" y="0" width="40" height="300" fill="transparent"></rect>
-
-                                <!-- Active State Elements -->
-                                <g *ngIf="hoveredPoint === point">
-                                    <!-- Vertical Guide Line -->
-                                    <line [attr.x1]="point.x" y1="0" [attr.x2]="point.x" y2="300" stroke="#94a3b8"
-                                        stroke-width="1" stroke-dasharray="4,4"></line>
-
-                                    <!-- Target Point -->
-                                    <circle [attr.cx]="point.x" [attr.cy]="point.yTarget" r="6" fill="#cbd5e1"
-                                        stroke="white" stroke-width="2"></circle>
-
-                                    <!-- Actual Point -->
-                                    <circle [attr.cx]="point.x" [attr.cy]="point.yActual" r="6"
-                                        [attr.fill]="plan.dashboard_color || '#6366f1'" stroke="white" stroke-width="2">
-                                    </circle>
-                                </g>
-                            </g>
-                        </svg>
-
-                        <!-- Tooltip Overlay -->
-                        <div class="chart-tooltip" *ngIf="hoveredPoint" [style.left.%]="(hoveredPoint.x / 800) * 100"
-                            [style.top.%]="(hoveredPoint.yActual / 300) * 100"
-                            [class.tooltip-left]="hoveredPoint.x < 150" [class.tooltip-right]="hoveredPoint.x > 650">
-                            <div class="tooltip-date">{{ hoveredPoint.data.date | date:'mediumDate' }}</div>
-                            <div class="tooltip-row">
-                                <span class="dot actual"
-                                    [style.background-color]="plan.dashboard_color || '#6366f1'"></span>
-                                <div>
-                                    <div class="label">Actual</div>
-                                    <div class="value">{{ hoveredPoint.data.cumActual | number }}</div>
-                                </div>
-                            </div>
-                            <div class="tooltip-row">
-                                <span class="dot target"></span>
-                                <div>
-                                    <div class="label">Target</div>
-                                    <div class="value">{{ hoveredPoint.data.cumTarget | number }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chart-legend">
-                        <span class="legend-item"><span class="dot target"></span> Target Path</span>
-                        <span class="legend-item"><span class="dot actual"
-                                [style.background-color]="plan.dashboard_color || '#6366f1'"></span> Actual
-                            Progress</span>
-                    </div>
-                </div>
-
-                <!-- Table View -->
-                <div class="table-container" *ngIf="activeView === 'Table'">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Target</th>
-                                <th>Actual</th>
-                                <th>Diff</th>
-                                <th>Cum. Actual</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr *ngFor="let point of chartPoints.slice().reverse()">
-                                <td>{{ point.data.date | date:'MMM d' }}</td>
-                                <td>{{ point.data.dayTarget | number }}</td>
-                                <td>{{ point.data.dayActual | number }}</td>
-                                <td [class.text-green]="(point.data.dayActual - point.data.dayTarget) >= 0"
-                                    [class.text-red]="(point.data.dayActual - point.data.dayTarget) < 0">
-                                    {{ (point.data.dayActual - point.data.dayTarget) > 0 ? '+' : ''}}{{
-                                    (point.data.dayActual - point.data.dayTarget) | number }}
-                                </td>
-                                <td>{{ point.data.cumActual | number }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Recent Activity -->
-            <div class="card activity-card">
-                <div class="card-header-with-action">
-                    <div>
-                        <h2><i class="fas fa-history"></i> Recent Sessions</h2>
-                        <p class="section-description">Last 10 work days with progress</p>
-                    </div>
-                    <button class="btn-add-session" (click)="showAddSessionForm = !showAddSessionForm"
-                        [class.active]="showAddSessionForm" title="Add new session">
-                        <i class="fas" [class.fa-plus]="!showAddSessionForm" [class.fa-times]="showAddSessionForm"></i>
-                        <span>{{ showAddSessionForm ? 'Cancel' : 'Add Session' }}</span>
+        <!-- Page 2: SCHEDULE (Visualized Plan Only) -->
+        <div class="schedule-tab" *ngSwitchCase="'schedule'">
+            <div class="view-toggle-row" style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                <div class="toggle-group"
+                    style="background: #f1f5f9; padding: 4px; border-radius: 0.75rem; display: flex; gap: 4px;">
+                    <button [style.background]="scheduleViewMode === 'calendar' ? 'white' : 'transparent'"
+                        [style.box-shadow]="scheduleViewMode === 'calendar' ? 'var(--shadow-sm)' : 'none'"
+                        style="border: none; padding: 0.5rem 1.25rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;"
+                        (click)="scheduleViewMode = 'calendar'">
+                        <i class="fas fa-calendar-alt"></i> Calendar
+                    </button>
+                    <button [style.background]="scheduleViewMode === 'chart' ? 'white' : 'transparent'"
+                        [style.box-shadow]="scheduleViewMode === 'chart' ? 'var(--shadow-sm)' : 'none'"
+                        style="border: none; padding: 0.5rem 1.25rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;"
+                        (click)="scheduleViewMode = 'chart'">
+                        <i class="fas fa-chart-line"></i> Chart Path
                     </button>
                 </div>
+            </div>
 
-                <!-- Add New Session Form -->
-                <div class="add-session-form" *ngIf="showAddSessionForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Date</label>
-                            <input type="date" [(ngModel)]="newSessionDate" [max]="todayDate" class="form-input">
+            <!-- Calendar View -->
+            <div class="calendar-container" *ngIf="scheduleViewMode === 'calendar'">
+                <div class="calendar-header">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fas fa-magic" style="color: var(--primary-accent);"></i>
+                        <h3 style="margin:0;">{{ currentCalendarDate | date:'MMMM yyyy' }}</h3>
+                    </div>
+                    <div class="calendar-nav">
+                        <button (click)="changeCalendarMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <button (click)="changeCalendarMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="calendar-grid">
+                    <div class="day-label">Sun</div>
+                    <div class="day-label">Mon</div>
+                    <div class="day-label">Tue</div>
+                    <div class="day-label">Wed</div>
+                    <div class="day-label">Thu</div>
+                    <div class="day-label">Fri</div>
+                    <div class="day-label">Sat</div>
+
+                    <div *ngFor="let day of calendarDays" class="calendar-day" [class.outside]="day.month !== 'current'"
+                        [class.writing-day]="day.isWritingDay"
+                        [class.day-off]="!day.isWritingDay && day.month === 'current'" [class.today]="day.isToday">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <span class="day-number">{{ day.day }}</span>
+                            <span *ngIf="day.isToday"
+                                style="font-size: 0.65rem; background: var(--primary-accent); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase;">Now</span>
                         </div>
-                        <div class="form-group">
-                            <label>Words</label>
-                            <input type="number" [(ngModel)]="newSessionWords" min="0" placeholder="0"
-                                class="form-input">
+
+                        <div class="day-content" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div *ngIf="day.isWritingDay" style="display: flex; flex-direction: column; gap: 0.25rem; opacity: 0.9;">
+                                <div style="display: flex; flex-direction: column;">
+                                    <span
+                                        style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Goal</span>
+                                    <span style="font-weight: 700; color: var(--primary-accent);">{{ day.target | number }}
+                                        wd</span>
+                                </div>
+                                <div *ngIf="day.actual > 0" style="display: flex; flex-direction: column; margin-top: 0.25rem;">
+                                    <span
+                                        style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Actual</span>
+                                    <span style="font-weight: 700; color: #10b981;">{{ day.actual | number }}
+                                        wd</span>
+                                </div>
+                            </div>
+                            <div *ngIf="!day.isWritingDay && day.month === 'current'"
+                                style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 500;">
+                                <i class="fas fa-mug-hot"></i>
+                                <span>Rest day</span>
+                            </div>
+                            <div *ngIf="!day.isWritingDay && day.month === 'current' && day.actual > 0" 
+                                style="display: flex; flex-direction: column; margin-top: 0.25rem;">
+                                <span
+                                    style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Actual</span>
+                                <span style="font-weight: 700; color: #10b981;">{{ day.actual | number }} wd</span>
+                            </div>
+
+                            <!-- Annotation Input (Pure Annotation) -->
+                            <div *ngIf="day.month === 'current'"
+                                style="margin-top: auto; padding-top: 0.5rem; border-top: 1px dashed rgba(0,0,0,0.05);">
+                                <input type="text" [ngModel]="planNotes[day.dateKey]"
+                                    (ngModelChange)="savePlanNote(day.dateKey, $event)" placeholder="Add note..."
+                                    style="width: 100%; border: none; background: transparent; font-size: 0.75rem; color: var(--text-secondary); outline: none; padding: 2px 0;">
+                            </div>
                         </div>
                     </div>
-                    <div class="form-actions">
-                        <button class="btn-primary" (click)="addNewSession()"
-                            [disabled]="!newSessionDate || !newSessionWords || newSessionWords <= 0">
-                            <i class="fas fa-save"></i> Save Session
-                        </button>
-                        <button class="btn-secondary" (click)="showAddSessionForm = false">
-                            Cancel
+                </div>
+            </div>
+
+            <!-- Chart View -->
+            <div class="schedule-chart-container" *ngIf="scheduleViewMode === 'chart'"
+                style="animation: fadeIn 0.3s ease-out;">
+                <div class="stat-card">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <div>
+                            <h3 style="margin: 0 0 0.25rem 0;">Progress Chart</h3>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.875rem;">A visual map of your
+                                progress towards {{ plan.target_amount | number }} words.</p>
+                        </div>
+                        <div class="chart-legend">
+                            <div class="legend-item goal"><span></span> Planned Goal</div>
+                        </div>
+                    </div>
+                    <div class="chart-container-inner" style="height: 350px;">
+                        <app-output-stats-chart [data]="cumulativeChartData" [totalTarget]="plan.target_amount"
+                            [color]="'var(--primary-accent)'" [showActualProgress]="false">
+                        </app-output-stats-chart>
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; margin-top: 1rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 500;">
+                        <span>START: {{ plan.start_date | date:'MMM d, yyyy' }}</span>
+                        <span>FINISH: {{ plan.end_date | date:'MMM d, yyyy' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                style="margin-top: 3rem; background: #f8fafc; padding: 2rem; border-radius: 1rem; display: flex; gap: 1.5rem; align-items: flex-start; border: 1px solid var(--border-color);">
+                <div
+                    style="width: 44px; height: 44px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); color: var(--primary-accent); font-size: 1.25rem;">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 0.5rem 0; color: var(--text-main);">Predictable Visualization</h4>
+                    <p style="margin: 0; font-size: 0.9375rem; color: var(--text-muted); line-height: 1.6;">This
+                        schedule is frozen to match your plan. It helps you visualize exactly when you'll be writing
+                        and
+                        when you've earned your rest. To record actual progress, please use the
+                        <strong>Progress</strong> tab.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Page 3: PROGRESS -->
+        <div class="progress-tab" *ngSwitchCase="'progress'">
+            <div class="progress-main-grid">
+                <!-- Main Log Card -->
+                <div class="entry-card">
+                    <div class="card-header">
+                        <h2>Record Writing Progress</h2>
+                        <p>How many words did you add to your project?</p>
+                    </div>
+
+                    <div class="input-focus-group">
+                        <div class="word-input-container">
+                            <input type="number" [(ngModel)]="newSessionWords" placeholder="0" min="0">
+                            <span class="unit">Words</span>
+                        </div>
+
+                        <div class="date-selector-row">
+                            <div class="date-chip" [class.active]="newSessionDate === todayDate"
+                                (click)="newSessionDate = todayDate">
+                                Today
+                            </div>
+                            <input type="date" [(ngModel)]="newSessionDate" [max]="todayDate" class="mini-date-picker" title="Select any date to log progress">
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary-large" (click)="addNewSession()"
+                            [disabled]="newSessionWords === null || newSessionWords === undefined">
+                            <i class="fas" [class.fa-save]="!saveSuccess" [class.fa-check]="saveSuccess"></i>
+                            {{ saveSuccess ? 'Progress Saved!' : 'Save Progress' }}
                         </button>
                     </div>
                 </div>
 
-                <div class="log-list" *ngIf="activityLogs.length > 0">
-                    <div class="log-item" *ngFor="let log of activityLogs"
-                        [class.editing]="editingSessionId === log.id">
-                        <div class="log-icon">
-                            <i class="fas fa-pen-fancy"></i>
+                <!-- History Section -->
+                <div class="history-sidebar">
+                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                    <div class="history-list">
+                        <div *ngIf="activityLogs.length === 0" class="empty-state">
+                            <p>No writing sessions recorded yet. Start your habit today!</p>
                         </div>
-                        <div class="log-info">
-                            <div class="log-date">{{ log.date }}</div>
-                            <div class="log-target-info">
-                                <span class="target-label">Target:</span>
-                                <span class="target-value">{{ log.target | number }} words</span>
+
+                        <div *ngFor="let session of activityLogs.slice(0, 7)" class="history-item">
+                            <div class="session-info">
+                                <span class="session-date">{{ session.dateObj | date:'MMM d' }}</span>
+                                <span class="session-words" *ngIf="editingSessionId !== session.id">{{ session.words | number }} words</span>
+                                <div *ngIf="editingSessionId === session.id" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="number" [(ngModel)]="editingSessionValue" 
+                                        class="words-input" 
+                                        min="0" 
+                                        style="width: 80px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px;"
+                                        (keyup.enter)="saveSession(session)"
+                                        (keyup.escape)="cancelEditingSession()">
+                                    <span style="font-size: 0.875rem; color: var(--text-muted);">words</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="log-words" *ngIf="editingSessionId !== log.id">
-                            <div class="words-info">
-                                <span class="words-display" [class.met-target]="log.words >= log.target"
-                                    [class.below-target]="log.words < log.target && log.target > 0">
-                                    {{ log.words | number }} words
-                                </span>
-                                <span class="progress-badge" *ngIf="log.target > 0"
-                                    [class.met-target]="log.words >= log.target"
-                                    [class.below-target]="log.words < log.target">
-                                    {{ (log.words / log.target * 100) | number:'1.0-0' }}%
-                                </span>
-                            </div>
-                            <div class="log-actions">
-                                <button class="btn-edit-small" (click)="startEditingSession(log)" title="Edit words">
-                                    <i class="fas fa-pencil-alt"></i>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-edit-icon" 
+                                    *ngIf="editingSessionId !== session.id"
+                                    (click)="startEditingSession(session)"
+                                    title="Edit this session">
+                                    <i class="fas fa-pen"></i>
                                 </button>
-                                <button class="btn-delete-small" (click)="deleteSession(log)" title="Delete session">
+                                <button class="btn-edit-icon" 
+                                    *ngIf="editingSessionId === session.id"
+                                    (click)="saveSession(session)"
+                                    title="Save changes"
+                                    style="color: #10b981;">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn-edit-icon" 
+                                    *ngIf="editingSessionId === session.id"
+                                    (click)="cancelEditingSession()"
+                                    title="Cancel editing"
+                                    style="color: #ef4444;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button class="btn-edit-icon" 
+                                    *ngIf="editingSessionId !== session.id"
+                                    (click)="deleteSession(session)"
+                                    title="Delete this session"
+                                    style="color: #ef4444;">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="log-words-edit" *ngIf="editingSessionId === log.id">
-                            <input type="number" [(ngModel)]="editingSessionValue" min="0" class="words-input"
-                                placeholder="Words" (keyup.enter)="saveSession(log)"
-                                (keyup.escape)="cancelEditingSession()" #editInput>
-                            <span class="words-label">words</span>
-                            <div class="edit-actions">
-                                <button class="btn-save-small" (click)="saveSession(log)" title="Save">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button class="btn-cancel-small" (click)="cancelEditingSession()" title="Cancel">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Page 4: STATS (Deep Analytics) -->
+        <div class="stats-tab" *ngSwitchCase="'stats'">
+            <div class="stats-container">
+                <!-- Top Metrics Row -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fas fa-calendar-day"></i></div>
+                        <div class="metric-info">
+                            <span class="label">Days Active</span>
+                            <span class="value">{{ extendedStats.daysSinceStart }}</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fas fa-clock"></i></div>
+                        <div class="metric-info">
+                            <span class="label">Time Remaining</span>
+                            <span class="value">{{ stats.daysRemaining }}d</span>
+                        </div>
+                    </div>
+                    <div class="metric-card status-card">
+                        <div class="metric-icon" [style.color]="extendedStats.statusColor">
+                            <i class="fas" [class.fa-check-circle]="extendedStats.statusLabel.includes('On')"
+                                [class.fa-exclamation-circle]="!extendedStats.statusLabel.includes('On')"></i>
+                        </div>
+                        <div class="metric-info">
+                            <span class="label">Current Status</span>
+                            <span class="value" [style.color]="extendedStats.statusColor">{{ extendedStats.statusLabel
+                                }}</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fas fa-trophy"></i></div>
+                        <div class="metric-info">
+                            <span class="label">Best Session</span>
+                            <span class="value">{{ extendedStats.bestDay | number }}</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="metric-info">
+                            <span class="label">Daily Average</span>
+                            <span class="value">{{ extendedStats.avgWordsPerDay | number }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="empty-state" *ngIf="activityLogs.length === 0 && !isLoading">
-                    <i class="fas fa-inbox"></i>
-                    <p>No work sessions logged yet. Start tracking your progress in the plan!</p>
-                </div>
-            </div>
-        </div>
 
-        <!-- Sidebar Column (Stats & Info) -->
-        <div class="sidebar-column">
-            <div class="card stat-summary-card">
-                <div class="summary-item">
-                    <div class="icon-box" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                        <i class="fas fa-clock"></i>
+                <!-- Main Charts Column -->
+                <div class="charts-column">
+                    <!-- Cumulative Growth Chart -->
+                    <div class="chart-card-clean">
+                        <div class="chart-header">
+                            <div class="header-left">
+                                <h3>Plan Cumulative Growth</h3>
+                                <p class="chart-subtitle">Your journey towards the {{ plan.target_amount | number }}
+                                    word goal</p>
+                            </div>
+                            <div class="chart-legend">
+                                <div class="legend-item goal"><span></span> Planned Goal</div>
+                                <div class="legend-item actual"><span></span> Actual Progress</div>
+                            </div>
+                        </div>
+                        <div class="chart-body">
+                            <app-output-stats-chart [data]="cumulativeChartData" [totalTarget]="plan.target_amount"
+                                [color]="'var(--primary-accent)'" [showActualProgress]="true">
+                            </app-output-stats-chart>
+                        </div>
                     </div>
-                    <div>
-                        <span class="label">Days Remaining</span>
-                        <span class="value">{{ stats.daysRemaining }}</span>
-                    </div>
-                </div>
-                <div class="summary-item">
-                    <div class="icon-box" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
-                        <i class="fas fa-tachometer-alt"></i>
-                    </div>
-                    <div>
-                        <span class="label">Daily Target</span>
-                        <span class="value">{{ stats.wordsPerDay | number }} words</span>
-                    </div>
-                </div>
-                <div class="summary-item">
-                    <div class="icon-box" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                        <i class="fas fa-trophy"></i>
-                    </div>
-                    <div>
-                        <span class="label">Projected Finish</span>
-                        <span class="value">{{ getFormattedDate(plan.end_date) }}</span>
-                    </div>
-                </div>
-            </div>
 
-            <div class="card quote-card">
-                <i class="fas fa-quote-left quote-icon"></i>
-                <p>"The scariest moment is always just before you start."</p>
-                <span class="author">- Stephen King</span>
+                    <!-- Daily Performance Chart -->
+                    <div class="chart-card-clean">
+                        <div class="chart-header">
+                            <div class="header-left">
+                                <h3>Daily Quota vs. Actual</h3>
+                                <p class="chart-subtitle">How your daily performance stacks up against your target</p>
+                            </div>
+                            <div class="chart-legend">
+                                <span class="dot" style="background: var(--primary-accent)"></span>
+                                Planned Target
+                                <span class="dot" style="background: #10b981; margin-left: 1rem;"></span>
+                                Actual Progress
+                            </div>
+                        </div>
+                        <div class="chart-body">
+                            <app-daily-stats-chart [data]="dailyChartData" mode="bar" [color]="'var(--primary-accent)'"
+                                [useSlicing]="false">
+                            </app-daily-stats-chart>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Donut Stats Row -->
+                <div class="donut-row">
+                    <div class="donut-card">
+                        <div class="donut-container">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10"></circle>
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--primary-accent)"
+                                    stroke-width="10"
+                                    [attr.stroke-dasharray]="(extendedStats.completionRate * 2.82) + ', 282'"></circle>
+                            </svg>
+                            <div class="donut-text">{{ extendedStats.completionRate }}%</div>
+                        </div>
+                        <h4>Total Progress</h4>
+                        <p>Completion of your project goal</p>
+                    </div>
+
+                    <div class="donut-card">
+                        <div class="donut-container">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10"></circle>
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" stroke-width="10"
+                                    [attr.stroke-dasharray]="(extendedStats.dailyTargetMet * 2.82) + ', 282'"></circle>
+                            </svg>
+                            <div class="donut-text">{{ extendedStats.dailyTargetMet }}%</div>
+                        </div>
+                        <h4>Target Accuracy</h4>
+                        <p>Consistency in meeting daily goals</p>
+                    </div>
+
+                    <div class="donut-card">
+                        <div class="donut-container">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10"></circle>
+                                <circle cx="50" cy="50" r="45" fill="none" [attr.stroke]="extendedStats.statusColor"
+                                    stroke-width="10" stroke-dasharray="282, 282"></circle>
+                            </svg>
+                            <div class="donut-text">
+                                <i class="fas" [class.fa-check]="extendedStats.statusLabel === 'On Track'"
+                                    [class.fa-exclamation]="extendedStats.statusLabel !== 'On Track'"></i>
+                            </div>
+                        </div>
+                        <h4 [style.color]="extendedStats.statusColor">{{ extendedStats.statusLabel }}</h4>
+                        <p>Current standing vs. mapped path</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-</div>
-
-<app-content-loader *ngIf="isLoading"></app-content-loader>
+    <app-content-loader *ngIf="isLoading"></app-content-loader>

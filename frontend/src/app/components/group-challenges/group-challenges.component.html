@@ -89,7 +89,7 @@
                     </div>
                     <div class="stat">
                         <span class="stat-label">Ends</span>
-                        <span class="stat-value">{{ challenge.end_date | date:'MMM d' }}</span>
+                        <span class="stat-value" *ngIf="challenge.end_date">{{ challenge.end_date | date:'MMM d' }}</span>
                     </div>
                 </div>
 

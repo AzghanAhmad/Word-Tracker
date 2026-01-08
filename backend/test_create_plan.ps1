@@ -49,7 +49,7 @@ $planBody = @{
     display_view_type      = "Calendar"
     week_start_day         = "Monday"
     grouping_type          = "Day"
-    dashboard_color        = "#6366f1"
+    dashboard_color        = "#1C2E4A"
     show_historical_data   = $true
     progress_tracking_type = "Daily Goals"
 } | ConvertTo-Json

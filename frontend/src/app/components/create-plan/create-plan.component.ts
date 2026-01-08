@@ -13,6 +13,7 @@ export interface PlanDay {
     num: number;
     day: string;
     date: string;
+    isoDate: string; // YYYY-MM-DD for reliable date pipe parsing
     dateObj: Date;
     workToComplete: number;
     actualWorkDone: number;
@@ -41,12 +42,13 @@ export interface ProgressUpdate {
     styleUrls: ['./create-plan.component.scss']
 })
 export class CreatePlanComponent implements OnInit, AfterViewInit {
+    protected readonly Math = Math;
     planName: string = '';
     planDescription: string = '';
     targetWordCount: number = 0;
     startDate: string = '';
     endDate: string = '';
-    selectedColor: string = '#6366f1';
+    selectedColor: string = '#1C2E4A';
     contentType: string = 'Novella';
     isPrivate: boolean = false;
 
@@ -76,8 +78,22 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
     progressTrackingType: string = 'Daily Goals';
     status: string = 'active';
     currentProgress: number = 0;
+    planAdjustment: 'adjust' | 'fixed' = 'fixed';
+    recordingType: 'overall' | 'daily' = 'overall';
 
-    viewMode: 'schedule' | 'progress' | 'stats' = 'schedule';
+    viewMode: 'plan' | 'schedule' | 'progress' | 'stats' = 'schedule';
+    manualInputDate: string = new Date().toISOString().split('T')[0];
+    manualWordCount: number | null = null;
+
+    // Collapsible Section States
+    sections = {
+        projectInfo: true,
+        goalDefinition: true,
+        scheduleRules: true,
+        preferences: true,
+        progressBehavior: true
+    };
+
     username: string = 'User';
 
     // Display Views data
@@ -87,6 +103,46 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
     // Progress Tab data
     progressEntries: ProgressUpdate[] = [];
+
+    saveManualProgress() {
+        if (this.manualWordCount === null || this.manualWordCount < 0) {
+            this.notificationService.showError('Please enter a valid word count');
+            return;
+        }
+
+        const dateStr = this.manualInputDate;
+
+        // Find if we already have an entry for this day in planDays
+        const existingDay = this.planDays.find(d => d.date === dateStr);
+        if (existingDay) {
+            existingDay.actualWorkDone = this.manualWordCount;
+        }
+
+        if (this.isEditMode && this.planId) {
+            this.isLoading = true;
+            this.apiService.logProgress(this.planId, dateStr, this.manualWordCount, '').subscribe({
+                next: (res) => {
+                    this.notificationService.showSuccess('Progress recorded successfully');
+                    this.loadPlanProgress(this.planId!); // Reload all progress data
+                    this.manualWordCount = null; // Clear input
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                },
+                error: (err) => {
+                    console.error('Error logging manual progress', err);
+                    this.notificationService.showError('Failed to save progress');
+                    this.isLoading = false;
+                    this.cdr.detectChanges();
+                }
+            });
+        } else {
+            // New plan mode - just record locally for now
+            this.recalculateCumulativeStats();
+            this.notificationService.showSuccess('Progress recorded locally');
+            this.manualWordCount = null;
+            this.cdr.detectChanges();
+        }
+    }
 
     // Stats Tab data
     dailyAvg: number = 0;
@@ -102,10 +158,61 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
     recentActivity: { day: string, count: number, height: number }[] = [];
 
     get chartData(): WordEntry[] {
-        return this.planDays.map(day => ({
-            date: day.date,
-            count: day.actualWorkDone || 0,
-            target: day.workToComplete
+        return this.planDays.map(day => {
+            return {
+                date: day.isoDate,
+                count: day.actualWorkDone || 0,
+                target: day.workToComplete
+            };
+        });
+    }
+
+    get scheduledWorkData(): WordEntry[] {
+        if (!this.planDays || this.planDays.length === 0) return [];
+
+        if (this.groupingType === 'Day') {
+            return this.planDays.map(day => ({
+                date: day.isoDate,
+                count: day.actualWorkDone || 0,
+                target: day.workToComplete
+            }));
+        }
+
+        const grouped: { [key: string]: { count: number, target: number } } = {};
+
+        this.planDays.forEach(day => {
+            let key: string;
+            const date = new Date(day.dateObj);
+
+            if (this.groupingType === 'Week') {
+                // Determine week start based on weekStartDay preference
+                const startDayIndex = this.weekStartDay === 'Sundays' ? 0 : 1;
+                const currentDayIndex = date.getDay();
+                let diff = currentDayIndex - startDayIndex;
+                if (diff < 0) diff += 7;
+
+                const weekStart = new Date(date);
+                weekStart.setDate(date.getDate() - diff);
+                key = weekStart.toISOString().split('T')[0];
+            } else if (this.groupingType === 'Month') {
+                key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+            } else if (this.groupingType === 'Year') {
+                key = `${date.getFullYear()}-01-01`;
+            } else {
+                key = day.isoDate;
+            }
+
+            if (!grouped[key]) {
+                grouped[key] = { count: 0, target: 0 };
+            }
+            grouped[key].count += day.actualWorkDone || 0;
+            grouped[key].target += day.workToComplete || 0;
+        });
+
+        return Object.keys(grouped).sort().map(date => ({
+            date,
+            count: grouped[date].count,
+            target: grouped[date].target
         }));
     }
 
@@ -203,7 +310,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         }
     }
 
-    setViewMode(mode: 'schedule' | 'progress' | 'stats') {
+    setViewMode(mode: 'plan' | 'schedule' | 'progress' | 'stats') {
         this.viewMode = mode;
         this.recalculateCumulativeStats();
         this.cdr.detectChanges();
@@ -223,6 +330,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
     }
 
     initializeNewPlan() {
+        this.viewMode = 'schedule';
         // Default start date to today
         const today = new Date();
         this.startDate = today.toISOString().split('T')[0];
@@ -286,7 +394,12 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                     this.isDailyTarget = plan.is_daily_target || false;
                     this.fixedDeadline = plan.fixed_deadline === undefined ? true : plan.fixed_deadline;
                     this.strategyIntensity = plan.strategy_intensity || 'Average';
-                    this.weekendApproach = plan.weekend_approach || 'The Usual';
+                    // Map backend values to frontend display values
+                    const backendWeekendApproach = plan.weekend_approach || 'The Usual';
+                    // Map "None" to "None" (for Adaptive rest), keep others as is
+                    this.weekendApproach = backendWeekendApproach === 'None' ? 'None' : 
+                                          backendWeekendApproach === 'Weekdays Only' ? 'Weekdays Only' :
+                                          backendWeekendApproach === 'The Usual' ? 'The Usual' : 'The Usual';
                     this.reserveDays = plan.reserve_days || 0;
                     this.displayViewType = plan.display_view_type || 'Table';
                     this.weekStartDay = plan.week_start_day || 'Mondays';
@@ -314,23 +427,23 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
                     console.log(`✅ All plan fields loaded. Generating plan data...`);
 
-                    // Generate plan data first to populate planDays array
-                    // Pass true to preserve the loaded progress value
-                    this.generatePlanData(true);
-
-                    // Restore the saved progress after generatePlanData (which may have overwritten it)
-                    this.currentProgress = savedProgress;
-                    console.log(`📊 Restored progress after generatePlanData: ${this.currentProgress}%`);
-
-                    // Then load progress entries to populate the table
-                    // Use setTimeout to ensure generatePlanData completes first
-                    setTimeout(() => {
-                        // Store the progress value before loading progress entries
-                        const progressToDisplay = this.currentProgress;
-                        console.log(`📊 Storing progress value before loading entries: ${progressToDisplay}%`);
-
-                        this.loadPlanProgress(id, progressToDisplay);
-                    }, 200);
+                    // Load plan days from backend first to check if we have saved target_count values
+                    // This preserves the original algorithm distribution (mountain, front-load, etc.)
+                    this.loadPlanProgress(id, savedProgress).then(() => {
+                        // Check if we have saved plan days with target_count
+                        const hasSavedTargets = this.progressEntries.some(e => e.targetWords && e.targetWords > 0);
+                        
+                        if (hasSavedTargets && this.progressEntries.length > 0) {
+                            // Use saved plan days data instead of recalculating
+                            console.log('📋 Using saved plan days from backend (preserving algorithm distribution)');
+                            this.buildPlanDaysFromSavedData();
+                        } else {
+                            // No saved data, generate plan data (for backward compatibility)
+                            console.log('📋 No saved plan days found, generating from algorithm');
+                            this.generatePlanData(true);
+                            this.currentProgress = savedProgress;
+                        }
+                    });
                 } else {
                     console.error(`❌ Plan not found or invalid response`);
                     this.notificationService.showError('Plan not found');
@@ -352,12 +465,13 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         });
     }
 
-    loadPlanProgress(id: number, progressToDisplay?: number) {
-        console.log(`📊 Loading plan progress for plan ID: ${id}`);
-        const savedProgress = progressToDisplay !== undefined ? progressToDisplay : this.currentProgress;
-        console.log(`📊 Progress value to display: ${savedProgress}%`);
+    loadPlanProgress(id: number, progressToDisplay?: number): Promise<void> {
+        return new Promise((resolve) => {
+            console.log(`📊 Loading plan progress for plan ID: ${id}`);
+            const savedProgress = progressToDisplay !== undefined ? progressToDisplay : this.currentProgress;
+            console.log(`📊 Progress value to display: ${savedProgress}%`);
 
-        this.apiService.getPlanDays(id).subscribe({
+            this.apiService.getPlanDays(id).subscribe({
             next: (response) => {
                 console.log(`✅ Received plan days response:`, response);
                 if (response.success && response.data) {
@@ -376,27 +490,28 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                         }
 
                         return {
-                            id: date.getTime(),
+                            id: d.id || date.getTime(),
                             date: date,
-                            targetWords: d.target_count || 0,
-                            actualWords: d.actual_count || 0,
+                            targetWords: d.target_count ?? d.workToComplete ?? d.work_to_complete ?? 0,
+                            actualWords: d.actual_count ?? d.actualWorkDone ?? d.actual_work_done ?? 0,
                             notes: d.notes || '',
                             isToday: this.isSameDay(date, new Date())
                         };
                     });
-                    
+
                     // Sort progress entries by date (most recent first)
                     this.progressEntries.sort((a, b) => b.date.getTime() - a.date.getTime());
-                    
+
                     console.log(`📝 Loaded ${this.progressEntries.length} progress entries`);
                 } else {
                     this.progressEntries = [];
                     console.log(`ℹ️ No progress entries found`);
                 }
 
-                // If we found entries, update the generated plan days with actual data
-                if (this.progressEntries.length > 0) {
-                    console.log(`🔄 Updating plan days table with ${this.progressEntries.length} entries`);
+                // If we found entries and planDays already exist, update them
+                // Otherwise, buildPlanDaysFromSavedData() will be called from loadPlan()
+                if (this.progressEntries.length > 0 && this.planDays.length > 0) {
+                    console.log(`🔄 Updating existing plan days table with ${this.progressEntries.length} entries`);
 
                     // Clear any pre-distributed/implied data to prevent duplication
                     this.planDays.forEach(d => d.actualWorkDone = 0);
@@ -405,11 +520,17 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                         const day = this.planDays.find(d => this.isSameDay(d.dateObj, entry.date));
                         if (day) {
                             day.actualWorkDone = entry.actualWords;
+
+                            // Use saved target_count if available, otherwise keep calculated value
+                            if (entry.targetWords && entry.targetWords > 0) {
+                                day.workToComplete = entry.targetWords;
+                            }
+
                             try {
                                 const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime())
                                     ? entry.date.toISOString().split('T')[0]
                                     : 'unknown';
-                                console.log(`  ✓ Updated day ${dateStr}: ${entry.actualWords} words`);
+                                console.log(`  ✓ Updated day ${dateStr}: ${entry.actualWords} words (Target: ${entry.targetWords || day.workToComplete})`);
                             } catch (e) {
                                 console.log(`  ✓ Updated day: ${entry.actualWords} words`);
                             }
@@ -423,6 +544,17 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                                 console.log(`  ⚠️ Day not found in planDays`);
                             }
                         }
+                    });
+                    
+                    // Recalculate cumulative values after updating
+                    let cumulativeTarget = 0;
+                    let cumulativeActual = 0;
+                    this.planDays.forEach(day => {
+                        cumulativeTarget += day.workToComplete;
+                        cumulativeActual += day.actualWorkDone || 0;
+                        day.expectedProgress = cumulativeTarget;
+                        day.yourActualProgress = cumulativeActual;
+                        day.workLeft = this.targetWordCount - cumulativeActual;
                     });
                 }
 
@@ -487,13 +619,16 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 // Mark loading as complete and update UI
                 this.isLoading = false;
                 this.cdr.detectChanges();
+                resolve();
             },
             error: (err) => {
                 console.error('❌ Error loading progress', err);
                 this.notificationService.showError('Error loading plan progress');
                 this.isLoading = false;
                 this.cdr.detectChanges();
+                resolve();
             }
+        });
         });
     }
 
@@ -531,52 +666,91 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         this.planDays = [];
         let cumulativeTarget = 0;
 
+        // Calculate writing days count based on weekend approach
+        let writingDaysCount = 0;
         for (let i = 0; i < this.totalDays; i++) {
             const current = new Date(start);
             current.setDate(start.getDate() + i);
+            const isWeekend = current.getDay() === 0 || current.getDay() === 6;
+            
+            // Determine if this day should be a writing day based on strategy
+            let isWritingDay = true;
+            if (this.weekendApproach === 'Weekdays Only' || this.weekendApproach === 'None') {
+                // Exclude weekends for "Weekdays Only" and "None" (Adaptive rest)
+                isWritingDay = !isWeekend;
+            }
+            // For "The Usual", all days are writing days (isWritingDay = true)
+            
+            if (isWritingDay) {
+                writingDaysCount++;
+            }
+        }
+        if (writingDaysCount === 0) writingDaysCount = 1;
+
+        let wordsRemaining = this.targetWordCount;
+        let daysRemaining = writingDaysCount;
+
+        for (let i = 0; i < this.totalDays; i++) {
+            const current = new Date(start);
+            current.setDate(start.getDate() + i);
+            const isWeekend = current.getDay() === 0 || current.getDay() === 6;
+
+            // Determine if this day should be a writing day based on strategy
+            let isWritingDay = true;
+            if (this.weekendApproach === 'Weekdays Only' || this.weekendApproach === 'None') {
+                // Exclude weekends for "Weekdays Only" and "None" (Adaptive rest)
+                isWritingDay = !isWeekend;
+            }
+            // For "The Usual", all days are writing days (isWritingDay = true)
 
             let dailyTarget = 0;
             const t = i / (this.totalDays - 1 || 1);
 
-            switch (this.strategyType) {
-                case 'Front-load':
-                    dailyTarget = (this.targetWordCount / this.totalDays) * (1.5 - t);
-                    break;
-                case 'Back-load':
-                    dailyTarget = (this.targetWordCount / this.totalDays) * (0.5 + t);
-                    break;
-                case 'Mountain':
-                    const factor = 1 - Math.abs(0.5 - t) * 2;
-                    dailyTarget = (this.targetWordCount / this.totalDays) * (0.5 + factor);
-                    break;
-                case 'Valley':
-                    const valleyFactor = Math.abs(0.5 - t) * 2;
-                    dailyTarget = (this.targetWordCount / this.totalDays) * (0.5 + valleyFactor);
-                    break;
-                case 'Oscillating':
-                    const sineFactor = Math.sin(t * Math.PI * 4) * 0.5 + 1;
-                    dailyTarget = (this.targetWordCount / this.totalDays) * sineFactor;
-                    break;
-                case 'Steady':
-                default:
-                    dailyTarget = this.targetWordCount / this.totalDays;
-                    break;
+            if (isWritingDay) {
+                // Determine base target using algorithm
+                switch (this.strategyType) {
+                    case 'Front-load':
+                        dailyTarget = (this.targetWordCount / writingDaysCount) * (1.5 - t);
+                        break;
+                    case 'Back-load':
+                        dailyTarget = (this.targetWordCount / writingDaysCount) * (0.5 + t);
+                        break;
+                    case 'Mountain':
+                        const factor = 1 - Math.abs(0.5 - t) * 2;
+                        dailyTarget = (this.targetWordCount / writingDaysCount) * (0.5 + factor);
+                        break;
+                    case 'Valley':
+                        const valleyFactor = Math.abs(0.5 - t) * 2;
+                        dailyTarget = (this.targetWordCount / writingDaysCount) * (0.5 + valleyFactor);
+                        break;
+                    case 'Oscillating':
+                        const sineFactor = Math.sin(t * Math.PI * 4) * 0.5 + 1;
+                        dailyTarget = (this.targetWordCount / writingDaysCount) * sineFactor;
+                        break;
+                    case 'Steady':
+                    default:
+                        dailyTarget = wordsRemaining / daysRemaining;
+                        break;
+                }
+
+                dailyTarget = Math.round(dailyTarget);
+                // Respect remaining words for distribution to avoid rounding error drift
+                if (this.strategyType === 'Steady' || i === this.totalDays - 1) {
+                    dailyTarget = Math.round(wordsRemaining / daysRemaining);
+                }
+
+                wordsRemaining -= dailyTarget;
+                daysRemaining--;
             }
 
-            dailyTarget = Math.round(dailyTarget);
             cumulativeTarget += dailyTarget;
-
-            if (i === this.totalDays - 1) {
-                const diff = this.targetWordCount - cumulativeTarget;
-                dailyTarget += diff;
-                cumulativeTarget = this.targetWordCount;
-            }
 
             this.planDays.push({
                 num: i + 1,
                 day: current.toLocaleDateString('en-US', { weekday: 'short' }),
                 date: current.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
-                dateObj: current,
+                isoDate: current.toISOString().split('T')[0],
+                dateObj: new Date(current), // Create a new Date object to avoid reference issues
                 workToComplete: dailyTarget,
                 actualWorkDone: 0,
                 expectedProgress: cumulativeTarget,
@@ -608,6 +782,66 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         this.recalculateCumulativeStats(skipProgressUpdate);
         this.calculateStats();
+    }
+
+    /**
+     * Build planDays array from saved backend data (preserves algorithm distribution)
+     */
+    buildPlanDaysFromSavedData() {
+        if (!this.startDate || !this.endDate) {
+            console.warn('Cannot build plan days: missing start or end date');
+            return;
+        }
+
+        const start = new Date(this.startDate);
+        const end = new Date(this.endDate);
+        this.totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        this.planDays = [];
+
+        let cumulativeTarget = 0;
+        let cumulativeActual = 0;
+
+        // Create a map of saved data by date
+        const savedDataMap = new Map<string, { target: number, actual: number }>();
+        this.progressEntries.forEach(entry => {
+            const dateStr = entry.date.toISOString().split('T')[0];
+            savedDataMap.set(dateStr, {
+                target: entry.targetWords || 0,
+                actual: entry.actualWords || 0
+            });
+        });
+
+        // Build plan days for the entire date range
+        for (let i = 0; i < this.totalDays; i++) {
+            const current = new Date(start);
+            current.setDate(start.getDate() + i);
+            
+            const dateStr = current.toISOString().split('T')[0];
+            const savedData = savedDataMap.get(dateStr);
+            
+            const target = savedData?.target || 0;
+            const actual = savedData?.actual || 0;
+            
+            cumulativeTarget += target;
+            cumulativeActual += actual;
+
+            this.planDays.push({
+                num: i + 1,
+                day: current.toLocaleDateString('en-US', { weekday: 'short' }),
+                date: current.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
+                isoDate: dateStr,
+                dateObj: new Date(current),
+                workToComplete: target,
+                actualWorkDone: actual,
+                expectedProgress: cumulativeTarget,
+                yourActualProgress: cumulativeActual,
+                workLeft: this.targetWordCount - cumulativeActual
+            });
+        }
+
+        console.log(`✓ Built ${this.planDays.length} plan days from saved data`);
+        this.calculateStats();
+        this.cdr.detectChanges();
     }
 
     recalculateCumulativeStats(skipProgressUpdate: boolean = false) {
@@ -877,6 +1111,12 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 return;
             }
         }
+
+        // Update endDate to match targetFinishDate if it's set
+        if (this.targetFinishDate) {
+            this.endDate = this.targetFinishDate;
+        }
+        this.generatePlanData();
     }
 
     onFixedDeadlineChange() {
@@ -887,6 +1127,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             // When disabled, clear target finish date
             this.targetFinishDate = '';
         }
+        this.recalculateCumulativeStats();
     }
 
     /**
@@ -1090,19 +1331,24 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
     async saveTableProgressUpdates() {
         if (!this.planId) return;
-        const updates = this.planDays
-            .filter(d => d.actualWorkDone !== undefined && d.actualWorkDone !== null && d.actualWorkDone > 0);
-
-        const promises = updates.map(day => {
+        
+        // Save ALL plan days with their target_count (workToComplete) and actual_count
+        // This ensures the mountain approach and other algorithms are preserved
+        const promises = this.planDays.map(day => {
             return new Promise<void>((resolve) => {
                 const dateStr = day.dateObj.toISOString().split('T')[0];
-                this.apiService.logProgress(this.planId!, dateStr, day.actualWorkDone, '').subscribe({
+                const actualCount = day.actualWorkDone || 0;
+                const targetCount = day.workToComplete || 0;
+                
+                // Save both target_count and actual_count for all days
+                this.apiService.logProgress(this.planId!, dateStr, actualCount, '', targetCount).subscribe({
                     next: () => resolve(),
                     error: () => resolve()
                 });
             });
         });
         await Promise.all(promises);
+        console.log(`✓ Saved ${this.planDays.length} plan days with target_count to backend`);
     }
 
     cancel() {
@@ -1258,6 +1504,19 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             const y = this.getYPos(day.workToComplete, max);
             path += ` L ${x} ${y}`;
         });
+        return path;
+    }
+
+    getDailyAreaPath(): string {
+        if (this.planDays.length === 0) return '';
+        const max = this.getMaxDailyTarget();
+        let path = `M 0 200`; // Start at bottom left
+        this.planDays.forEach((day, i) => {
+            const x = (i / (this.totalDays - 1 || 1)) * 800;
+            const y = this.getYPos(day.workToComplete, max);
+            path += ` L ${x} ${y}`;
+        });
+        path += ` L 800 200 Z`; // Close to bottom right and back to start
         return path;
     }
 

@@ -1,14 +1,15 @@
+:host {
+    display: block;
+}
+
 .chart-wrapper {
     width: 100%;
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 1.5rem;
     box-sizing: border-box;
 }
 
 .chart-container {
     position: relative;
-    height: 350px; // Default height for desktop
+    height: 300px;
     width: 100%;
 
     canvas {
@@ -21,10 +22,6 @@
 @media (max-width: 768px) {
     .chart-container {
         height: 250px;
-    }
-
-    .chart-wrapper {
-        padding: 1rem;
     }
 }
 

@@ -103,18 +103,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }))
       .subscribe({
         next: (response) => {
-          if (response.success && response.data) {
-            console.log('Plans loaded:', response.data);
+          console.log('Full API response:', response);
+          console.log('Response success:', response.success);
+          console.log('Response data type:', typeof response.data);
+          console.log('Response data:', response.data);
+          console.log('Is array?', Array.isArray(response.data));
+          console.log('Response data length:', response.data?.length);
+          
+          if (response.success && response.data && Array.isArray(response.data)) {
+            console.log('Plans loaded (raw):', response.data);
+            console.log('Plans count before filter:', response.data.length);
+            
             // Show all plans except archived ones
-            this.plans = response.data
-              .filter((p: any) => {
-                // Only filter out archived plans - show completed plans too
-                const status = (p.status || '').toLowerCase();
-                return status !== 'archived';
-              })
+            const filteredPlans = response.data.filter((p: any) => {
+              // Only filter out archived plans - show completed plans too
+              const status = (p.status || '').toLowerCase();
+              return status !== 'archived';
+            });
+            
+            console.log('Plans count after filter:', filteredPlans.length);
+            
+            this.plans = filteredPlans
               .map((p: any) => {
-                const color = (p.dashboard_color || p.color_code || '#6366f1').trim();
-                const validColor = color && color.length > 0 && color.startsWith('#') ? color : '#6366f1';
+                const color = (p.dashboard_color || p.color_code || '#1C2E4A').trim();
+                const validColor = color && color.length > 0 && color.startsWith('#') ? color : '#1C2E4A';
                 const progress = p.current_progress || (p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0);
 
                 // Normalize status for display
@@ -137,7 +149,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
                   status: displayStatus
                 };
               });
+              
+            console.log('Final plans array:', this.plans);
+            console.log('Final plans count:', this.plans.length);
           } else {
+            console.warn('No plans data in response:', { success: response.success, hasData: !!response.data });
             this.plans = [];
           }
         },

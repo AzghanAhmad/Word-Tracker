@@ -9,8 +9,17 @@ import { MockDataService } from './mock-data.service';
     providedIn: 'root'
 })
 export class ApiService {
-    private apiUrl = environment.apiUrl;
+    private apiUrl = this.resolveApiUrl();
     private _refreshSidebar = new Subject<void>();
+
+    private resolveApiUrl(): string {
+        // Check if config.js is loaded (for production)
+        if (typeof (window as any).APP_CONFIG !== 'undefined' && (window as any).APP_CONFIG.apiUrl) {
+            return (window as any).APP_CONFIG.apiUrl;
+        }
+        // Fallback to environment config
+        return environment.apiUrl;
+    }
 
     get refreshSidebar$() {
         return this._refreshSidebar.asObservable();
@@ -171,6 +180,13 @@ export class ApiService {
         return this.http.patch(`${this.apiUrl}/challenges/${challengeId}/progress`, { progress });
     }
 
+    getChallengeLogs(challengeId: number): Observable<any> {
+        if (this.useMock) {
+            return of({ success: true, data: [] });
+        }
+        return this.http.get(`${this.apiUrl}/challenges/${challengeId}/logs`);
+    }
+
     // ============================================================================
     // Plans
     // ============================================================================
@@ -290,8 +306,12 @@ export class ApiService {
         );
     }
 
-    logProgress(planId: number, date: string, actualCount: number, notes: string): Observable<any> {
-        return this.http.post(`${this.apiUrl}/plans/${planId}/days`, { date, actual_count: actualCount, notes }).pipe(
+    logProgress(planId: number, date: string, actualCount: number, notes: string, targetCount?: number): Observable<any> {
+        const payload: any = { date, actual_count: actualCount, notes };
+        if (targetCount !== undefined && targetCount !== null) {
+            payload.target_count = targetCount;
+        }
+        return this.http.post(`${this.apiUrl}/plans/${planId}/days`, payload).pipe(
             tap(() => this._refreshSidebar.next())
         );
     }

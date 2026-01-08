@@ -48,7 +48,7 @@
                         <span class="dot"></span> Words per day
                     </div>
                 </div>
-                <app-daily-stats-chart [data]="activityData"></app-daily-stats-chart>
+                <app-daily-stats-chart [data]="activityData" mode="bar"></app-daily-stats-chart>
             </div>
 
             <!-- Contribution Heatmap -->
@@ -68,12 +68,10 @@
                     </div>
                     <div class="heatmap-grid monthly-grid">
                         <div class="week-row" *ngFor="let week of heatmapGrid">
-                            <div class="day-cell" *ngFor="let day of week" 
-                                [attr.data-level]="day.level"
+                            <div class="day-cell" *ngFor="let day of week" [attr.data-level]="day.level"
                                 [class.empty-day]="isDayOutsideCurrentMonth(day.date)"
                                 [title]="getFormattedDate(day.date) + ': ' + day.count + ' words'"
-                                (mouseenter)="showHeatmapTooltip($event, day)"
-                                (mouseleave)="hideHeatmapTooltip()">
+                                (mouseenter)="showHeatmapTooltip($event, day)" (mouseleave)="hideHeatmapTooltip()">
                             </div>
                         </div>
                     </div>
@@ -90,8 +88,7 @@
                     <span>More</span>
                 </div>
                 <!-- Tooltip -->
-                <div class="heatmap-tooltip" *ngIf="heatmapTooltip.visible" 
-                    [style.left.px]="heatmapTooltip.x" 
+                <div class="heatmap-tooltip" *ngIf="heatmapTooltip.visible" [style.left.px]="heatmapTooltip.x"
                     [style.top.px]="heatmapTooltip.y">
                     <div class="tooltip-date">{{ heatmapTooltip.date }}</div>
                     <div class="tooltip-count">{{ heatmapTooltip.count }} words</div>
