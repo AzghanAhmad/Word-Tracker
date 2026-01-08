@@ -28,7 +28,7 @@ public class DbService : IDbService
             Console.WriteLine($"✓ Database connection successful for CreateUser");
             using var cmd = conn.CreateCommand();
             // Set default avatar URL when creating user
-            const string defaultAvatarUrl = "/uploads/avatars/avatar_28_639027429285273708.png";
+            const string defaultAvatarUrl = "/uploads/avatars/test_avatar.png";
             cmd.CommandText = "INSERT INTO users (username,email,password_hash,avatar_url) VALUES (@u,@e,@p,@a)";
             cmd.Parameters.AddWithValue("@u", username);
             cmd.Parameters.AddWithValue("@e", email);
@@ -2876,7 +2876,7 @@ public class DbService : IDbService
             
             // Default avatar path (relative to wwwroot)
             var defaultAvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) 
-                ? "/uploads/avatars/avatar_28_639027429285273708.png" 
+                ? "/uploads/avatars/test_avatar.png" 
                 : avatarUrl;
 
             var profile = new Dictionary<string, object>

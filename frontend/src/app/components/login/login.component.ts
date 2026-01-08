@@ -50,7 +50,7 @@ export class LoginComponent {
           localStorage.setItem('username', result.user.username);
           localStorage.setItem('email', this.email);
           localStorage.setItem('token', result.token);
-          localStorage.setItem('avatar_url', 'test_avatar.png');
+          localStorage.setItem('avatar_url', '/uploads/avatars/test_avatar.png');
           localStorage.removeItem('user_type');
 
           this.successMessage = 'Login successful! Redirecting...';
