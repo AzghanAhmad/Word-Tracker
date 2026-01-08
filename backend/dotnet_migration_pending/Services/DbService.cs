@@ -3247,12 +3247,13 @@ public class DbService : IDbService
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
             
-            // Get all plan_days for user's plans, aggregated by date
+            // Get all plan_days for user's plans, aggregated by date (including target_count)
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 SELECT 
                     pd.date,
-                    COALESCE(SUM(pd.actual_count), 0) as daily_count
+                    COALESCE(SUM(pd.actual_count), 0) as daily_count,
+                    COALESCE(SUM(pd.target_count), 0) as daily_target
                 FROM plan_days pd
                 INNER JOIN plans p ON pd.plan_id = p.id
                 WHERE p.user_id = @u
@@ -3263,15 +3264,129 @@ public class DbService : IDbService
             
             using var reader = cmd.ExecuteReader();
             var dailyStats = new Dictionary<string, int>();
+            var dailyTargets = new Dictionary<string, int>();
             
             while (reader.Read())
             {
                 var date = reader.GetDateTime("date").ToString("yyyy-MM-dd");
                 var count = reader.GetInt32("daily_count");
+                var target = 0;
+                var targetOrdinal = reader.GetOrdinal("daily_target");
+                if (!reader.IsDBNull(targetOrdinal))
+                {
+                    target = reader.GetInt32(targetOrdinal);
+                }
                 dailyStats[date] = count;
+                dailyTargets[date] = target;
             }
             
             reader.Close();
+            
+            // Get all active plans to calculate targets for dates without plan_days entries
+            using var plansCmd = conn.CreateCommand();
+            plansCmd.CommandText = @"
+                SELECT id, total_word_count, start_date, end_date, weekend_approach
+                FROM plans
+                WHERE user_id = @u
+                ORDER BY start_date ASC";
+            plansCmd.Parameters.AddWithValue("@u", userId);
+            
+            var plans = new List<(int id, int planTotalWords, DateTime startDate, DateTime endDate, string weekendApproach)>();
+            using var plansReader = plansCmd.ExecuteReader();
+            while (plansReader.Read())
+            {
+                var planId = plansReader.GetInt32("id");
+                var planTotalWords = plansReader.GetInt32("total_word_count");
+                var startDate = plansReader.GetDateTime("start_date");
+                var endDate = plansReader.GetDateTime("end_date");
+                var weekendApproachOrdinal = plansReader.GetOrdinal("weekend_approach");
+                var weekendApproach = plansReader.IsDBNull(weekendApproachOrdinal) ? "The Usual" : plansReader.GetString(weekendApproachOrdinal);
+                plans.Add((planId, planTotalWords, startDate, endDate, weekendApproach));
+            }
+            plansReader.Close();
+            
+            // Calculate targets from plan details for dates that don't have plan_days entries
+            // Focus on last 14 days from today for better performance
+            var today = DateTime.Today;
+            var last14DaysStart = today.AddDays(-13); // Last 14 days including today
+            var calculatedTargets = new Dictionary<string, int>();
+            
+            foreach (var plan in plans)
+            {
+                var startDate = plan.startDate.Date;
+                var endDate = plan.endDate.Date;
+                var totalGoal = plan.planTotalWords;
+                var weekendApproach = plan.weekendApproach ?? "The Usual";
+                
+                // Only process if plan overlaps with last 14 days
+                if (endDate < last14DaysStart || startDate > today)
+                {
+                    continue;
+                }
+                
+                // Calculate writing days count for the entire plan
+                int writingDaysCount = 0;
+                for (var date = startDate; date <= endDate; date = date.AddDays(1))
+                {
+                    bool isWeekend = date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday;
+                    bool isWritingDay = true;
+                    
+                    if (weekendApproach == "Weekdays Only" || weekendApproach == "None" || weekendApproach == "Rest Days")
+                    {
+                        isWritingDay = !isWeekend;
+                    }
+                    
+                    if (isWritingDay)
+                    {
+                        writingDaysCount++;
+                    }
+                }
+                
+                if (writingDaysCount == 0) writingDaysCount = 1;
+                
+                // Calculate daily target for the entire plan period
+                int wordsRemaining = totalGoal;
+                int daysRemaining = writingDaysCount;
+                var planTargets = new Dictionary<string, int>();
+                
+                for (var date = startDate; date <= endDate; date = date.AddDays(1))
+                {
+                    var dateKey = date.ToString("yyyy-MM-dd");
+                    bool isWeekend = date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday;
+                    bool isWritingDay = true;
+                    
+                    if (weekendApproach == "Weekdays Only" || weekendApproach == "None" || weekendApproach == "Rest Days")
+                    {
+                        isWritingDay = !isWeekend;
+                    }
+                    
+                    int dayTarget = 0;
+                    if (isWritingDay && daysRemaining > 0)
+                    {
+                        dayTarget = (int)Math.Round((double)wordsRemaining / daysRemaining);
+                        wordsRemaining -= dayTarget;
+                        daysRemaining--;
+                    }
+                    
+                    planTargets[dateKey] = dayTarget;
+                }
+                
+                // Add targets for dates in the last 14 days that are within plan range
+                for (var date = last14DaysStart; date <= today; date = date.AddDays(1))
+                {
+                    var dateKey = date.ToString("yyyy-MM-dd");
+                    
+                    // Only add if date is within plan range
+                    if (date >= startDate && date <= endDate && planTargets.ContainsKey(dateKey))
+                    {
+                        if (!calculatedTargets.ContainsKey(dateKey))
+                        {
+                            calculatedTargets[dateKey] = 0;
+                        }
+                        calculatedTargets[dateKey] += planTargets[dateKey];
+                    }
+                }
+            }
             
             // Get total words across all plans
             using var totalCmd = conn.CreateCommand();
@@ -3284,7 +3399,6 @@ public class DbService : IDbService
             var totalWords = Convert.ToInt64(totalCmd.ExecuteScalar());
             
             // Generate activity data for last 365 days (fill missing days with 0)
-            var today = DateTime.Today;
             var activityData = new List<Dictionary<string, object>>();
             var allDaysData = new List<Dictionary<string, object>>();
             var allDaysDataSet = new HashSet<string>(); // Track dates already added
@@ -3306,10 +3420,22 @@ public class DbService : IDbService
                     bestDay = count;
                 }
                 
+                // Use target from plan_days if available, otherwise use calculated target from plan details
+                var target = 0;
+                if (dailyTargets.ContainsKey(dateKey) && dailyTargets[dateKey] > 0)
+                {
+                    target = dailyTargets[dateKey];
+                }
+                else if (calculatedTargets.ContainsKey(dateKey))
+                {
+                    target = calculatedTargets[dateKey];
+                }
+                
                 var dayData = new Dictionary<string, object>
                 {
                     ["date"] = dateKey,
-                    ["count"] = count
+                    ["count"] = count,
+                    ["target"] = target
                 };
                 
                 allDaysData.Add(dayData);
@@ -3334,11 +3460,22 @@ public class DbService : IDbService
                 if (!allDaysDataSet.Contains(dateKey))
                 {
                     var count = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : 0;
+                    // Use target from plan_days if available, otherwise use calculated target from plan details
+                    var target = 0;
+                    if (dailyTargets.ContainsKey(dateKey) && dailyTargets[dateKey] > 0)
+                    {
+                        target = dailyTargets[dateKey];
+                    }
+                    else if (calculatedTargets.ContainsKey(dateKey))
+                    {
+                        target = calculatedTargets[dateKey];
+                    }
                     
                     var dayData = new Dictionary<string, object>
                     {
                         ["date"] = dateKey,
-                        ["count"] = count
+                        ["count"] = count,
+                        ["target"] = target
                     };
                     
                     allDaysData.Add(dayData);
@@ -3354,24 +3491,62 @@ public class DbService : IDbService
                 return dateA.CompareTo(dateB);
             });
             
-            // Calculate current streak (counting backwards from today)
-            // We allow today to be 0 without breaking the streak yet (user has all day to write)
+            // Calculate current streak (counting consecutive days with progress from yesterday backwards)
+            // A streak is the number of consecutive days (going backwards) where the user logged words
+            // - If today has words, start counting from today
+            // - If today has no words, start counting from yesterday (user still has time today)
+            // - Only count days up to and including yesterday (don't count future dates)
+            // - Stop when we hit a day with 0 words (streak broken)
+            
+            // Find today's index in allDaysData (should be the last item or close to it)
+            int todayIndex = -1;
+            var todayDateKey = today.ToString("yyyy-MM-dd");
             for (int i = allDaysData.Count - 1; i >= 0; i--)
             {
+                var dateKey = allDaysData[i]["date"]?.ToString() ?? "";
+                if (dateKey == todayDateKey)
+                {
+                    todayIndex = i;
+                    break;
+                }
+            }
+            
+            // If today not found, start from the last day
+            if (todayIndex == -1)
+            {
+                todayIndex = allDaysData.Count - 1;
+            }
+            
+            // Check if today has progress
+            var todayCount = todayIndex >= 0 && todayIndex < allDaysData.Count 
+                ? Convert.ToInt32(allDaysData[todayIndex]["count"]) 
+                : 0;
+            
+            // Start counting from today if it has progress, otherwise start from yesterday
+            int startIndex = todayCount > 0 ? todayIndex : Math.Max(0, todayIndex - 1);
+            
+            // Count consecutive days with progress going backwards
+            for (int i = startIndex; i >= 0; i--)
+            {
+                var dateKey = allDaysData[i]["date"]?.ToString() ?? "";
+                var dateInData = DateTime.Parse(dateKey);
+                
+                // Don't count future dates
+                if (dateInData.Date > today.Date)
+                {
+                    continue;
+                }
+                
                 var count = Convert.ToInt32(allDaysData[i]["count"]);
                 
                 if (count > 0)
                 {
                     currentStreak++;
                 }
-                else if (i == allDaysData.Count - 1)
-                {
-                    // Today is empty, but we don't break yet - keep looking at previous days
-                    continue;
-                }
                 else
                 {
-                    break; // Gap found in previous days
+                    // Found a day with no progress - streak is broken
+                    break;
                 }
             }
             

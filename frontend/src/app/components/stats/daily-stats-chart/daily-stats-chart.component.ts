@@ -87,21 +87,26 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
     }
 
     private processData() {
+        // Data should already be sorted and filtered (last 14 days from today) by parent component
+        // Just ensure it's sorted by date ascending for proper display
         const sortedData = [...this.data].sort((a, b) => {
             const dateA = new Date(a.date).getTime();
             const dateB = new Date(b.date).getTime();
             return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
         });
 
-        // Use different slicing for bar chart to match design
-        const limit = this.mode === 'bar' ? -14 : -30;
-        const displayedData = this.useSlicing ? sortedData.slice(limit) : sortedData;
+        // For bar chart, use all data (already filtered to last 14 days by parent)
+        // For line chart, use slicing
+        const limit = this.mode === 'bar' ? undefined : -30;
+        const displayedData = (this.useSlicing && limit) ? sortedData.slice(limit) : sortedData;
 
+        // Map dates to labels - ensure proper date formatting
         const labels = displayedData.map(d => {
             if (!d.date) return 'Unknown';
 
             let date: Date;
-            if (d.date.includes('-')) {
+            if (typeof d.date === 'string' && d.date.includes('-')) {
+                // Parse YYYY-MM-DD format correctly (local time, not UTC)
                 const parts = d.date.split('-');
                 date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
             } else {
@@ -110,28 +115,28 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
 
             if (isNaN(date.getTime())) return 'Invalid Date';
 
-            if (this.mode === 'bar') {
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            }
+            // Format date consistently for both bar and line charts
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
-        const actuals = displayedData.map(d => d.count);
+        
+        const actuals = displayedData.map(d => d.count || 0);
         const targets = displayedData.map(d => d.target || 0);
 
-        return { labels, actuals, targets };
+        return { labels, actuals, targets, displayedData };
     }
 
     private createChart() {
-        const { labels, actuals, targets } = this.processData();
+        const { labels, actuals, targets, displayedData } = this.processData();
         const ctx = this.chartCanvas.nativeElement.getContext('2d');
         if (!ctx) return;
 
-        const chartData = this.data; // Store reference for callbacks
+        const chartData = displayedData || this.data; // Use processed data for accurate tooltips
+        const chartLabels = labels; // Store labels for callback access
 
         const config: ChartConfiguration = {
             type: this.mode,
             data: {
-                labels: labels,
+                labels: chartLabels,
                 datasets: this.mode === 'bar' ? [
                     {
                         label: 'Planned Target',
@@ -235,16 +240,27 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                                 weight: 600
                             },
                             maxRotation: 45,
-                            autoSkip: true,
-                            maxTicksLimit: 15, // Show more dates
-                            callback: function(value, index, ticks) {
-                                // Show every nth label to avoid crowding
-                                const step = Math.max(1, Math.floor(ticks.length / 12));
-                                if (index % step === 0 || index === ticks.length - 1) {
+                            autoSkip: false, // Don't auto-skip for bar chart to ensure all dates show
+                            maxTicksLimit: this.mode === 'bar' ? 14 : 15, // Show all 14 dates for bar chart
+                            callback: (value: any, index: number, ticks: any[]) => {
+                                // For bar chart, show all labels (dates should match bars exactly)
+                                // For line chart, show every nth label
+                                if (this.mode === 'bar') {
                                     const numValue = typeof value === 'number' ? value : Number(value);
-                                    return this.getLabelForValue(numValue);
+                                    if (numValue >= 0 && numValue < chartLabels.length) {
+                                        return chartLabels[numValue];
+                                    }
+                                    return '';
+                                } else {
+                                    const step = Math.max(1, Math.floor(ticks.length / 12));
+                                    if (index % step === 0 || index === ticks.length - 1) {
+                                        const numValue = typeof value === 'number' ? value : Number(value);
+                                        if (numValue >= 0 && numValue < chartLabels.length) {
+                                            return chartLabels[numValue];
+                                        }
+                                    }
+                                    return '';
                                 }
-                                return '';
                             }
                         },
                         border: {

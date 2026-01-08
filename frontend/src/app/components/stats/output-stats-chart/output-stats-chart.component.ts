@@ -200,31 +200,8 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                             label: (context) => {
                                 const value = context.parsed.y;
                                 const label = context.dataset.label;
-                                const index = context.dataIndex;
                                 
-                                // Get the actual data point to show daily details
-                                if (index > 0 && chartData && chartData.length > 0) {
-                                    const dataIndex = index - 1; // Account for "Start" point
-                                    if (dataIndex >= 0 && dataIndex < chartData.length) {
-                                        const dayData = chartData[dataIndex];
-                                        const dailyWords = dayData.count || 0;
-                                        const dailyTarget = dayData.target || 0;
-                                        
-                                        if (label === 'Your Progress') {
-                                            return [
-                                                `${label}: ${new Intl.NumberFormat('en-US').format(value)} words`,
-                                                `Daily: ${new Intl.NumberFormat('en-US').format(dailyWords)} words`,
-                                                `Target: ${new Intl.NumberFormat('en-US').format(dailyTarget)} words`
-                                            ];
-                                        } else if (label === 'Planned Target') {
-                                            return [
-                                                `${label}: ${new Intl.NumberFormat('en-US').format(value)} words`,
-                                                `Daily Target: ${new Intl.NumberFormat('en-US').format(dailyTarget)} words`
-                                            ];
-                                        }
-                                    }
-                                }
-                                
+                                // Only show cumulative total, no daily details
                                 return `${label}: ${new Intl.NumberFormat('en-US').format(value)} words`;
                             }
                         }

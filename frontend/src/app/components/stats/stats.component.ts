@@ -11,6 +11,7 @@ import { filter } from 'rxjs/operators';
 interface DayStat {
     date: string;
     count: number;
+    target?: number;
 }
 
 interface ActivityDay {
@@ -138,7 +139,8 @@ export class StatsComponent implements OnInit {
                         }
                         return {
                             date: dateStr,
-                            count: d.count || 0
+                            count: d.count || 0,
+                            target: d.target || 0
                         };
                     });
 
@@ -170,10 +172,12 @@ export class StatsComponent implements OnInit {
                             return `${y}-${m}-${d}`;
                         };
 
-                        // Safe map creation
+                        // Safe map creation for counts and targets
                         const dataMap = new Map();
+                        const targetMap = new Map();
                         allDaysData.forEach(d => {
                             dataMap.set(d.date, d.count);
+                            targetMap.set(d.date, d.target || 0);
                         });
 
                         // Iterate day by day from Start to Today
@@ -182,7 +186,8 @@ export class StatsComponent implements OnInit {
                             const dateStr = toLocalISOString(current);
                             filledData.push({
                                 date: dateStr,
-                                count: dataMap.get(dateStr) || 0
+                                count: dataMap.get(dateStr) || 0,
+                                target: targetMap.get(dateStr) || 0
                             });
                             current.setDate(current.getDate() + 1);
                         }
@@ -191,15 +196,45 @@ export class StatsComponent implements OnInit {
                         this.allDaysDataForChart = [];
                     }
 
-                    // Last 14 days for bar chart - use the last 14 days from allDaysData
-                    // Sort by date descending and take last 14
-                    const sortedAllDays = [...allDaysData].sort((a, b) => 
-                        new Date(b.date).getTime() - new Date(a.date).getTime()
-                    );
-                    this.activityData = sortedAllDays.slice(0, 14).reverse().map((d: any) => ({
-                        date: d.date,
-                        count: d.count || 0
-                    }));
+                    // Last 14 days for bar chart - start from TODAY and go back 14 days
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    // Helper to format date as YYYY-MM-DD
+                    const toLocalISOString = (date: Date) => {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                    };
+                    
+                    // Create a map of all data for quick lookup
+                    const dataMap = new Map<string, number>();
+                    allDaysData.forEach(d => {
+                        dataMap.set(d.date, d.count || 0);
+                    });
+                    
+                    // Create a map of all targets for quick lookup
+                    const targetMap = new Map<string, number>();
+                    allDaysData.forEach(d => {
+                        targetMap.set(d.date, d.target || 0);
+                    });
+                    
+                    // Generate last 14 days starting from today going backwards
+                    const last14Days: DayStat[] = [];
+                    for (let i = 0; i < 14; i++) {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - i);
+                        const dateStr = toLocalISOString(date);
+                        last14Days.push({
+                            date: dateStr,
+                            count: dataMap.get(dateStr) || 0,
+                            target: targetMap.get(dateStr) || 0
+                        });
+                    }
+                    
+                    // Reverse to show oldest to newest (left to right)
+                    this.activityData = last14Days.reverse();
 
                     // Prepare Charts - use allDaysData (already sorted by date ascending)
                     this.prepareLineChart(allDaysData);

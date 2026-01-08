@@ -499,9 +499,22 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                         };
                     });
 
-                    // Sort progress entries by date (most recent first)
-                    this.progressEntries.sort((a, b) => b.date.getTime() - a.date.getTime());
+                    // Sort progress entries by date (most recent first - descending order)
+                    // b - a: if b > a (b is more recent), returns positive, so b comes before a
+                    // This ensures the latest day appears first in the list
+                    this.progressEntries.sort((a, b) => {
+                        const timeDiff = b.date.getTime() - a.date.getTime();
+                        // Return positive if b is more recent (b comes first), negative if a is more recent (a comes first)
+                        return timeDiff;
+                    });
 
+                    // Debug: Log first and last entry dates to verify sort
+                    if (this.progressEntries.length > 0) {
+                        const firstDate = this.progressEntries[0].date;
+                        const lastDate = this.progressEntries[this.progressEntries.length - 1].date;
+                        console.log(`📝 Progress entries sorted - First (latest): ${firstDate.toISOString()}, Last (oldest): ${lastDate.toISOString()}`);
+                    }
+                    
                     console.log(`📝 Loaded ${this.progressEntries.length} progress entries`);
                 } else {
                     this.progressEntries = [];

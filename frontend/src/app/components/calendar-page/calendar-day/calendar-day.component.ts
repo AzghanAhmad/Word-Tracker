@@ -19,9 +19,15 @@ import { CommonModule } from '@angular/common';
         <div class="deadline-badge" *ngIf="isDeadline">DEADLINE</div>
         
         <!-- Daily Total Mode: Show single box with total words -->
-        <div *ngIf="viewMode === 'daily-total' && plans && plans.length > 0" class="total-box">
-          <span class="total-label">Total</span>
-          <span class="total-words">{{ getTotalWords() | number }} words</span>
+        <div *ngIf="viewMode === 'daily-total' && ((plans && plans.length > 0) || getTotalActualWords() > 0)" class="total-box">
+          <div class="words-section">
+            <span class="words-label">Total words</span>
+            <span class="words-value">{{ getTotalTargetWords() | number }} words</span>
+          </div>
+          <div class="words-section">
+            <span class="words-label">Actual words</span>
+            <span class="words-value">{{ getTotalActualWords() | number }} words</span>
+          </div>
         </div>
         
         <!-- Progress vs Plan Mode: Show individual plan pills -->
@@ -169,24 +175,30 @@ import { CommonModule } from '@angular/common';
 
     /* Total Box for Daily Total Mode */
     .total-box {
-        background: #6366f1;
+        background: #1C2E4A;
         color: #ffffff;
         padding: 8px 12px;
         border-radius: 6px;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
         font-size: 0.75rem;
         margin-top: auto;
     }
 
-    .total-label {
+    .words-section {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .words-label {
         font-weight: 600;
         font-size: 0.7rem;
         opacity: 0.9;
     }
 
-    .total-words {
+    .words-value {
         font-weight: 700;
         font-size: 0.85rem;
     }
@@ -289,6 +301,7 @@ export class CalendarDayComponent {
   @Input() isDeadline: boolean = false;
   @Input() plans: any[] = [];
   @Input() viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
+  @Input() dailyLogs: { [key: string]: number } = {};
   
   // Debug: log when plans change
   ngOnChanges(changes: SimpleChanges) {
@@ -316,5 +329,35 @@ export class CalendarDayComponent {
         : (plan.dailyTarget || 0);
       return total + words;
     }, 0);
+  }
+
+  getTotalTargetWords(): number {
+    if (!this.plans || this.plans.length === 0) {
+      return 0;
+    }
+    
+    // Sum up all target words from plans
+    return this.plans.reduce((total, plan) => {
+      return total + (plan.dailyTarget || 0);
+    }, 0);
+  }
+
+  getTotalActualWords(): number {
+    // First, try to get from plans' actualProgress (most accurate)
+    let totalFromPlans = 0;
+    if (this.plans && this.plans.length > 0) {
+      totalFromPlans = this.plans.reduce((total, plan) => {
+        return total + (plan.actualProgress || 0);
+      }, 0);
+    }
+    
+    // If we have actual words from plans, use that (preferred)
+    if (totalFromPlans > 0) {
+      return totalFromPlans;
+    }
+    
+    // Otherwise, use the actual prop passed from parent (from dailyLogs)
+    // This ensures immediate display even before plan days are fully fetched
+    return this.actual || 0;
   }
 }
