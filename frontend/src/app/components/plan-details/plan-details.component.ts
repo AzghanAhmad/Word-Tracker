@@ -447,7 +447,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 notes: d.notes || ''
                         };
                     }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
-                    
+
                     console.log('✅ Processed allPlanDays:', this.allPlanDays.length, 'days');
 
                     // Generate calendar and charts with fresh data
@@ -504,7 +504,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                 // Force change detection and update stats
                 this.cdr.detectChanges();
-                
+
                 // Defer calculateStats to ensure all data is processed
                 setTimeout(() => {
                     this.calculateStats();
@@ -821,7 +821,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     
                     // Also reload plan details to update progress percentage
                     setTimeout(() => {
-                        this.loadPlanDetails();
+                    this.loadPlanDetails();
                     }, 100);
                 } else {
                     this.notificationService.showError('Failed to update session');
@@ -867,7 +867,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                         
                         // Also reload plan details to update progress percentage
                         setTimeout(() => {
-                            this.loadPlanDetails();
+                        this.loadPlanDetails();
                         }, 100);
                     } else {
                         this.notificationService.showError('Failed to delete session');
@@ -957,7 +957,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     
                     // Also reload plan details to refresh stats, history, and ensure data is in sync
                     setTimeout(() => {
-                        this.loadPlanDetails();
+                    this.loadPlanDetails();
                     }, 100);
                 } else {
                     this.notificationService.showError('Failed to save progress');
