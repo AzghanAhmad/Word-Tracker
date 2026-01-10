@@ -1135,6 +1135,9 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             // Start from day 1 and fill each day until we reach the target total
             let remainingToDistribute = targetTotal;
 
+            // Clear existing progress entries for fresh start
+            this.progressEntries = [];
+
             // Distribute progress sequentially across days
             for (let i = 0; i < this.planDays.length && remainingToDistribute > 0; i++) {
                 const day = this.planDays[i];
@@ -1145,6 +1148,21 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                     const wordsForThisDay = Math.min(dayTarget, remainingToDistribute);
                     day.actualWorkDone = wordsForThisDay;
                     remainingToDistribute -= wordsForThisDay;
+
+                    // Also update progressEntries for Daily Updates section
+                    if (wordsForThisDay > 0) {
+                        const dateStr = day.isoDate || day.date;
+                        const entryDate = day.dateObj || new Date(dateStr);
+                        this.progressEntries.push({
+                            id: day.num,
+                            date: entryDate,
+                            targetWords: dayTarget,
+                            actualWords: wordsForThisDay,
+                            notes: '',
+                            isToday: this.isSameDay(entryDate, new Date()),
+                            trend: 'steady' as 'up' | 'down' | 'steady'
+                        });
+                    }
                 }
             }
 

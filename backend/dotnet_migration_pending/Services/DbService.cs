@@ -29,7 +29,7 @@ public class DbService : IDbService
             Console.WriteLine($"✓ Database connection successful for CreateUser");
             using var cmd = conn.CreateCommand();
             // Set default avatar URL when creating user
-            const string defaultAvatarUrl = "/uploads/avatars/avatar_28_639027429285273708.png";
+            const string defaultAvatarUrl = "/uploads/avatars/test_avatar.png";
             cmd.CommandText = "INSERT INTO users (username,email,password_hash,avatar_url) VALUES (@u,@e,@p,@a)";
             cmd.Parameters.AddWithValue("@u", username);
             cmd.Parameters.AddWithValue("@e", email);
@@ -1301,7 +1301,7 @@ public class DbService : IDbService
             // If less than 80% of days have stored values, regenerate (handles old plans or incomplete data)
             bool needsRegeneration = daysWithStoredValues < (totalDaysCount * 0.8);
             if (needsRegeneration && loggedDays.Count > 0) // Only if we have SOME data (not a brand new plan)
-            {
+                {
                 Console.WriteLine($"⚠ Warning: Only {daysWithStoredValues}/{totalDaysCount} days have stored values. Triggering regeneration...");
                 try
                 {
@@ -1313,13 +1313,13 @@ public class DbService : IDbService
                         intensityCmd.Parameters.AddWithValue("@pid", planId);
                         var intensityResult = intensityCmd.ExecuteScalar();
                         if (intensityResult != null && intensityResult != DBNull.Value)
-                        {
+            {
                             strategyIntensity = intensityResult.ToString();
                         }
                     }
                     
                     RegeneratePlanDays(planId, totalGoal, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"), algorithm, strategyIntensity, weekendApproach, conn);
-                    
+                
                     // Re-fetch loggedDays after regeneration
                     loggedDays.Clear();
                     using (var refetchCmd = conn.CreateCommand())
@@ -1331,7 +1331,7 @@ public class DbService : IDbService
                             ORDER BY date ASC";
                         refetchCmd.Parameters.AddWithValue("@pid", planId);
                         using (var refetchReader = refetchCmd.ExecuteReader())
-                        {
+                {
                             while (refetchReader.Read())
                             {
                                 var d = refetchReader.GetDateTime(1).ToString("yyyy-MM-dd");
@@ -1341,7 +1341,7 @@ public class DbService : IDbService
                                     refetchReader.IsDBNull(3) ? 0 : refetchReader.GetInt32(3),
                                     refetchReader.IsDBNull(4) ? (string?)null : refetchReader.GetString(4)
                                 );
-                            }
+                }
                         }
                     }
                     Console.WriteLine($"✅ Regenerated plan_days. Now have {loggedDays.Count} stored days.");
@@ -1354,10 +1354,10 @@ public class DbService : IDbService
             }
             
             for (int i = 0; i < totalDaysCount; i++)
-            {
+                    {
                 var currDate = startDate.AddDays(i);
                 var dateKey = currDate.ToString("yyyy-MM-dd");
-                
+
                 int actualCount = 0;
                 string? notes = null;
                 int dayId = 0;
@@ -1470,7 +1470,7 @@ public class DbService : IDbService
             int existingActualCount = 0;
             int existingTargetCount = 0;
             using (var getExistingCmd = conn.CreateCommand())
-            {
+                {
                 getExistingCmd.CommandText = "SELECT actual_count, target_count FROM plan_days WHERE plan_id = @pid AND date = @date";
                 getExistingCmd.Parameters.AddWithValue("@pid", planId);
                 getExistingCmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd"));
@@ -3366,7 +3366,7 @@ public class DbService : IDbService
             
             // Default avatar path (relative to wwwroot)
             var defaultAvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) 
-                ? "/uploads/avatars/avatar_28_639027429285273708.png" 
+                ? "/uploads/avatars/test_avatar.png" 
                 : avatarUrl;
 
             var profile = new Dictionary<string, object>

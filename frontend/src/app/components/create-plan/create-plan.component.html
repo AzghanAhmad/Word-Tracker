@@ -136,10 +136,6 @@
                             <input type="date" [(ngModel)]="endDate" (change)="onDateChange()">
                         </div>
                     </div>
-                    <div class="project-org">
-                        <label>Project Organization</label>
-                        <p class="hint">Save this plan before adding to a project</p>
-                    </div>
                 </div>
             </div>
 
@@ -469,6 +465,27 @@
                                     day.
                                 </span>
                             </label>
+                        </div>
+
+                        <div class="behavior-section mt-4">
+                            <h4 class="behavior-title">Set Plan Progress</h4>
+                            <div class="form-group">
+                                <label>Current Progress (%)</label>
+                                <div class="progress-input-wrapper">
+                                    <input 
+                                        type="number" 
+                                        [(ngModel)]="currentProgress" 
+                                        (ngModelChange)="onManualProgressChange($event)"
+                                        min="0" 
+                                        max="100" 
+                                        class="progress-percentage-input"
+                                        placeholder="0">
+                                    <span class="percentage-symbol">%</span>
+                                </div>
+                                <p class="hint mt-2" style="font-size: 0.8rem; color: #64748b;">
+                                    Enter a percentage (0-100) to automatically distribute actual work done across the plan from the start date according to this progress level.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
