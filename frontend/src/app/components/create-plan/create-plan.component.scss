@@ -280,7 +280,7 @@ $radius-sm: 8px;
                 border: none;
 
                 &:hover {
-                    background: lighten($primary-color, 5%);
+                    background: color.adjust($primary-color, $lightness: 5%);
                     transform: translateY(-2px);
                     box-shadow: 0 8px 20px 0 rgba($primary-color, 0.5);
                 }
@@ -1234,7 +1234,7 @@ $radius-sm: 8px;
 
                                 &.active {
                                     background: rgba($primary-color, 0.2);
-                                    color: lighten($primary-color, 15%);
+                                    color: color.adjust($primary-color, $lightness: 15%);
                                     border-color: rgba($primary-color, 0.3);
                                 }
 

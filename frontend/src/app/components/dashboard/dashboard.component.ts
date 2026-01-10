@@ -4,13 +4,12 @@ import { RouterLink, Router, NavigationEnd, ActivatedRoute } from '@angular/rout
 import { ApiService } from '../../services/api.service';
 import { filter, Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
-import { NavbarComponent } from '../navbar/navbar.component';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent, ContentLoaderComponent],
+  imports: [CommonModule, RouterLink, ContentLoaderComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })

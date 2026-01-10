@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // ============================================
 // PEACEMAKER BRAND COLORS
 // ============================================
@@ -145,7 +147,7 @@ h4 {
         box-shadow: 0 4px 14px 0 rgba($accent-primary, 0.4);
 
         &:hover {
-            background: lighten($accent-primary, 5%);
+            background: color.adjust($accent-primary, $lightness: 5%);
             transform: translateY(-2px);
             box-shadow: 0 8px 20px 0 rgba($accent-primary, 0.5);
         }

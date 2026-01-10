@@ -1,7 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
-import { NavbarComponent } from '../navbar/navbar.component';
 import { ApiService } from '../../services/api.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
 import { OutputStatsChartComponent } from './output-stats-chart/output-stats-chart.component';
@@ -23,7 +22,7 @@ interface ActivityDay {
 @Component({
     selector: 'app-stats',
     standalone: true,
-    imports: [CommonModule, NavbarComponent, ContentLoaderComponent, OutputStatsChartComponent, DailyStatsChartComponent],
+    imports: [CommonModule, ContentLoaderComponent, OutputStatsChartComponent, DailyStatsChartComponent],
     templateUrl: './stats.component.html',
     styleUrls: ['./stats.component.scss']
 })

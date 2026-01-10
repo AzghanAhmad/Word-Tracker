@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink, NavigationEnd } from '@angular/router';
+import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { NotificationService } from '../../services/notification.service';
 import { Subscription, filter } from 'rxjs';
@@ -37,7 +37,7 @@ export interface ProgressUpdate {
 @Component({
     selector: 'app-create-plan',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, OutputStatsChartComponent, DailyStatsChartComponent, QuillModule],
+    imports: [CommonModule, FormsModule, OutputStatsChartComponent, DailyStatsChartComponent, QuillModule],
     templateUrl: './create-plan.component.html',
     styleUrls: ['./create-plan.component.scss']
 })

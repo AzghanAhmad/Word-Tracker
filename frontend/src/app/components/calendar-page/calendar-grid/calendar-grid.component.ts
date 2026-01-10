@@ -41,7 +41,6 @@ export interface CalendarCell {
             [isDeadline]="cell.isDeadline"
             [plans]="cell.plans"
             [viewMode]="viewMode"
-            [dailyLogs]="dailyLogs"
             [class.past-date-dimmed]="timeFilter === 'future' && isPastDate(cell.date)"
             (click)="selectDate(cell.date)"
           ></app-calendar-day>
