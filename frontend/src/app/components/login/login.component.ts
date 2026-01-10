@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -13,7 +13,7 @@ import { environment } from '../../../environments/environment';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss']
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = '';
   password = '';
   isLoading = false;
@@ -25,8 +25,30 @@ export class LoginComponent {
     private apiService: ApiService
   ) { }
 
+  ngOnInit() {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
+    
+    if (token && userId) {
+      console.log('✅ User already authenticated, redirecting to dashboard...');
+      this.router.navigate(['/dashboard']);
+    }
+  }
+
   onLogin() {
     console.log('🚀 onLogin called');
+    
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
+    
+    if (token && userId) {
+      console.log('✅ User already authenticated, redirecting to dashboard...');
+      this.router.navigate(['/dashboard']);
+      return;
+    }
+    
     this.errorMessage = '';
     this.successMessage = '';
 
