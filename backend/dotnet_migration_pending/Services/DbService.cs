@@ -1,5 +1,6 @@
 using MySqlConnector;
 using System.Text.Json;
+using System.Linq;
 
 namespace WordTracker.Api.Services;
 
@@ -216,6 +217,21 @@ public class DbService : IDbService
                 };
                 
                 Console.WriteLine($"Plan created successfully with ID: {planId}");
+                
+                // After creating the plan, generate initial plan_days with the specified strategy
+                // This ensures plan_days exist immediately after creation
+                try
+                {
+                    Console.WriteLine($"🔄 Generating initial plan_days for newly created plan {planId}...");
+                    RegeneratePlanDays(planId, totalWordCount, startDate, endDate, algorithmType, strategyIntensity, weekendApproach, conn);
+                    Console.WriteLine($"✅ Initial plan_days generated for plan {planId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠ Warning: Could not generate initial plan_days for plan {planId}: {ex.Message}");
+                    // Don't fail plan creation - plan_days will be generated on first access
+                }
+                
                 return planId;
             }
             
@@ -345,11 +361,83 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@status", finalStatus);
             cmd.Parameters.AddWithValue("@curr_prog", currentProgress ?? 0);
             
+            // Check if strategy-related fields changed by comparing with existing plan BEFORE updating
+            bool needsRegeneration = false;
+            string? oldAlgorithmType = null;
+            int? oldTotalWordCount = null;
+            string? oldStartDate = null;
+            string? oldEndDate = null;
+            string? oldWeekendApproach = null;
+            
+            using (var checkCmd = conn.CreateCommand())
+            {
+                checkCmd.CommandText = "SELECT algorithm_type, total_word_count, start_date, end_date, weekend_approach FROM plans WHERE id=@pid";
+                checkCmd.Parameters.AddWithValue("@pid", planId);
+                using var reader = checkCmd.ExecuteReader();
+                if (reader.Read())
+                {
+                    oldAlgorithmType = reader.IsDBNull(0) ? null : reader.GetString(0);
+                    oldTotalWordCount = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
+                    oldStartDate = reader.IsDBNull(2) ? null : reader.GetDateTime(2).ToString("yyyy-MM-dd");
+                    oldEndDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3).ToString("yyyy-MM-dd");
+                    oldWeekendApproach = reader.IsDBNull(4) ? null : reader.GetString(4);
+                }
+            }
+            
+            // Normalize values for comparison (handle null/empty cases)
+            string normalizedOldAlgorithm = (oldAlgorithmType ?? "").ToLower().Trim();
+            string normalizedNewAlgorithm = (algorithmType ?? "").ToLower().Trim();
+            string normalizedOldWeekend = (oldWeekendApproach ?? "").Trim();
+            string normalizedNewWeekend = (weekendApproach ?? "").Trim();
+            int oldTotal = oldTotalWordCount ?? 0;
+            
+            // Check if any strategy-affecting fields changed
+            // Always check, even if oldAlgorithmType is null (plan might have been created without plan_days)
+            needsRegeneration = 
+                normalizedOldAlgorithm != normalizedNewAlgorithm ||
+                oldTotal != totalWordCount ||
+                (oldStartDate ?? "") != (startDate ?? "") ||
+                (oldEndDate ?? "") != (endDate ?? "") ||
+                normalizedOldWeekend != normalizedNewWeekend;
+            
+            Console.WriteLine($"🔍 Strategy change detection for plan {planId}:");
+            Console.WriteLine($"   Algorithm: '{normalizedOldAlgorithm}' -> '{normalizedNewAlgorithm}' (changed: {normalizedOldAlgorithm != normalizedNewAlgorithm})");
+            Console.WriteLine($"   Total words: {oldTotal} -> {totalWordCount} (changed: {oldTotal != totalWordCount})");
+            Console.WriteLine($"   Dates: '{oldStartDate}' to '{oldEndDate}' -> '{startDate}' to '{endDate}'");
+            Console.WriteLine($"   Weekend approach: '{normalizedOldWeekend}' -> '{normalizedNewWeekend}' (changed: {normalizedOldWeekend != normalizedNewWeekend})");
+            Console.WriteLine($"   ✅ Needs regeneration: {needsRegeneration}");
+            
             var rowsAffected = cmd.ExecuteNonQuery();
             
             if (rowsAffected > 0)
             {
                 Console.WriteLine($"✓ Plan {planId} updated successfully");
+                
+                // Always regenerate plan_days when strategy-related fields changed
+                // This ensures plan_days are always in sync with the plan's strategy
+                if (needsRegeneration)
+                {
+                    Console.WriteLine($"🔄 Strategy or schedule parameters changed, regenerating plan_days...");
+                    Console.WriteLine($"   Regenerating with algorithm: {algorithmType}, intensity: {strategyIntensity}, weekend: {weekendApproach}");
+                    
+                    try
+                    {
+                        // Regenerate plan days with new strategy - this will update all target_count values
+                        RegeneratePlanDays(planId, totalWordCount, startDate, endDate, algorithmType, strategyIntensity, weekendApproach, conn);
+                        Console.WriteLine($"✅ Plan days regeneration completed successfully for plan {planId}");
+                    }
+                    catch (Exception regenEx)
+                    {
+                        Console.WriteLine($"❌ Error during plan days regeneration: {regenEx.Message}");
+                        Console.WriteLine($"Stack trace: {regenEx.StackTrace}");
+                        // Don't fail the update - log the error but allow the plan update to succeed
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"ℹ No strategy changes detected, plan_days remain unchanged");
+                }
+                
                 return true;
             }
             
@@ -369,6 +457,300 @@ public class DbService : IDbService
             Console.WriteLine($"✗ Error updating plan: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Regenerates plan_days with new target_count values based on updated strategy/parameters
+    /// Preserves existing actual_count and notes
+    /// </summary>
+    private void RegeneratePlanDays(int planId, int totalWordCount, string startDate, string endDate, string algorithmType, string? strategyIntensity, string? weekendApproach, MySqlConnection conn)
+    {
+        try
+        {
+            Console.WriteLine($"🔄 Regenerating plan_days for plan {planId} with algorithm: {algorithmType}, intensity: {strategyIntensity}");
+            
+            // Parse dates
+            if (!DateTime.TryParse(startDate, out var start) || !DateTime.TryParse(endDate, out var end))
+            {
+                Console.WriteLine($"✗ Invalid dates for plan {planId}: {startDate} to {endDate}");
+                return;
+            }
+
+            // Get existing plan_days to preserve actual_count and notes
+            var existingDays = new Dictionary<string, (int actualCount, string? notes)>();
+            using (var getExistingCmd = conn.CreateCommand())
+            {
+                getExistingCmd.CommandText = "SELECT date, actual_count, notes FROM plan_days WHERE plan_id = @pid";
+                getExistingCmd.Parameters.AddWithValue("@pid", planId);
+                using var reader = getExistingCmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var dateKey = reader.GetDateTime(0).ToString("yyyy-MM-dd");
+                    var actualCount = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
+                    var notes = reader.IsDBNull(2) ? null : reader.GetString(2);
+                    existingDays[dateKey] = (actualCount, notes);
+                }
+            }
+
+            // Calculate total days and writing days
+            int totalDaysCount = (int)(end - start).TotalDays + 1;
+            if (totalDaysCount <= 0 || totalDaysCount > 1000)
+            {
+                Console.WriteLine($"✗ Invalid date range for plan {planId}: {totalDaysCount} days");
+                return;
+            }
+
+            // Count writing days based on weekend approach
+            int writingDaysCount = 0;
+            for (int i = 0; i < totalDaysCount; i++)
+            {
+                var currDate = start.AddDays(i);
+                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
+                bool isWritingDay = true;
+                
+                if (weekendApproach == "Weekdays Only" || weekendApproach == "None" || weekendApproach == "Rest Days")
+                {
+                    isWritingDay = !isWeekend;
+                }
+                
+                if (isWritingDay) writingDaysCount++;
+            }
+            if (writingDaysCount == 0) writingDaysCount = 1;
+
+            // Calculate intensity multiplier from strategy intensity
+            double intensityMultiplier = 0.5; // Default Average
+            if (!string.IsNullOrWhiteSpace(strategyIntensity))
+            {
+                switch (strategyIntensity.ToLower())
+                {
+                    case "gentle": intensityMultiplier = 0.1; break;
+                    case "low": intensityMultiplier = 0.25; break;
+                    case "average": intensityMultiplier = 0.5; break;
+                    case "medium": intensityMultiplier = 0.75; break;
+                    case "hard core": intensityMultiplier = 1.0; break;
+                }
+            }
+
+            // First pass: Collect all writing days and calculate relative targets
+            var writingDayIndices = new List<int>();
+            for (int i = 0; i < totalDaysCount; i++)
+            {
+                var currDate = start.AddDays(i);
+                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
+                bool isWritingDay = true;
+                if (weekendApproach == "Weekdays Only" || weekendApproach == "None" || weekendApproach == "Rest Days")
+                {
+                    isWritingDay = !isWeekend;
+                }
+                if (isWritingDay)
+                {
+                    writingDayIndices.Add(i);
+                }
+            }
+
+            // Calculate relative weights for each writing day based on strategy
+            var dayWeights = new List<double>();
+            double totalWeight = 0;
+            
+            for (int idx = 0; idx < writingDayIndices.Count; idx++)
+            {
+                int dayIndex = writingDayIndices[idx];
+                double t = writingDayIndices.Count > 1 ? (double)idx / (writingDayIndices.Count - 1) : 0;
+                double weight = 1.0; // Default weight for Steady
+                
+                // Apply algorithm modifiers (matching frontend logic)
+                switch (algorithmType.ToLower())
+                {
+                    case "front-load":
+                        weight = (1 + intensityMultiplier) - (intensityMultiplier * 2 * t);
+                        break;
+                    case "back-load":
+                        weight = (1 - intensityMultiplier) + (intensityMultiplier * 2 * t);
+                        break;
+                    case "mountain":
+                        double factor = 1 - Math.Abs(0.5 - t) * 2;
+                        weight = (1 - intensityMultiplier) + (intensityMultiplier * 2 * factor);
+                        break;
+                    case "valley":
+                        double valleyFactor = Math.Abs(0.5 - t) * 2;
+                        weight = (1 - intensityMultiplier) + (intensityMultiplier * 2 * valleyFactor);
+                        break;
+                    case "oscillating":
+                        double sineFactor = Math.Sin(t * Math.PI * (intensityMultiplier * 8)) * intensityMultiplier + 1;
+                        weight = sineFactor;
+                        break;
+                    case "randomly":
+                        var currDate = start.AddDays(dayIndex);
+                        int seed = currDate.Day + currDate.Month * 31;
+                        double pseudoRandom = ((seed * 1103515245 + 12345) & 0x7fffffff) / (double)0x7fffffff;
+                        weight = (1 - intensityMultiplier) + (pseudoRandom * intensityMultiplier * 2);
+                        break;
+                    case "steady":
+                    default:
+                        weight = 1.0;
+                        break;
+                }
+                
+                weight = Math.Max(0.1, weight); // Ensure minimum weight to avoid zero targets
+                dayWeights.Add(weight);
+                totalWeight += weight;
+            }
+
+            // Calculate target for each day
+            var dayTargets = new Dictionary<int, int>(); // day index -> target count
+
+            // First pass: calculate targets based on weights
+            for (int idx = 0; idx < writingDayIndices.Count; idx++)
+            {
+                int dayIndex = writingDayIndices[idx];
+                double weight = dayWeights[idx];
+                double baseTarget = totalWeight > 0 ? (totalWordCount * weight / totalWeight) : (totalWordCount / writingDayIndices.Count);
+                int target = Math.Max(0, (int)Math.Round(baseTarget));
+                dayTargets[dayIndex] = target;
+            }
+
+            // Normalize to ensure total matches exactly
+            int currentTotal = dayTargets.Values.Sum();
+            int difference = totalWordCount - currentTotal;
+            
+            if (difference != 0 && dayTargets.Count > 0)
+            {
+                // Distribute the difference to ensure exact total
+                if (Math.Abs(difference) <= dayTargets.Count)
+                {
+                    // Small difference - distribute to days (prioritize last day for remainder)
+                    var sortedDays = writingDayIndices.OrderByDescending(i => dayTargets[i]).ToList();
+                    int absDiff = Math.Abs(difference);
+                    int sign = difference > 0 ? 1 : -1;
+                    
+                    for (int i = 0; i < absDiff && i < sortedDays.Count; i++)
+                    {
+                        int dayIdx = sortedDays[i];
+                        dayTargets[dayIdx] += sign;
+                        // Ensure we don't go negative
+                        if (dayTargets[dayIdx] < 0) dayTargets[dayIdx] = 0;
+                    }
+                }
+                else
+                {
+                    // Larger difference - distribute proportionally
+                    var sortedDays = writingDayIndices.OrderByDescending(i => dayTargets[i]).ToList();
+                    int perDay = difference / sortedDays.Count;
+                    int remainder = Math.Abs(difference % sortedDays.Count);
+                    int sign = difference > 0 ? 1 : -1;
+                    
+                    for (int i = 0; i < sortedDays.Count; i++)
+                    {
+                        int dayIdx = sortedDays[i];
+                        dayTargets[dayIdx] += perDay;
+                        if (i < remainder)
+                        {
+                            dayTargets[dayIdx] += sign;
+                        }
+                        // Ensure we don't go negative
+                        if (dayTargets[dayIdx] < 0) dayTargets[dayIdx] = 0;
+                    }
+                }
+                
+                // Final check - ensure last day gets any remaining difference
+                int finalTotal = dayTargets.Values.Sum();
+                int finalDiff = totalWordCount - finalTotal;
+                if (finalDiff != 0 && dayTargets.Count > 0)
+                {
+                    int lastDayIdx = writingDayIndices[writingDayIndices.Count - 1];
+                    dayTargets[lastDayIdx] += finalDiff;
+                    if (dayTargets[lastDayIdx] < 0) dayTargets[lastDayIdx] = 0;
+                }
+            }
+            
+            Console.WriteLine($"📊 Calculated {dayTargets.Count} writing day targets, total: {dayTargets.Values.Sum()}, target: {totalWordCount}");
+
+            // Generate targets for each day
+            for (int i = 0; i < totalDaysCount; i++)
+            {
+                var currDate = start.AddDays(i);
+                var dateKey = currDate.ToString("yyyy-MM-dd");
+                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
+                
+                bool isWritingDay = true;
+                if (weekendApproach == "Weekdays Only" || weekendApproach == "None" || weekendApproach == "Rest Days")
+                {
+                    isWritingDay = !isWeekend;
+                }
+
+                int targetCount = 0;
+                if (isWritingDay && dayTargets.ContainsKey(i))
+                {
+                    targetCount = dayTargets[i];
+                }
+
+                // Get existing actual_count and notes (preserve user's logged progress)
+                int actualCount = 0;
+                string? notes = null;
+                if (existingDays.ContainsKey(dateKey))
+                {
+                    actualCount = existingDays[dateKey].actualCount;
+                    notes = existingDays[dateKey].notes;
+                }
+
+                // Update or insert plan_day - ALWAYS update target_count, preserve existing actual_count and notes
+                using (var updateCmd = conn.CreateCommand())
+                {
+                    // Use INSERT...ON DUPLICATE KEY UPDATE
+                    // On INSERT (new day): insert with calculated target_count, 0 actual_count, NULL notes
+                    // On UPDATE (existing day): update target_count only, actual_count and notes remain unchanged
+                    updateCmd.CommandText = @"
+                        INSERT INTO plan_days (plan_id, date, target_count, actual_count, notes)
+                        VALUES (@pid, @date, @target, @actual, @notes)
+                        ON DUPLICATE KEY UPDATE 
+                            target_count = @target";
+                    // Note: actual_count and notes are preserved on UPDATE because they're not in the UPDATE clause
+                    updateCmd.Parameters.AddWithValue("@pid", planId);
+                    updateCmd.Parameters.AddWithValue("@date", dateKey);
+                    updateCmd.Parameters.AddWithValue("@target", targetCount);
+                    updateCmd.Parameters.AddWithValue("@actual", actualCount);
+                    updateCmd.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
+                    
+                    updateCmd.ExecuteNonQuery();
+                }
+            }
+
+            // Verify the update worked by counting updated rows
+            using (var verifyCmd = conn.CreateCommand())
+            {
+                verifyCmd.CommandText = "SELECT COUNT(*) FROM plan_days WHERE plan_id = @pid AND date >= @start AND date <= @end";
+                verifyCmd.Parameters.AddWithValue("@pid", planId);
+                verifyCmd.Parameters.AddWithValue("@start", start.ToString("yyyy-MM-dd"));
+                verifyCmd.Parameters.AddWithValue("@end", end.ToString("yyyy-MM-dd"));
+                var updatedCount = Convert.ToInt32(verifyCmd.ExecuteScalar());
+                Console.WriteLine($"✅ Successfully regenerated {totalDaysCount} plan_days for plan {planId} with algorithm: {algorithmType}");
+                Console.WriteLine($"   Verified: {updatedCount} plan_days exist in database for date range");
+                
+                // Also verify a sample of target_count values to ensure they're non-zero for writing days
+                if (weekendApproach == "The Usual" && updatedCount > 0)
+                {
+                    verifyCmd.CommandText = "SELECT COUNT(*) FROM plan_days WHERE plan_id = @pid AND date >= @start AND date <= @end AND target_count > 0";
+                    verifyCmd.Parameters.Clear();
+                    verifyCmd.Parameters.AddWithValue("@pid", planId);
+                    verifyCmd.Parameters.AddWithValue("@start", start.ToString("yyyy-MM-dd"));
+                    verifyCmd.Parameters.AddWithValue("@end", end.ToString("yyyy-MM-dd"));
+                    var daysWithTargets = Convert.ToInt32(verifyCmd.ExecuteScalar());
+                    Console.WriteLine($"   Writing days with targets > 0: {daysWithTargets} / {updatedCount}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Error regenerating plan_days for plan {planId}: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+            }
+            // Don't throw - allow the update to succeed even if regeneration fails
+            // But log the error so we can debug
+            _lastError = $"Error regenerating plan_days: {ex.Message}";
         }
     }
 
@@ -897,90 +1279,105 @@ public class DbService : IDbService
                  }).ToList());
             }
 
-            // Calculate writing days count for distribution based on weekend approach
-            int writingDaysCount = 0;
-            for (int i = 0; i < totalDaysCount; i++)
-            {
-                var currDate = startDate.AddDays(i);
-                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
-                
-                // Determine if this day should be a writing day based on strategy
-                bool isWritingDay = true;
-                
-                // "Weekdays Only": Only Monday-Friday are writing days, weekends are rest days
-                if (weekendApproach == "Weekdays Only")
-                {
-                    isWritingDay = !isWeekend;
-                }
-                // "None" or "Rest Days" (Adaptive rest): Weekends are rest days, flexible scheduling
-                else if (weekendApproach == "None" || weekendApproach == "Rest Days")
-                {
-                    isWritingDay = !isWeekend;
-                }
-                // "The Usual": All days including weekends are writing days
-                // For any other value, default to all days (isWritingDay = true)
-                
-                if (isWritingDay)
-                {
-                    writingDaysCount++;
-                }
-            }
-            if (writingDaysCount == 0) writingDaysCount = 1;
-
-            int wordsRemaining = totalGoal;
-            int daysRemaining = writingDaysCount;
-
+            // CRITICAL FIX: After RegeneratePlanDays runs, ALL days in the date range should have
+            // target_count values stored in the database. We should ONLY use stored values and
+            // NEVER recalculate, as recalculation would override the algorithm-based distribution.
+            
+            Console.WriteLine($"📊 Found {loggedDays.Count} stored plan_days in database for plan {planId} (expecting ~{totalDaysCount} days)");
+            
+            // Check if plan_days are missing or incomplete - if so, trigger regeneration
+            // Count how many days in the date range have stored values
+            int daysWithStoredValues = 0;
             for (int i = 0; i < totalDaysCount; i++)
             {
                 var currDate = startDate.AddDays(i);
                 var dateKey = currDate.ToString("yyyy-MM-dd");
-                bool isWeekend = currDate.DayOfWeek == DayOfWeek.Saturday || currDate.DayOfWeek == DayOfWeek.Sunday;
-                
-                // Determine if this day should be a writing day based on strategy
-                bool isWritingDay = true;
-                
-                // "Weekdays Only": Only Monday-Friday are writing days, weekends are rest days
-                if (weekendApproach == "Weekdays Only")
+                if (loggedDays.ContainsKey(dateKey))
                 {
-                    isWritingDay = !isWeekend;
+                    daysWithStoredValues++;
                 }
-                // "None" or "Rest Days" (Adaptive rest): Weekends are rest days, flexible scheduling
-                else if (weekendApproach == "None" || weekendApproach == "Rest Days")
+            }
+            
+            // If less than 80% of days have stored values, regenerate (handles old plans or incomplete data)
+            bool needsRegeneration = daysWithStoredValues < (totalDaysCount * 0.8);
+            if (needsRegeneration && loggedDays.Count > 0) // Only if we have SOME data (not a brand new plan)
+            {
+                Console.WriteLine($"⚠ Warning: Only {daysWithStoredValues}/{totalDaysCount} days have stored values. Triggering regeneration...");
+                try
                 {
-                    isWritingDay = !isWeekend;
-                }
-                // "The Usual": All days including weekends are writing days
-                // For any other value, default to all days (isWritingDay = true)
-                
-                int targetCount = 0;
-                // Only assign target if it's a writing day
-                if (isWritingDay)
-                {
-                    if (daysRemaining > 0)
+                    // Get strategy_intensity from plan
+                    string? strategyIntensity = "Average";
+                    using (var intensityCmd = conn.CreateCommand())
                     {
-                        targetCount = (int)Math.Round((double)wordsRemaining / daysRemaining);
-                        wordsRemaining -= targetCount;
-                        daysRemaining--;
+                        intensityCmd.CommandText = "SELECT strategy_intensity FROM plans WHERE id = @pid";
+                        intensityCmd.Parameters.AddWithValue("@pid", planId);
+                        var intensityResult = intensityCmd.ExecuteScalar();
+                        if (intensityResult != null && intensityResult != DBNull.Value)
+                        {
+                            strategyIntensity = intensityResult.ToString();
+                        }
                     }
+                    
+                    RegeneratePlanDays(planId, totalGoal, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"), algorithm, strategyIntensity, weekendApproach, conn);
+                    
+                    // Re-fetch loggedDays after regeneration
+                    loggedDays.Clear();
+                    using (var refetchCmd = conn.CreateCommand())
+                    {
+                        refetchCmd.CommandText = @"
+                            SELECT id, date, target_count, actual_count, notes
+                            FROM plan_days
+                            WHERE plan_id = @pid
+                            ORDER BY date ASC";
+                        refetchCmd.Parameters.AddWithValue("@pid", planId);
+                        using (var refetchReader = refetchCmd.ExecuteReader())
+                        {
+                            while (refetchReader.Read())
+                            {
+                                var d = refetchReader.GetDateTime(1).ToString("yyyy-MM-dd");
+                                loggedDays[d] = (
+                                    refetchReader.IsDBNull(0) ? 0 : refetchReader.GetInt32(0),
+                                    refetchReader.IsDBNull(2) ? 0 : refetchReader.GetInt32(2),
+                                    refetchReader.IsDBNull(3) ? 0 : refetchReader.GetInt32(3),
+                                    refetchReader.IsDBNull(4) ? (string?)null : refetchReader.GetString(4)
+                                );
+                            }
+                        }
+                    }
+                    Console.WriteLine($"✅ Regenerated plan_days. Now have {loggedDays.Count} stored days.");
                 }
-
+                catch (Exception regenEx)
+                {
+                    Console.WriteLine($"⚠ Warning: Could not auto-regenerate plan_days: {regenEx.Message}");
+                    // Continue with existing data
+                }
+            }
+            
+            for (int i = 0; i < totalDaysCount; i++)
+            {
+                var currDate = startDate.AddDays(i);
+                var dateKey = currDate.ToString("yyyy-MM-dd");
+                
                 int actualCount = 0;
                 string? notes = null;
-
                 int dayId = 0;
-                // If this day exists in plan_days table, use the stored target_count
+                int targetCount = 0;
+                
+                // ALWAYS use stored values from database - RegeneratePlanDays ensures all days are stored
                 if (loggedDays.ContainsKey(dateKey))
                 {
                     var logged = loggedDays[dateKey];
                     dayId = logged.id;
                     actualCount = logged.actual;
                     notes = logged.notes;
-                    // Use the stored target_count from plan_days table if it exists and is > 0
-                    // This ensures we display the actual target words that were set when the plan was created
-                    if (logged.target > 0)
-                    {
-                        targetCount = logged.target;
-                    }
+                    targetCount = logged.target; // Use stored target_count - this is the source of truth
+                }
+                else
+                {
+                    // Day doesn't exist in database - return 0 target
+                    // This should be rare after RegeneratePlanDays, but can happen for edge cases
+                    Console.WriteLine($"⚠ Day {dateKey} not found in plan_days. Returning target_count = 0.");
+                    targetCount = 0;
                 }
 
                 days.Add(new Dictionary<string, object>
@@ -1069,108 +1466,130 @@ public class DbService : IDbService
                 }
             }
 
-            // If targetCount is not provided, get existing target_count to preserve it
+            // Get existing values to preserve them when updating
+            int existingActualCount = 0;
             int existingTargetCount = 0;
-            if (!targetCount.HasValue)
+            using (var getExistingCmd = conn.CreateCommand())
             {
-                using (var getTargetCmd = conn.CreateCommand())
+                getExistingCmd.CommandText = "SELECT actual_count, target_count FROM plan_days WHERE plan_id = @pid AND date = @date";
+                getExistingCmd.Parameters.AddWithValue("@pid", planId);
+                getExistingCmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd"));
+                using var reader = getExistingCmd.ExecuteReader();
+                if (reader.Read())
                 {
-                    getTargetCmd.CommandText = "SELECT target_count FROM plan_days WHERE plan_id = @pid AND date = @date";
-                    getTargetCmd.Parameters.AddWithValue("@pid", planId);
-                    getTargetCmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd"));
-                    var result = getTargetCmd.ExecuteScalar();
-                    if (result != null && result != DBNull.Value)
-                    {
-                        existingTargetCount = Convert.ToInt32(result);
-                    }
+                    existingActualCount = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+                    existingTargetCount = reader.IsDBNull(1) ? 0 : reader.GetInt32(1);
                 }
             }
 
             using var cmd = conn.CreateCommand();
-            // If targetCount is provided, update it; otherwise preserve existing target_count
+            
+            // Determine which values to use: provided values take precedence, otherwise preserve existing
+            int finalActualCount = actualCount; // Use provided value
+            int finalTargetCount = targetCount ?? existingTargetCount; // Use provided target or preserve existing
+            
+            // If actualCount is 0 and we have existing actual_count, preserve it (don't overwrite with 0)
+            // This handles the case where we're only updating target_count and want to preserve existing progress
+            if (actualCount == 0 && existingActualCount > 0)
+            {
+                // Preserve existing actual_count if provided value is 0 and there's existing progress
+                finalActualCount = existingActualCount;
+            }
+
+            // Always update target_count if provided, otherwise use existing
             if (targetCount.HasValue)
             {
                 cmd.CommandText = @"
                     INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
                     VALUES (@pid, @date, @count, @notes, @target)
-                    ON DUPLICATE KEY UPDATE actual_count = @count, notes = @notes, target_count = @target";
-                cmd.Parameters.AddWithValue("@target", targetCount.Value);
+                    ON DUPLICATE KEY UPDATE 
+                        actual_count = @count,
+                        notes = @notes,
+                        target_count = @target";
             }
             else
             {
-                // For INSERT: use existing target_count if available, otherwise 0
-                // For UPDATE: preserve existing target_count (don't change it)
+                // Only update actual_count and notes, preserve existing target_count
                 cmd.CommandText = @"
                     INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
                     VALUES (@pid, @date, @count, @notes, @target)
-                    ON DUPLICATE KEY UPDATE actual_count = @count, notes = @notes";
-                cmd.Parameters.AddWithValue("@target", existingTargetCount);
+                    ON DUPLICATE KEY UPDATE 
+                        actual_count = @count,
+                        notes = @notes";
             }
             
             cmd.Parameters.AddWithValue("@pid", planId);
             cmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd")); // Ensure consistent date format
-            cmd.Parameters.AddWithValue("@count", actualCount);
+            cmd.Parameters.AddWithValue("@count", finalActualCount);
             cmd.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@target", finalTargetCount);
             
             cmd.ExecuteNonQuery();
             Console.WriteLine($"✓ Successfully logged progress for plan {planId}, date {date}");
             
             // Recalculate and update progress percentage based on total words logged
-            using (var updateProgressCmd = conn.CreateCommand())
+            // Use separate command objects for each operation to avoid "Failed to read the result set" errors
+            int totalWordCount = 0;
+            string currentStatus = "active";
+            
+            // Get total word count and current status for the plan
+            using (var getPlanCmd = conn.CreateCommand())
             {
-                // Get total word count and current status for the plan
-                updateProgressCmd.CommandText = "SELECT total_word_count, COALESCE(status, 'active') as status FROM plans WHERE id=@pid";
-                updateProgressCmd.Parameters.AddWithValue("@pid", planId);
-                using var reader = updateProgressCmd.ExecuteReader();
-                int totalWordCount = 0;
-                string currentStatus = "active";
+                getPlanCmd.CommandText = "SELECT total_word_count, COALESCE(status, 'active') as status FROM plans WHERE id=@pid";
+                getPlanCmd.Parameters.AddWithValue("@pid", planId);
+                using var reader = getPlanCmd.ExecuteReader();
                 if (reader.Read())
                 {
                     totalWordCount = reader.GetInt32("total_word_count");
                     var statusOrdinal = reader.GetOrdinal("status");
                     currentStatus = reader.IsDBNull(statusOrdinal) ? "active" : reader.GetString(statusOrdinal);
                 }
-                reader.Close();
-                
-                if (totalWordCount > 0)
+            }
+            
+            if (totalWordCount > 0)
+            {
+                // Calculate total words logged from all plan_days - use separate command
+                int totalLogged = 0;
+                using (var sumCmd = conn.CreateCommand())
                 {
-                    // Calculate total words logged from all plan_days
-                    updateProgressCmd.CommandText = @"
+                    sumCmd.CommandText = @"
                         SELECT COALESCE(SUM(actual_count), 0) 
                         FROM plan_days 
                         WHERE plan_id=@pid AND actual_count > 0";
-                    updateProgressCmd.Parameters.Clear();
-                    updateProgressCmd.Parameters.AddWithValue("@pid", planId);
-                    var totalLogged = Convert.ToInt32(updateProgressCmd.ExecuteScalar());
-                    
-                    // Calculate progress percentage
-                    var progressPercentage = Math.Min(100, Math.Max(0, (int)Math.Round((double)totalLogged / totalWordCount * 100)));
-                    
-                    // Determine status based on progress
-                    // Only update to completed if not already archived
-                    string newStatus = currentStatus;
-                    if (progressPercentage >= 100 && currentStatus?.ToLower() != "archived")
-                    {
-                        newStatus = "completed";
-                        Console.WriteLine($"🎉 Plan {planId} reached 100% progress! Marking as completed.");
-                    }
-                    else if (progressPercentage < 100 && currentStatus?.ToLower() == "completed")
-                    {
-                        // If progress drops below 100%, change back to active
-                        newStatus = "active";
-                        Console.WriteLine($"📝 Plan {planId} progress dropped below 100%, changing back to active.");
-                    }
-                    
-                    // Update current_progress and status in plans table
-                    updateProgressCmd.CommandText = "UPDATE plans SET current_progress = @progress, status = @status WHERE id=@pid";
-                    updateProgressCmd.Parameters.Clear();
-                    updateProgressCmd.Parameters.AddWithValue("@pid", planId);
-                    updateProgressCmd.Parameters.AddWithValue("@progress", progressPercentage);
-                    updateProgressCmd.Parameters.AddWithValue("@status", newStatus);
-                    updateProgressCmd.ExecuteNonQuery();
-                    
-                    Console.WriteLine($"📊 Updated progress percentage: {progressPercentage}% (Total logged: {totalLogged} / Target: {totalWordCount}), Status: {newStatus}");
+                    sumCmd.Parameters.AddWithValue("@pid", planId);
+                    var result = sumCmd.ExecuteScalar();
+                    totalLogged = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
                 }
+                
+                // Calculate progress percentage
+                var progressPercentage = Math.Min(100, Math.Max(0, (int)Math.Round((double)totalLogged / totalWordCount * 100)));
+                
+                // Determine status based on progress
+                // Only update to completed if not already archived
+                string newStatus = currentStatus;
+                if (progressPercentage >= 100 && currentStatus?.ToLower() != "archived")
+                {
+                    newStatus = "completed";
+                    Console.WriteLine($"🎉 Plan {planId} reached 100% progress! Marking as completed.");
+                }
+                else if (progressPercentage < 100 && currentStatus?.ToLower() == "completed")
+                {
+                    // If progress drops below 100%, change back to active
+                    newStatus = "active";
+                    Console.WriteLine($"📝 Plan {planId} progress dropped below 100%, changing back to active.");
+                }
+                
+                // Update current_progress and status in plans table - use separate command
+                using (var updateCmd = conn.CreateCommand())
+                {
+                    updateCmd.CommandText = "UPDATE plans SET current_progress = @progress, status = @status WHERE id=@pid";
+                    updateCmd.Parameters.AddWithValue("@pid", planId);
+                    updateCmd.Parameters.AddWithValue("@progress", progressPercentage);
+                    updateCmd.Parameters.AddWithValue("@status", newStatus);
+                    updateCmd.ExecuteNonQuery();
+                }
+                
+                Console.WriteLine($"📊 Updated progress percentage: {progressPercentage}% (Total logged: {totalLogged} / Target: {totalWordCount}), Status: {newStatus}");
             }
             
             Console.WriteLine("✅ Progress logged successfully");
@@ -1956,6 +2375,95 @@ public class DbService : IDbService
         }
     }
 
+    /// <summary>
+    /// Helper method to safely convert database values to JSON-serializable format
+    /// Handles DateTime, DateOnly, MySqlDateTime, and other types
+    /// </summary>
+    private object? ConvertDbValueToJson(object? val)
+    {
+        if (val == null || val == DBNull.Value)
+        {
+            return null;
+        }
+
+        // Handle DateTime
+        if (val is DateTime dt)
+        {
+            if (dt.Year <= 1)
+            {
+                return null;
+            }
+            return dt.ToString("yyyy-MM-ddTHH:mm:ss");
+        }
+
+        // Handle MySqlDateTime (when AllowZeroDateTime=True in connection string)
+        if (val != null && val.GetType().Name == "MySqlDateTime")
+        {
+            try
+            {
+                var type = val.GetType();
+                var isValidProp = type.GetProperty("IsValidDateTime");
+                var yearProp = type.GetProperty("Year");
+                var monthProp = type.GetProperty("Month");
+                var dayProp = type.GetProperty("Day");
+                var hourProp = type.GetProperty("Hour");
+                var minuteProp = type.GetProperty("Minute");
+                var secondProp = type.GetProperty("Second");
+                
+                if (isValidProp != null && yearProp != null && monthProp != null && dayProp != null)
+                {
+                    var isValid = (bool)(isValidProp.GetValue(val) ?? false);
+                    if (isValid)
+                    {
+                        var year = (int)(yearProp.GetValue(val) ?? 0);
+                        var month = (int)(monthProp.GetValue(val) ?? 0);
+                        var day = (int)(dayProp.GetValue(val) ?? 0);
+                        var hour = hourProp != null ? (int)(hourProp.GetValue(val) ?? 0) : 0;
+                        var minute = minuteProp != null ? (int)(minuteProp.GetValue(val) ?? 0) : 0;
+                        var second = secondProp != null ? (int)(secondProp.GetValue(val) ?? 0) : 0;
+                        
+                        if (year > 1)
+                        {
+                            return $"{year}-{month:D2}-{day:D2}T{hour:D2}:{minute:D2}:{second:D2}";
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback: try GetDateTime method
+                    var getDateTimeMethod = type.GetMethod("GetDateTime");
+                    if (getDateTimeMethod != null)
+                    {
+                        var dateTimeVal = (DateTime?)getDateTimeMethod.Invoke(val, null);
+                        if (dateTimeVal.HasValue && dateTimeVal.Value.Year > 1)
+                        {
+                            return dateTimeVal.Value.ToString("yyyy-MM-ddTHH:mm:ss");
+                        }
+                    }
+                }
+                return null;
+            }
+            catch (Exception mysqlEx)
+            {
+                Console.WriteLine($"⚠ Warning: Could not convert MySqlDateTime: {mysqlEx.Message}");
+                return null;
+            }
+        }
+
+        // Handle DateOnly
+        if (val is DateOnly dateOnly)
+        {
+            if (dateOnly.Year > 1)
+            {
+                return dateOnly.ToString("yyyy-MM-dd");
+            }
+            return null;
+        }
+
+        // Return other types as-is
+        return val;
+    }
+
     public string GetArchivedChecklistsJson(int userId)
     {
         _lastError = string.Empty;
@@ -1989,14 +2497,7 @@ public class DbService : IDbService
                     }
                     
                     var val = reader.GetValue(i);
-                    if (val is DateTime dt)
-                    {
-                        checklist[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
-                    }
-                    else
-                    {
-                        checklist[fieldName] = val;
-                    }
+                    checklist[fieldName] = ConvertDbValueToJson(val) ?? (object)null!;
                 }
                 checklists.Add(checklist);
             }
@@ -2040,18 +2541,7 @@ public class DbService : IDbService
                     }
                     
                     var val = reader.GetValue(i);
-                    if (val is DateTime dt)
-                    {
-                        plan[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
-                    }
-                    else if (val is DateOnly dateOnly)
-                    {
-                        plan[fieldName] = dateOnly.ToString("yyyy-MM-dd");
-                    }
-                    else
-                    {
-                        plan[fieldName] = val;
-                    }
+                    plan[fieldName] = ConvertDbValueToJson(val) ?? (object)null!;
                 }
                 plans.Add(plan);
             }
@@ -3247,12 +3737,13 @@ public class DbService : IDbService
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
             
-            // Get all plan_days for user's plans, aggregated by date
+            // Get all plan_days for user's plans, aggregated by date (both actual_count and target_count)
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 SELECT 
                     pd.date,
-                    COALESCE(SUM(pd.actual_count), 0) as daily_count
+                    COALESCE(SUM(pd.actual_count), 0) as daily_count,
+                    COALESCE(SUM(pd.target_count), 0) as daily_target
                 FROM plan_days pd
                 INNER JOIN plans p ON pd.plan_id = p.id
                 WHERE p.user_id = @u
@@ -3262,13 +3753,14 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@u", userId);
             
             using var reader = cmd.ExecuteReader();
-            var dailyStats = new Dictionary<string, int>();
+            var dailyStats = new Dictionary<string, (int actual, int target)>();
             
             while (reader.Read())
             {
                 var date = reader.GetDateTime("date").ToString("yyyy-MM-dd");
-                var count = reader.GetInt32("daily_count");
-                dailyStats[date] = count;
+                var actualCount = reader.GetInt32("daily_count");
+                var targetCount = reader.GetInt32("daily_target");
+                dailyStats[date] = (actualCount, targetCount);
             }
             
             reader.Close();
@@ -3297,19 +3789,20 @@ public class DbService : IDbService
             {
                 var date = today.AddDays(-i);
                 var dateKey = date.ToString("yyyy-MM-dd");
-                var count = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : 0;
+                var (actualCount, targetCount) = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : (0, 0);
                 
-                cumulative += count;
+                cumulative += actualCount;
                 
-                if (count > bestDay)
+                if (actualCount > bestDay)
                 {
-                    bestDay = count;
+                    bestDay = actualCount;
                 }
                 
                 var dayData = new Dictionary<string, object>
                 {
                     ["date"] = dateKey,
-                    ["count"] = count
+                    ["count"] = actualCount,
+                    ["target"] = targetCount
                 };
                 
                 allDaysData.Add(dayData);
@@ -3333,12 +3826,13 @@ public class DbService : IDbService
                 // Only add if not already in allDaysData
                 if (!allDaysDataSet.Contains(dateKey))
                 {
-                    var count = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : 0;
+                    var (actualCount, targetCount) = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : (0, 0);
                     
                     var dayData = new Dictionary<string, object>
                     {
                         ["date"] = dateKey,
-                        ["count"] = count
+                        ["count"] = actualCount,
+                        ["target"] = targetCount
                     };
                     
                     allDaysData.Add(dayData);
@@ -3772,14 +4266,7 @@ public class DbService : IDbService
                     }
                     
                     var val = reader.GetValue(i);
-                    if (val is DateTime dt)
-                    {
-                        project[fieldName] = dt.ToString("yyyy-MM-ddTHH:mm:ss");
-                    }
-                    else
-                    {
-                        project[fieldName] = val;
-                    }
+                    project[fieldName] = ConvertDbValueToJson(val) ?? (object)null!;
                 }
                 projects.Add(project);
             }

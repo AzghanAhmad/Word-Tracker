@@ -11,6 +11,7 @@ import { filter } from 'rxjs/operators';
 interface DayStat {
     date: string;
     count: number;
+    target?: number;
 }
 
 interface ActivityDay {
@@ -105,7 +106,7 @@ export class StatsComponent implements OnInit {
                     this.bestDay = data.bestDay || 0;
                     this.currentStreak = data.currentStreak || 0;
 
-                    // Process activity data - normalize date format
+                    // Process activity data - normalize date format and include target
                     let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => {
                         // Normalize date to YYYY-MM-DD format
                         let dateStr: string;
@@ -138,7 +139,8 @@ export class StatsComponent implements OnInit {
                         }
                         return {
                             date: dateStr,
-                            count: d.count || 0
+                            count: d.count || 0,
+                            target: d.target || 0
                         };
                     });
 
@@ -170,19 +172,21 @@ export class StatsComponent implements OnInit {
                             return `${y}-${m}-${d}`;
                         };
 
-                        // Safe map creation
-                        const dataMap = new Map();
+                        // Safe map creation - store both count and target
+                        const dataMap = new Map<string, { count: number, target: number }>();
                         allDaysData.forEach(d => {
-                            dataMap.set(d.date, d.count);
+                            dataMap.set(d.date, { count: d.count, target: d.target || 0 });
                         });
 
                         // Iterate day by day from Start to Today
                         const current = new Date(startDate);
                         while (current <= endDate) {
                             const dateStr = toLocalISOString(current);
+                            const dayData = dataMap.get(dateStr) || { count: 0, target: 0 };
                             filledData.push({
                                 date: dateStr,
-                                count: dataMap.get(dateStr) || 0
+                                count: dayData.count,
+                                target: dayData.target
                             });
                             current.setDate(current.getDate() + 1);
                         }
@@ -196,9 +200,10 @@ export class StatsComponent implements OnInit {
                     const sortedAllDays = [...allDaysData].sort((a, b) => 
                         new Date(b.date).getTime() - new Date(a.date).getTime()
                     );
-                    this.activityData = sortedAllDays.slice(0, 14).reverse().map((d: any) => ({
+                    this.activityData = sortedAllDays.slice(0, 14).reverse().map((d: DayStat) => ({
                         date: d.date,
-                        count: d.count || 0
+                        count: d.count || 0,
+                        target: d.target || 0
                     }));
 
                     // Prepare Charts - use allDaysData (already sorted by date ascending)
@@ -251,10 +256,10 @@ export class StatsComponent implements OnInit {
             return `${y}-${m}-${d}`;
         };
 
-        // Create a map of the data for quick lookup
-        const dataMap = new Map<string, number>();
+        // Create a map of the data for quick lookup - store both count and target
+        const dataMap = new Map<string, { count: number, target: number }>();
         allDaysData.forEach(d => {
-            dataMap.set(d.date, d.count);
+            dataMap.set(d.date, { count: d.count, target: d.target || 0 });
         });
 
         // Generate all days of current month with data
@@ -263,9 +268,11 @@ export class StatsComponent implements OnInit {
         
         while (current <= lastDayOfMonth) {
             const dateStr = toLocalISOString(current);
+            const dayData = dataMap.get(dateStr) || { count: 0, target: 0 };
             monthlyData.push({
                 date: dateStr,
-                count: dataMap.get(dateStr) || 0
+                count: dayData.count,
+                target: dayData.target
             });
             current.setDate(current.getDate() + 1);
         }

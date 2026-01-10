@@ -371,7 +371,8 @@ public class PlansController : ControllerBase
             ["activity_type"] = GetString("activity_type", "Writing"),
             ["content_type"] = GetString("content_type", "Novel"),
             ["current_progress"] = currentProgress,
-            ["progress"] = currentProgress
+            ["progress"] = currentProgress,
+            ["created_at"] = GetString("created_at", "")
         };
     }
 

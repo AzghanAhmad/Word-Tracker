@@ -6,13 +6,13 @@
 
         <div class="tabs">
             <button class="tab" [class.active]="activeTab === 'plans'" (click)="setActiveTab('plans')">
-                <i class="fas fa-file-signature"></i> Plans ({{ archivedPlans.length }})
+                <i class="fas fa-file-signature"></i> Plans ({{ plansCount }})
             </button>
             <button class="tab" [class.active]="activeTab === 'checklists'" (click)="setActiveTab('checklists')">
-                <i class="fas fa-clipboard-list"></i> Checklists ({{ archivedChecklists.length }})
+                <i class="fas fa-clipboard-list"></i> Checklists ({{ checklistsCount }})
             </button>
             <button class="tab" [class.active]="activeTab === 'projects'" (click)="setActiveTab('projects')">
-                <i class="fas fa-network-wired"></i> Organization Plans ({{ archivedProjects.length }})
+                <i class="fas fa-network-wired"></i> Organization Plans ({{ projectsCount }})
             </button>
         </div>
 
@@ -42,7 +42,7 @@
                     <div class="card-body">
                         <div class="description" *ngIf="plan.description" [innerHTML]="plan.description"></div>
                         <div class="meta">
-                            <span><i class="fas fa-calendar-alt"></i> {{ plan.created_at | date:'mediumDate' }}</span>
+                            <span *ngIf="getDateString(plan.created_at)"><i class="fas fa-calendar-alt"></i> {{ getDateString(plan.created_at) | date:'mediumDate' }}</span>
                             <span><i class="fas fa-feather-alt"></i> {{ plan.total_word_count | number }} words</span>
                         </div>
                     </div>
@@ -75,8 +75,7 @@
                     </div>
                     <div class="card-body">
                         <div class="meta">
-                            <span><i class="fas fa-calendar-alt"></i> {{ checklist.created_at | date:'mediumDate'
-                                }}</span>
+                            <span *ngIf="getDateString(checklist.created_at)"><i class="fas fa-calendar-alt"></i> {{ getDateString(checklist.created_at) | date:'mediumDate' }}</span>
                             <span *ngIf="checklist.item_count !== undefined"><i class="fas fa-list-ul"></i> {{
                                 checklist.item_count }}
                                 items</span>
@@ -113,8 +112,7 @@
                         <p class="subtitle" *ngIf="project.subtitle">{{ project.subtitle }}</p>
                         <div class="description" *ngIf="project.description" [innerHTML]="project.description"></div>
                         <div class="meta">
-                            <span><i class="fas fa-calendar-alt"></i> {{ project.created_at | date:'mediumDate'
-                                }}</span>
+                            <span *ngIf="getDateString(project.created_at)"><i class="fas fa-calendar-alt"></i> {{ getDateString(project.created_at) | date:'mediumDate' }}</span>
                             <span *ngIf="project.is_private"><i class="fas fa-lock"></i> Private</span>
                         </div>
                     </div>

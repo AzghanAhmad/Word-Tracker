@@ -13,8 +13,15 @@
         rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- API Configuration - Client can modify this file -->
-    <script src="config.js"></script>
+    <!-- API Configuration - Optional config.js file for production environment configuration -->
+    <!-- Initialize default config if config.js doesn't exist or fails to load -->
+    <script>
+        // Set default config before loading config.js (if it exists)
+        if (typeof window.APP_CONFIG === 'undefined') {
+            window.APP_CONFIG = { apiUrl: '/api' };
+        }
+    </script>
+    <script src="config.js" onerror="console.log('config.js not found, using default configuration')"></script>
 </head>
 
 <body>

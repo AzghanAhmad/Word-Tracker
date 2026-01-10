@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { ContentLoaderComponent } from '../content-loader/content-loader.component';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 interface ArchivedItem {
   id: number;
@@ -27,6 +29,19 @@ export class ArchiveComponent implements OnInit {
   isLoading = true;
   activeTab: 'plans' | 'checklists' | 'projects' = 'plans';
 
+  // Getters for counts to prevent change detection errors
+  get plansCount(): number {
+    return this.archivedPlans?.length || 0;
+  }
+
+  get checklistsCount(): number {
+    return this.archivedChecklists?.length || 0;
+  }
+
+  get projectsCount(): number {
+    return this.archivedProjects?.length || 0;
+  }
+
   constructor(
     private apiService: ApiService,
     private cdr: ChangeDetectorRef
@@ -38,53 +53,62 @@ export class ArchiveComponent implements OnInit {
 
   loadArchivedItems() {
     this.isLoading = true;
-    this.cdr.detectChanges();
-
-    // Load archived plans
-    this.apiService.getArchivedPlans().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.archivedPlans = response.data;
+    // Use setTimeout to defer reset - prevents change detection error during initial render
+    setTimeout(() => {
+      this.archivedPlans = [];
+      this.archivedChecklists = [];
+      this.archivedProjects = [];
+      
+      // Load all archived items in parallel using forkJoin
+      forkJoin({
+        plans: this.apiService.getArchivedPlans().pipe(
+          catchError(err => {
+            console.error('Error loading archived plans:', err);
+            return of({ success: false, data: [] });
+          })
+        ),
+        checklists: this.apiService.getArchivedChecklists().pipe(
+          catchError(err => {
+            console.error('Error loading archived checklists:', err);
+            return of({ success: false, data: [] });
+          })
+        ),
+        projects: this.apiService.getArchivedProjects().pipe(
+          catchError(err => {
+            console.error('Error loading archived projects:', err);
+            return of({ success: false, data: [] });
+          })
+        )
+      }).subscribe({
+        next: (results) => {
+          // Update all arrays in a single change detection cycle using setTimeout
+          // This prevents ExpressionChangedAfterItHasBeenCheckedError
+          setTimeout(() => {
+            this.archivedPlans = results.plans?.success && results.plans?.data 
+              ? Array.isArray(results.plans.data) ? results.plans.data : [] 
+              : [];
+            this.archivedChecklists = results.checklists?.success && results.checklists?.data 
+              ? Array.isArray(results.checklists.data) ? results.checklists.data : [] 
+              : [];
+            this.archivedProjects = results.projects?.success && results.projects?.data 
+              ? Array.isArray(results.projects.data) ? results.projects.data : [] 
+              : [];
+            this.isLoading = false;
+            this.cdr.markForCheck();
+          }, 0);
+        },
+        error: (err) => {
+          console.error('Error loading archived items:', err);
+          setTimeout(() => {
+            this.archivedPlans = [];
+            this.archivedChecklists = [];
+            this.archivedProjects = [];
+            this.isLoading = false;
+            this.cdr.markForCheck();
+          }, 0);
         }
-        this.loadArchivedChecklists();
-      },
-      error: (err) => {
-        console.error('Error loading archived plans:', err);
-        this.loadArchivedChecklists();
-      }
-    });
-  }
-
-  loadArchivedChecklists() {
-    this.apiService.getArchivedChecklists().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.archivedChecklists = response.data;
-        }
-        this.loadArchivedProjects();
-      },
-      error: (err) => {
-        console.error('Error loading archived checklists:', err);
-        this.loadArchivedProjects();
-      }
-    });
-  }
-
-  loadArchivedProjects() {
-    this.apiService.getArchivedProjects().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.archivedProjects = response.data;
-        }
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Error loading archived projects:', err);
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      }
-    });
+      });
+    }, 0);
   }
 
   unarchivePlan(id: number) {
@@ -92,7 +116,10 @@ export class ArchiveComponent implements OnInit {
       this.apiService.archivePlan(id, false).subscribe({
         next: (response) => {
           if (response.success) {
-            this.loadArchivedItems();
+            // Reload after a short delay to avoid change detection issues
+            setTimeout(() => {
+              this.loadArchivedItems();
+            }, 100);
           }
         },
         error: (err) => {
@@ -107,7 +134,10 @@ export class ArchiveComponent implements OnInit {
       this.apiService.archiveChecklist(id, false).subscribe({
         next: (response) => {
           if (response.success) {
-            this.loadArchivedItems();
+            // Reload after a short delay to avoid change detection issues
+            setTimeout(() => {
+              this.loadArchivedItems();
+            }, 100);
           }
         },
         error: (err) => {
@@ -122,7 +152,10 @@ export class ArchiveComponent implements OnInit {
       this.apiService.archiveProject(id, false).subscribe({
         next: (response) => {
           if (response.success) {
-            this.loadArchivedItems();
+            // Reload after a short delay to avoid change detection issues
+            setTimeout(() => {
+              this.loadArchivedItems();
+            }, 100);
           }
         },
         error: (err) => {
@@ -137,7 +170,10 @@ export class ArchiveComponent implements OnInit {
       this.apiService.deletePlan(id).subscribe({
         next: (response) => {
           if (response.success) {
-            this.loadArchivedItems();
+            // Reload after a short delay to avoid change detection issues
+            setTimeout(() => {
+              this.loadArchivedItems();
+            }, 100);
           }
         },
         error: (err) => {
@@ -152,7 +188,10 @@ export class ArchiveComponent implements OnInit {
       this.apiService.deleteChecklist(id).subscribe({
         next: (response) => {
           if (response.success) {
-            this.loadArchivedItems();
+            // Reload after a short delay to avoid change detection issues
+            setTimeout(() => {
+              this.loadArchivedItems();
+            }, 100);
           }
         },
         error: (err) => {
@@ -167,7 +206,10 @@ export class ArchiveComponent implements OnInit {
       this.apiService.deleteProject(id).subscribe({
         next: (response) => {
           if (response.success) {
-            this.loadArchivedItems();
+            // Reload after a short delay to avoid change detection issues
+            setTimeout(() => {
+              this.loadArchivedItems();
+            }, 100);
           }
         },
         error: (err) => {
@@ -179,5 +221,100 @@ export class ArchiveComponent implements OnInit {
 
   setActiveTab(tab: 'plans' | 'checklists' | 'projects') {
     this.activeTab = tab;
+  }
+
+  /**
+   * Safely converts a date value to a string that can be used with DatePipe
+   * Handles string, Date object, MySqlDateTime JSON string, or object with date properties
+   */
+  getDateString(dateValue: any): string {
+    if (!dateValue) {
+      return '';
+    }
+
+    // If it's already a string, check if it's a JSON object string (MySqlDateTime serialized)
+    if (typeof dateValue === 'string') {
+      // Check if it looks like a JSON object (starts with {)
+      if (dateValue.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(dateValue);
+          // Handle MySqlDateTime JSON format: {"IsValidDateTime":true,"Year":2025,"Month":12,"Day":29,...}
+          if (parsed && typeof parsed === 'object' && parsed.Year && parsed.Month !== undefined && parsed.Day) {
+            if (parsed.IsValidDateTime === true) {
+              const year = parsed.Year;
+              const month = String(parsed.Month).padStart(2, '0');
+              const day = String(parsed.Day).padStart(2, '0');
+              const hour = parsed.Hour !== undefined ? String(parsed.Hour).padStart(2, '0') : '00';
+              const minute = parsed.Minute !== undefined ? String(parsed.Minute).padStart(2, '0') : '00';
+              const second = parsed.Second !== undefined ? String(parsed.Second).padStart(2, '0') : '00';
+              return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+            }
+            return '';
+          }
+        } catch (e) {
+          // Not JSON, try to parse as regular date string
+        }
+      }
+      // Regular date string - validate it can be parsed
+      try {
+        const testDate = new Date(dateValue);
+        if (!isNaN(testDate.getTime())) {
+          return dateValue;
+        }
+      } catch (e) {
+        // Invalid date string
+        return '';
+      }
+      return dateValue;
+    }
+
+    // If it's a Date object, convert to ISO string
+    if (dateValue instanceof Date) {
+      return dateValue.toISOString();
+    }
+
+    // If it's an object, try to extract date string
+    if (typeof dateValue === 'object') {
+      // Handle MySqlDateTime object format directly
+      if (dateValue.Year && dateValue.Month !== undefined && dateValue.Day) {
+        if (dateValue.IsValidDateTime === true || dateValue.IsValidDateTime === undefined) {
+          const year = dateValue.Year;
+          const month = String(dateValue.Month).padStart(2, '0');
+          const day = String(dateValue.Day).padStart(2, '0');
+          const hour = dateValue.Hour !== undefined ? String(dateValue.Hour).padStart(2, '0') : '00';
+          const minute = dateValue.Minute !== undefined ? String(dateValue.Minute).padStart(2, '0') : '00';
+          const second = dateValue.Second !== undefined ? String(dateValue.Second).padStart(2, '0') : '00';
+          return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        }
+        return '';
+      }
+      
+      // Try common date object properties
+      if (dateValue.date) {
+        return this.getDateString(dateValue.date);
+      }
+      if (dateValue.value) {
+        return this.getDateString(dateValue.value);
+      }
+      
+      // Try to parse as JSON string and extract date
+      try {
+        const jsonStr = JSON.stringify(dateValue);
+        return this.getDateString(jsonStr); // Recursively parse the JSON string
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+    }
+
+    // Fallback: try to convert to string and parse as date
+    try {
+      const dateStr = String(dateValue);
+      return this.getDateString(dateStr); // Recursively try string parsing
+    } catch (e) {
+      // Ignore conversion errors
+    }
+
+    // Last resort: return empty string
+    return '';
   }
 }

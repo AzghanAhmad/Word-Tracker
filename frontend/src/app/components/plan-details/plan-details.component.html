@@ -50,13 +50,13 @@
 
     <!-- Global Navigation Tabs -->
     <div class="tab-navigation">
-        <div class="tab-item" [class.active]="activeTab === 'plan'" (click)="activeTab = 'plan'"><i
+        <div class="tab-item" [class.active]="activeTab === 'plan'" (click)="onTabChange('plan')"><i
                 class="fas fa-cog"></i> Plan</div>
-        <div class="tab-item" [class.active]="activeTab === 'schedule'" (click)="activeTab = 'schedule'"><i
+        <div class="tab-item" [class.active]="activeTab === 'schedule'" (click)="onTabChange('schedule')"><i
                 class="fas fa-calendar-alt"></i> Schedule</div>
-        <div class="tab-item" [class.active]="activeTab === 'progress'" (click)="activeTab = 'progress'"><i
+        <div class="tab-item" [class.active]="activeTab === 'progress'" (click)="onTabChange('progress')"><i
                 class="fas fa-pen-nib"></i> Progress</div>
-        <div class="tab-item" [class.active]="activeTab === 'stats'" (click)="activeTab = 'stats'"><i
+        <div class="tab-item" [class.active]="activeTab === 'stats'" (click)="onTabChange('stats')"><i
                 class="fas fa-chart-bar"></i> Analytics</div>
     </div>
 
@@ -108,28 +108,42 @@
             <div class="project-section">
                 <h3><i class="fas fa-calendar-check"></i> Writing Strategy</h3>
                 <div class="info-block">
-                    <label>Writing Days Selector</label>
-                    <div class="selector-grid">
-                        <div class="selector-option" 
-                            [class.active]="plan.weekend_approach === 'Weekdays Only'"
-                            style="cursor: default; opacity: 0.9;">
-                            <h4>Weekdays Only</h4>
-                            <p>Focused sessions on Monday through Friday. Your weekends are preserved for rest and
-                                recovery.</p>
+                    <label>Progress Distribution Strategy</label>
+                    <div class="strategy-grid">
+                        <div class="strategy-option" 
+                            [class.active]="isActiveStrategy('Steady')">
+                            <h4>Steady</h4>
+                            <p>Write an equal amount every single day. Consistent and predictable progress throughout your project.</p>
                         </div>
-                        <div class="selector-option"
-                            [class.active]="plan.weekend_approach === 'Custom days' || plan.weekend_approach === 'The Usual'"
-                            style="cursor: default; opacity: 0.9;">
-                            <h4>The Usual</h4>
-                            <p>Writing every day, including weekends. Best for building a consistent, unwavering daily
-                                habit.</p>
+                        <div class="strategy-option"
+                            [class.active]="isActiveStrategy('Front-load')">
+                            <h4>Front-load</h4>
+                            <p>Start with high intensity and taper off towards the end. Bite the bullet early and finish with momentum.</p>
                         </div>
-                        <div class="selector-option"
-                            [class.active]="plan.weekend_approach === 'None' || plan.weekend_approach === 'Rest Days'"
-                            style="cursor: default; opacity: 0.9;">
-                            <h4>Adaptive rest</h4>
-                            <p>Flexible scheduling where targets are adjusted based on your historical pace and energy.
-                            </p>
+                        <div class="strategy-option"
+                            [class.active]="isActiveStrategy('Back-load')">
+                            <h4>Back-load</h4>
+                            <p>Start small and increase your pace as you approach the deadline. Rising to the challenge and finishing strong.</p>
+                        </div>
+                        <div class="strategy-option"
+                            [class.active]="isActiveStrategy('Mountain')">
+                            <h4>Mountain</h4>
+                            <p>Build up to a peak intensity mid-project, then gradually slow down. Effort concentrated in the middle.</p>
+                        </div>
+                        <div class="strategy-option"
+                            [class.active]="isActiveStrategy('Valley')">
+                            <h4>Valley</h4>
+                            <p>Fast start, quiet middle, and a strong finish. Effort at the beginning and end with a restful period in between.</p>
+                        </div>
+                        <div class="strategy-option"
+                            [class.active]="isActiveStrategy('Oscillating')">
+                            <h4>Oscillating</h4>
+                            <p>Alternate between high-intensity and low-intensity periods. Mixed loads for varied pacing.</p>
+                        </div>
+                        <div class="strategy-option"
+                            [class.active]="isActiveStrategy('Randomly')">
+                            <h4>Randomly</h4>
+                            <p>Every day is a surprise. Pseudo-random distribution that stays consistent unless recalculated.</p>
                         </div>
                     </div>
                 </div>

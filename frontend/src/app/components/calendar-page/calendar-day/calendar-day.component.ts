@@ -27,7 +27,7 @@ import { CommonModule } from '@angular/common';
         <!-- Progress vs Plan Mode: Show individual plan pills -->
         <div *ngIf="viewMode === 'progress-vs-plan' && plans && plans.length > 0" class="plans-container">
           <div *ngFor="let plan of plans; trackBy: trackByPlanId" class="plan-pill" 
-               [style.background-color]="plan.dashboard_color || plan.color_code || '#6366f1'">
+               [style.background-color]="plan.dashboard_color || plan.color_code || '#273853'">
              <div class="pill-color"></div>
              <span class="name">{{ plan.title || plan.plan_name }}</span>
              <span class="plan-stats">
@@ -169,7 +169,7 @@ import { CommonModule } from '@angular/common';
 
     /* Total Box for Daily Total Mode */
     .total-box {
-        background: #6366f1;
+        background: #273853;
         color: #ffffff;
         padding: 8px 12px;
         border-radius: 6px;
@@ -202,7 +202,7 @@ import { CommonModule } from '@angular/common';
         display: flex;
         align-items: center;
         gap: 8px;
-        background: var(--pill-bg, #6366f1);
+        background: var(--pill-bg, #273853);
         padding: 6px 10px;
         border-radius: 6px;
         font-size: 0.75rem;

@@ -4,7 +4,7 @@
         <div class="title-section">
             <h1 *ngIf="!planName">Edit me: A Brand New Goal!</h1>
             <h1 *ngIf="planName">{{ planName }}</h1>
-            <p class="subtitle">{{ contentType }} Drafting</p>
+            <p class="subtitle">{{ contentType }} {{ activityType }}</p>
         </div>
         <div class="header-actions">
             <button class="btn-done" (click)="savePlan()" [disabled]="isLoading">
@@ -30,9 +30,9 @@
     <div class="plan-content">
         <!-- Sidebar -->
         <aside class="plan-sidebar" *ngIf="viewMode !== 'plan'">
-            <div class="sidebar-card">
+            <div class="sidebar-card sidebar-high-fidelity">
                 <div class="card-header">
-                    <span>Plan Info</span>
+                    <h3>Plan Info</h3>
                     <i class="fas fa-arrows-alt-v"></i>
                 </div>
                 <div class="card-body">
@@ -42,15 +42,87 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group half">
-                            <label>Target word :</label>
-                            <input type="number" [(ngModel)]="targetWordCount" (ngModelChange)="onTargetChange()">
+                            <label>Activity :</label>
+                            <select [(ngModel)]="activityType">
+                                <option value="Recording">Recording</option>
+                                <option value="Narrating">Narrating</option>
+                                <option value="Drafting">Drafting</option>
+                                <option value="Editing">Editing</option>
+                                <option value="Grading">Grading</option>
+                                <option value="Plotting">Plotting</option>
+                                <option value="Proofreading">Proofreading</option>
+                                <option value="Publishing">Publishing</option>
+                                <option value="Reading">Reading</option>
+                                <option value="Revision">Revision</option>
+                                <option value="Release">Release</option>
+                                <option value="Study">Study</option>
+                                <option value="Setup">Setup</option>
+                                <option value="Transcription">Transcription</option>
+                                <option value="Translation">Translation</option>
+                                <option value="Work">Work</option>
+                                <option value="Writing">Writing</option>
+                                <option value="Saving">Saving</option>
+                                <option value="Spending">Spending</option>
+                                <option value="Running">Running</option>
+                                <option value="Training">Training</option>
+                                <option value="Losing">Losing</option>
+                                <option value="Winning">Winning</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Crafting">Crafting</option>
+                                <option value="Watching">Watching</option>
+                                <option value="Admin">Admin</option>
+                            </select>
                         </div>
                         <div class="form-group half">
                             <label>Content type :</label>
                             <select [(ngModel)]="contentType">
-                                <option value="Novella">Novella</option>
+                                <option value="Audiobook">Audiobook</option>
+                                <option value="Book">Book</option>
+                                <option value="Blog Post">Blog Post</option>
+                                <option value="Chapbook">Chapbook</option>
+                                <option value="Comics">Comics</option>
+                                <option value="Conference Paper">Conference Paper</option>
+                                <option value="Diary">Diary</option>
+                                <option value="Dissertation">Dissertation</option>
+                                <option value="Documentation">Documentation</option>
+                                <option value="Essay">Essay</option>
+                                <option value="Fiction">Fiction</option>
+                                <option value="Grant">Grant</option>
+                                <option value="Journal">Journal</option>
+                                <option value="Journal Paper">Journal Paper</option>
+                                <option value="Magazine Article">Magazine Article</option>
+                                <option value="Manuals">Manuals</option>
+                                <option value="Manuscript">Manuscript</option>
+                                <option value="Newsletter">Newsletter</option>
+                                <option value="Newspaper Article">Newspaper Article</option>
+                                <option value="Non-Fiction">Non-Fiction</option>
                                 <option value="Novel">Novel</option>
-                                <option value="Epic">Epic</option>
+                                <option value="Novella">Novella</option>
+                                <option value="Paper">Paper</option>
+                                <option value="Poem">Poem</option>
+                                <option value="Practice">Practice</option>
+                                <option value="Project">Project</option>
+                                <option value="Proposal">Proposal</option>
+                                <option value="Screenplay">Screenplay</option>
+                                <option value="Script">Script</option>
+                                <option value="Short Story">Short Story</option>
+                                <option value="Speech">Speech</option>
+                                <option value="Technical Document">Technical Document</option>
+                                <option value="Textbook">Textbook</option>
+                                <option value="Thesis">Thesis</option>
+                                <option value="Money">Money</option>
+                                <option value="Workout">Workout</option>
+                                <option value="Work">Work</option>
+                                <option value="Marathon">Marathon</option>
+                                <option value="Weight">Weight</option>
+                                <option value="Other">Other</option>
+                                <option value="Video">Video</option>
+                                <option value="TV">TV</option>
+                                <option value="Movie">Movie</option>
+                                <option value="Game">Game</option>
+                                <option value="Website">Website</option>
+                                <option value="Home">Home</option>
+                                <option value="Personal">Personal</option>
                             </select>
                         </div>
                     </div>
@@ -72,7 +144,7 @@
             </div>
 
             <!-- Plan Description -->
-            <div class="sidebar-card description-card">
+            <div class="sidebar-card description-card sidebar-high-fidelity">
                 <div class="card-header">
                     <h3>Plan Description</h3>
                     <i class="fas fa-pen-fancy"></i>
@@ -120,9 +192,9 @@
             </div>
 
             <!-- Goals Section -->
-            <div class="sidebar-card goals-card">
+            <div class="sidebar-card goals-card sidebar-high-fidelity">
                 <div class="card-header">
-                    <h3>GOALS</h3>
+                    <h3>Goals</h3>
                     <i class="fas fa-arrows-alt-v"></i>
                 </div>
                 <div class="card-body">
@@ -139,7 +211,44 @@
                     </div>
                     <div class="form-group">
                         <label>HOW IT'S MEASURED</label>
-                        <input type="text" [(ngModel)]="measurementUnit" value="words" class="white-bg-input">
+                        <select [(ngModel)]="measurementUnit" class="white-bg-input" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                            <option value="feature">Features</option>
+                            <option value="word">Words</option>
+                            <option value="paragraph">Paragraphs</option>
+                            <option value="page">Pages</option>
+                            <option value="poem">Poems</option>
+                            <option value="chapter">Chapters</option>
+                            <option value="section">Sections</option>
+                            <option value="character">Characters</option>
+                            <option value="verse">Verses</option>
+                            <option value="act">Acts</option>
+                            <option value="scene">Scenes</option>
+                            <option value="stanza">Stanzas</option>
+                            <option value="line">Lines</option>
+                            <option value="book">Books</option>
+                            <option value="day">Days</option>
+                            <option value="hour">Hours</option>
+                            <option value="minute">Minutes</option>
+                            <option value="unit">Units</option>
+                            <option value="item">Items</option>
+                            <option value="task">Tasks</option>
+                            <option value="todo">Todos</option>
+                            <option value="step">Steps</option>
+                            <option value="entry">Entries</option>
+                            <option value="post">Posts</option>
+                            <option value="worksheet">Worksheets</option>
+                            <option value="dollar">Dollars</option>
+                            <option value="mile">Miles</option>
+                            <option value="km">Kilometers</option>
+                            <option value="lb">Pounds (lb)</option>
+                            <option value="kg">Kilograms (kg)</option>
+                            <option value="stitch">Stitches</option>
+                            <option value="time">Times</option>
+                            <option value="episode">Episodes</option>
+                            <option value="video">Videos</option>
+                            <option value="movie">Movies</option>
+                            <option value="lesson">Lessons</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label style="line-height: 1.4; margin-bottom: 0.5rem; display: block;">
@@ -181,89 +290,286 @@
                     </div>
                 </div>
             </div>
-            <!-- Progress Section (NEW) -->
-            <div class="sidebar-card progress-card">
+
+            <!-- Customizations Card in Sidebar (High-Fidelity) -->
+            <div class="sidebar-card customizations-card sidebar-high-fidelity">
                 <div class="card-header">
-                    <h3>PROGRESS</h3>
-                    <i class="fas fa-list-check"></i>
+                    <h3>Customizations</h3>
+                    <i class="fas fa-arrows-alt-v"></i>
                 </div>
                 <div class="card-body">
+                    <!-- On Weekends? -->
                     <div class="form-group">
-                        <label>TRACKING TYPE</label>
-                        <select [(ngModel)]="progressTrackingType" class="white-bg-input">
-                            <option value="Daily Goals">Daily Goals</option>
-                            <option value="Total Goal">Total Goal</option>
-                            <option value="Milestones">Milestones</option>
-                        </select>
+                        <label>On Weekends?</label>
+                        <div class="segmented-control">
+                            <button type="button" [class.active]="weekendApproach === 'Skip'"
+                                (click)="setWeekendApproach('Skip')">Skip</button>
+                            <button type="button" [class.active]="weekendApproach === 'Do Less'"
+                                (click)="setWeekendApproach('Do Less')">Do Less</button>
+                            <button type="button" [class.active]="weekendApproach === 'The Usual'"
+                                (click)="setWeekendApproach('The Usual')">The Usual</button>
+                            <button type="button" [class.active]="weekendApproach === 'Do More'"
+                                (click)="setWeekendApproach('Do More')">Do More</button>
+                            <button type="button" [class.active]="weekendApproach === 'Push!'"
+                                (click)="setWeekendApproach('Push!')">Push!</button>
+                        </div>
                     </div>
-                    <div class="form-group mb-1">
-                        <label>MANUAL PROGRESS (%)</label>
-                        <input type="number" [(ngModel)]="currentProgress" placeholder="23" min="0" max="100"
-                            class="white-bg-input">
+
+                    <!-- Customize Workload -->
+                    <div class="form-group">
+                        <label>Customize Workload on a certain :</label>
+                        <div class="action-buttons-group">
+                            <button type="button" class="btn-outline-action" (click)="addWeekdayOverride()">
+                                <i class="fas fa-plus"></i> weekday?
+                            </button>
+                            <button type="button" class="btn-outline-action" (click)="addSpecificDateOverride()">
+                                <i class="fas fa-plus"></i> date?
+                            </button>
+                            <button type="button" class="btn-outline-action" (click)="addDateRangeOverride()">
+                                <i class="fas fa-plus"></i> date range?
+                            </button>
+                        </div>
+
+                        <!-- Inline Dynamic Override Form -->
+                        <div class="inline-override-form mt-3" *ngIf="showOverrideForm">
+                            <div class="form-header-row">
+                                <span class="form-title" [ngSwitch]="showOverrideForm">
+                                    <span *ngSwitchCase="'weekday'">Select Weekday</span>
+                                    <span *ngSwitchCase="'date'">Select Date</span>
+                                    <span *ngSwitchCase="'range'">Select Range</span>
+                                </span>
+                                <button type="button" class="btn-close-inline" (click)="cancelOverride()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+
+                            <div class="form-inputs">
+                                <!-- Weekday Selector -->
+                                <select *ngIf="showOverrideForm === 'weekday'" [(ngModel)]="newOverride.day"
+                                    class="inline-select">
+                                    <option [value]="1">Monday</option>
+                                    <option [value]="2">Tuesday</option>
+                                    <option [value]="3">Wednesday</option>
+                                    <option [value]="4">Thursday</option>
+                                    <option [value]="5">Friday</option>
+                                    <option [value]="6">Saturday</option>
+                                    <option [value]="0">Sunday</option>
+                                </select>
+
+                                <!-- Date Picker -->
+                                <input *ngIf="showOverrideForm === 'date'" type="date" [(ngModel)]="newOverride.date"
+                                    class="inline-input-date">
+
+                                <!-- Range Picker -->
+                                <div *ngIf="showOverrideForm === 'range'" class="range-picker-inline">
+                                    <div class="range-field">
+                                        <span class="range-label">From</span>
+                                        <input type="date" [(ngModel)]="newOverride.start"
+                                            class="inline-input-date mini">
+                                    </div>
+                                    <div class="range-field">
+                                        <span class="range-label">to</span>
+                                        <input type="date" [(ngModel)]="newOverride.end" class="inline-input-date mini">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Intensity Selector -->
+                            <div class="segmented-control mini mt-2">
+                                <button type="button" [class.active]="newOverride.approach === 'Skip'"
+                                    (click)="newOverride.approach = 'Skip'">Skip</button>
+                                <button type="button" [class.active]="newOverride.approach === 'Do Less'"
+                                    (click)="newOverride.approach = 'Do Less'">Do Less</button>
+                                <button type="button" [class.active]="newOverride.approach === 'The Usual'"
+                                    (click)="newOverride.approach = 'The Usual'">The Usual</button>
+                                <button type="button" [class.active]="newOverride.approach === 'Do More'"
+                                    (click)="newOverride.approach = 'Do More'">Do More</button>
+                                <button type="button" [class.active]="newOverride.approach === 'Push!'"
+                                    (click)="newOverride.approach = 'Push!'">Push!</button>
+                            </div>
+
+                            <button type="button" class="btn-add-override mt-2" (click)="saveOverride()">
+                                Add Override
+                            </button>
+                        </div>
                     </div>
-                    <p class="hint">Enter 1-100 to update.</p>
+
+                    <!-- Availability Events -->
+                    <div class="form-group">
+                        <label>Your Availability Events:</label>
+                        <div class="availability-status" *ngIf="availabilityEvents.length === 0">
+                            No availability events found for this plan period.
+                        </div>
+                        <div class="events-list" *ngIf="availabilityEvents.length > 0">
+                            <!-- Future list of events -->
+                        </div>
+                    </div>
+
+                    <!-- Reserve Days -->
+                    <div class="form-group reserve-sidebar-group">
+                        <div class="reserve-input-inline">
+                            <label>Reserve</label>
+                            <div class="number-input-modern">
+                                <input type="number" [(ngModel)]="reserveDays" (ngModelChange)="generatePlanData()"
+                                    min="0" max="30">
+                            </div>
+                            <span class="reserve-suffix">free days at the end, just in case</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Section (NEW) -->
+            <div class="sidebar-card progress-card sidebar-high-fidelity">
+                <div class="card-header">
+                    <h3>Progress</h3>
+                    <i class="fas fa-arrows-alt-v"></i>
+                </div>
+                <div class="card-body">
+                    <div class="progress-behavior-group">
+                        <div class="behavior-section">
+                            <h4 class="behavior-title">How does your plan change with your progress?</h4>
+
+                            <label class="premium-radio-container">
+                                <input type="radio" name="planAdjustment" value="adjust" [(ngModel)]="planAdjustment">
+                                <span class="checkmark"></span>
+                                <span class="radio-label">
+                                    <strong>I want my plan to adjust based on my progress</strong> : so I can keep the
+                                    same relative pace
+                                </span>
+                            </label>
+
+                            <label class="premium-radio-container">
+                                <input type="radio" name="planAdjustment" value="fixed" [(ngModel)]="planAdjustment">
+                                <span class="checkmark"></span>
+                                <span class="radio-label">
+                                    <strong>I want my plan to stay the same as I work</strong> : I want to see how far
+                                    I'm ahead or behind my original plan
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="behavior-section mt-4">
+                            <h4 class="behavior-title">How will you record your progress?</h4>
+
+                            <label class="premium-radio-container">
+                                <input type="radio" name="recordingType" value="overall" [(ngModel)]="recordingType">
+                                <span class="checkmark"></span>
+                                <span class="radio-label">
+                                    <strong>Overall Completed Work</strong> : Each day, I'll record how far I've reached
+                                    i.e. my cumulative progress.
+                                </span>
+                            </label>
+
+                            <label class="premium-radio-container">
+                                <input type="radio" name="recordingType" value="daily" [(ngModel)]="recordingType">
+                                <span class="checkmark"></span>
+                                <span class="radio-label">
+                                    <strong>Daily Completed Work</strong> : Each day, I'll record what I did on that
+                                    day.
+                                </span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
 
-            <!-- Strategy (NEW) -->
-            <div class="sidebar-card">
+            <!-- Strategy (NEW PREMIUM) -->
+            <div class="sidebar-card strategy-card sidebar-high-fidelity">
                 <div class="card-header">
                     <h3>Strategy</h3>
                     <i class="fas fa-chess-knight"></i>
                 </div>
                 <div class="card-body">
-                    <div class="form-group">
-                        <label>Pace Algorithm</label>
-                        <select [(ngModel)]="strategyType" (change)="onStrategyChange()">
-                            <option value="Steady">Steady</option>
-                            <option value="Back-load">Rising (Back-load)</option>
-                            <option value="Front-load">Front-load</option>
-                            <option value="Mountain">Mountain</option>
-                            <option value="Valley">Valley</option>
-                            <option value="Oscillating">Oscillating</option>
-                        </select>
-                        <p class="hint mt-1" style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">How your
-                            daily goal changes over time.</p>
+                    <div class="strategy-selector-section sidebar-version no-border no-margin pt-0">
+                        <label class="mb-3 d-block"
+                            style="font-weight: 700; color: #4b5563; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">How
+                            would you like to approach this?</label>
+                        <div class="strategy-options progress-behavior-group">
+                            <div class="behavior-section" style="gap: 0.85rem;">
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Steady" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label"><strong>Steadily</strong> : same amount every day</span>
+                                </label>
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Back-load" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label"><strong>Rising to the challenge</strong> : finish
+                                        strong</span>
+                                </label>
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Front-load" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label"><strong>Biting the bullet</strong> : start strong</span>
+                                </label>
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Mountain" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label"><strong>Mountain Hike</strong> : effort in the
+                                        middle</span>
+                                </label>
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Valley" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label"><strong>Valley</strong> : effort at start and end</span>
+                                </label>
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Oscillating" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label"><strong>Oscillating</strong> : mixed loads</span>
+                                </label>
+                                <label class="premium-radio-container">
+                                    <input type="radio" value="Randomly" [(ngModel)]="strategyType"
+                                        (change)="onStrategyChange()">
+                                    <span class="checkmark"></span>
+                                    <span class="radio-label">
+                                        <strong>Randomly</strong> : surprise
+                                        <button class="btn-more-random" (click)="onStrategyChange()"
+                                            style="padding: 2px 6px; font-size: 0.7rem;">Surprise Me</button>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Intensity</label>
-                        <select [(ngModel)]="strategyIntensity" (change)="onStrategyChange()">
-                            <option value="Low">Low</option>
-                            <option value="Average">Average</option>
-                            <option value="High">High</option>
-                            <option value="Extreme">Extreme</option>
-                        </select>
+
+                    <div class="intensity-selector-section mt-4 pt-3" style="border-top: 1px solid #f1f5f9;">
+                        <label class="mb-2 d-block"
+                            style="font-weight: 700; color: #4b5563; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Intensity?
+                            <span class="beta-tag">(Beta)</span></label>
+                        <div class="intensity-group-container">
+                            <div class="intensity-button-group" style="width: 100%;">
+                                <button type="button" style="padding: 8px 4px; font-size: 0.75rem; flex: 1;"
+                                    [class.active]="strategyIntensity === 'Gentle'"
+                                    (click)="strategyIntensity = 'Gentle'; onStrategyChange()">Gentle</button>
+                                <button type="button" style="padding: 8px 4px; font-size: 0.75rem; flex: 1;"
+                                    [class.active]="strategyIntensity === 'Low'"
+                                    (click)="strategyIntensity = 'Low'; onStrategyChange()">Low</button>
+                                <button type="button" style="padding: 8px 4px; font-size: 0.75rem; flex: 1;"
+                                    [class.active]="strategyIntensity === 'Average'"
+                                    (click)="strategyIntensity = 'Average'; onStrategyChange()">Avg</button>
+                                <button type="button" style="padding: 8px 4px; font-size: 0.75rem; flex: 1;"
+                                    [class.active]="strategyIntensity === 'Medium'"
+                                    (click)="strategyIntensity = 'Medium'; onStrategyChange()">Med</button>
+                                <button type="button" style="padding: 8px 4px; font-size: 0.75rem; flex: 1;"
+                                    [class.active]="strategyIntensity === 'Hard Core'"
+                                    (click)="strategyIntensity = 'Hard Core'; onStrategyChange()">Hard</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Customizations (NEW) -->
-            <div class="sidebar-card">
-                <div class="card-header">
-                    <h3>Customizations</h3>
-                    <i class="fas fa-sliders-h"></i>
-                </div>
-                <div class="card-body">
-                    <div class="form-group">
-                        <label>Weekend Approach</label>
-                        <select [(ngModel)]="weekendApproach" (change)="generatePlanData()">
-                            <option value="Weekdays Only">Weekdays Only</option>
-                            <option value="The Usual">The Usual</option>
-                            <option value="None">Adaptive rest</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Reserve Days</label>
-                        <input type="number" [(ngModel)]="reserveDays" min="0" max="10">
-                        <p class="hint mt-1" style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;">Emergency
-                            buffer days.</p>
-                    </div>
-                </div>
-            </div>
 
             <!-- Display -->
-            <div class="sidebar-card">
+            <div class="sidebar-card display-card sidebar-high-fidelity">
                 <div class="card-header">
                     <h3>Display</h3>
                     <i class="fas fa-arrows-alt-v"></i>
@@ -431,11 +737,53 @@
                             </div>
                             <div class="option-control">
                                 <select [(ngModel)]="contentType">
-                                    <option value="Novel">Novel — A long-form fictional work.</option>
-                                    <option value="Novella">Novella — A shorter fictional narrative.</option>
-                                    <option value="Short Story">Short Story — A brief work of fiction.</option>
-                                    <option value="Series">Series — A collection of related works.</option>
-                                    <option value="Non-Fiction">Non-Fiction — Informational or factual writing.</option>
+                                    <option value="Audiobook">Audiobook</option>
+                                    <option value="Book">Book</option>
+                                    <option value="Blog Post">Blog Post</option>
+                                    <option value="Chapbook">Chapbook</option>
+                                    <option value="Comics">Comics</option>
+                                    <option value="Conference Paper">Conference Paper</option>
+                                    <option value="Diary">Diary</option>
+                                    <option value="Dissertation">Dissertation</option>
+                                    <option value="Documentation">Documentation</option>
+                                    <option value="Essay">Essay</option>
+                                    <option value="Fiction">Fiction</option>
+                                    <option value="Grant">Grant</option>
+                                    <option value="Journal">Journal</option>
+                                    <option value="Journal Paper">Journal Paper</option>
+                                    <option value="Magazine Article">Magazine Article</option>
+                                    <option value="Manuals">Manuals</option>
+                                    <option value="Manuscript">Manuscript</option>
+                                    <option value="Newsletter">Newsletter</option>
+                                    <option value="Newspaper Article">Newspaper Article</option>
+                                    <option value="Non-Fiction">Non-Fiction</option>
+                                    <option value="Novel">Novel</option>
+                                    <option value="Novella">Novella</option>
+                                    <option value="Paper">Paper</option>
+                                    <option value="Poem">Poem</option>
+                                    <option value="Practice">Practice</option>
+                                    <option value="Project">Project</option>
+                                    <option value="Proposal">Proposal</option>
+                                    <option value="Screenplay">Screenplay</option>
+                                    <option value="Script">Script</option>
+                                    <option value="Short Story">Short Story</option>
+                                    <option value="Speech">Speech</option>
+                                    <option value="Technical Document">Technical Document</option>
+                                    <option value="Textbook">Textbook</option>
+                                    <option value="Thesis">Thesis</option>
+                                    <option value="Money">Money</option>
+                                    <option value="Workout">Workout</option>
+                                    <option value="Work">Work</option>
+                                    <option value="Marathon">Marathon</option>
+                                    <option value="Weight">Weight</option>
+                                    <option value="Other">Other</option>
+                                    <option value="Video">Video</option>
+                                    <option value="TV">TV</option>
+                                    <option value="Movie">Movie</option>
+                                    <option value="Game">Game</option>
+                                    <option value="Website">Website</option>
+                                    <option value="Home">Home</option>
+                                    <option value="Personal">Personal</option>
                                 </select>
                             </div>
                         </div>
@@ -498,13 +846,46 @@
                         <div class="option-row">
                             <div class="option-label-group">
                                 <label>Measurement Unit</label>
-                                <p class="explanation">Choose how you want to track your progress. Most authors use
-                                    words, but you can also track by pages if that fits your workflow better.</p>
+                                <p class="explanation">Choose how you want to track your progress. Select the unit that best fits your project type and workflow.</p>
                             </div>
                             <div class="option-control">
-                                <select [(ngModel)]="measurementUnit">
-                                    <option value="words">Words — Track every single word you write.</option>
-                                    <option value="pages">Pages — Track your progress based on completed pages.</option>
+                                <select [(ngModel)]="measurementUnit" class="form-control">
+                                    <option value="feature">Features</option>
+                                    <option value="word">Words</option>
+                                    <option value="paragraph">Paragraphs</option>
+                                    <option value="page">Pages</option>
+                                    <option value="poem">Poems</option>
+                                    <option value="chapter">Chapters</option>
+                                    <option value="section">Sections</option>
+                                    <option value="character">Characters</option>
+                                    <option value="verse">Verses</option>
+                                    <option value="act">Acts</option>
+                                    <option value="scene">Scenes</option>
+                                    <option value="stanza">Stanzas</option>
+                                    <option value="line">Lines</option>
+                                    <option value="book">Books</option>
+                                    <option value="day">Days</option>
+                                    <option value="hour">Hours</option>
+                                    <option value="minute">Minutes</option>
+                                    <option value="unit">Units</option>
+                                    <option value="item">Items</option>
+                                    <option value="task">Tasks</option>
+                                    <option value="todo">Todos</option>
+                                    <option value="step">Steps</option>
+                                    <option value="entry">Entries</option>
+                                    <option value="post">Posts</option>
+                                    <option value="worksheet">Worksheets</option>
+                                    <option value="dollar">Dollars</option>
+                                    <option value="mile">Miles</option>
+                                    <option value="km">Kilometers</option>
+                                    <option value="lb">Pounds (lb)</option>
+                                    <option value="kg">Kilograms (kg)</option>
+                                    <option value="stitch">Stitches</option>
+                                    <option value="time">Times</option>
+                                    <option value="episode">Episodes</option>
+                                    <option value="video">Videos</option>
+                                    <option value="movie">Movies</option>
+                                    <option value="lesson">Lessons</option>
                                 </select>
                             </div>
                         </div>
@@ -522,6 +903,7 @@
                     </div>
                 </div>
 
+
                 <!-- 🗓 Writing Schedule Rules -->
                 <div class="planning-block">
                     <div class="block-header" (click)="sections.scheduleRules = !sections.scheduleRules">
@@ -532,24 +914,6 @@
                         <i class="fas fa-chevron-down toggle-icon" [class.open]="sections.scheduleRules"></i>
                     </div>
                     <div class="block-content" *ngIf="sections.scheduleRules">
-                        <div class="option-row">
-                            <div class="option-label-group">
-                                <label>Weekend Approach</label>
-                                <p class="explanation">Determine how you handle writing on Saturdays and Sundays. You
-                                    can choose to write more, less, or take those days off entirely.</p>
-                            </div>
-                            <div class="option-control">
-                                <select [(ngModel)]="weekendApproach" (change)="generatePlanData()">
-                                    <option value="Weekdays Only">Weekdays Only — Focused sessions on Monday through Friday. Your weekends are preserved for rest and recovery.</option>
-                                    <option value="The Usual">The Usual — Writing every day, including weekends. Best for building a consistent, unwavering daily habit.</option>
-                                    <option value="None">Adaptive rest — Flexible scheduling where targets are adjusted based on your historical pace and energy.</option>
-                                </select>
-                                <div class="hint-box" *ngIf="weekendApproach === 'None' || weekendApproach === 'Weekdays Only'">
-                                    <i class="fas fa-info-circle"></i>
-                                    <span>Weekends will show <strong>zero progress</strong> in your charts and schedule.</span>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="option-row">
                             <div class="option-label-group">
@@ -570,6 +934,7 @@
                                     </option>
                                     <option value="Oscillating">Oscillating — Alternate between high-intensity and
                                         low-intensity periods.</option>
+                                    <option value="Randomly">Randomly — Every day is a surprise.</option>
                                 </select>
                             </div>
                         </div>
@@ -581,37 +946,21 @@
                                     intensity leads to steeper increases or decreases in your daily word goals.</p>
                             </div>
                             <div class="option-control">
-                                <div class="radio-group-modern">
-                                    <label><input type="radio" value="Low" [(ngModel)]="strategyIntensity"
-                                            (change)="onStrategyChange()"> Low</label>
-                                    <label><input type="radio" value="Average" [(ngModel)]="strategyIntensity"
-                                            (change)="onStrategyChange()"> Average</label>
-                                    <label><input type="radio" value="High" [(ngModel)]="strategyIntensity"
-                                            (change)="onStrategyChange()"> High</label>
-                                    <label><input type="radio" value="Extreme" [(ngModel)]="strategyIntensity"
-                                            (change)="onStrategyChange()"> Extreme</label>
-                                </div>
+                                <select [(ngModel)]="strategyIntensity" (change)="onStrategyChange()">
+                                    <option value="Gentle">Gentle</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Average">Average</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Hard Core">Hard Core</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div class="option-row">
-                            <div class="option-label-group">
-                                <label>Reserve Days</label>
-                                <p class="explanation">Life happens. Reserve days act as an emergency buffer. They are
-                                    excluded from your plan to give you 100% "off" days if needed.</p>
-                            </div>
-                            <div class="option-control">
-                                <input type="number" [(ngModel)]="reserveDays" (ngModelChange)="generatePlanData()"
-                                    min="0" max="14">
-                                <div class="hint-box">
-                                    <i class="fas fa-shield-alt"></i>
-                                    <span>Plan excludes <strong>{{ reserveDays }} days</strong> from your writing
-                                        schedule.</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
+
+
+
 
                 <!-- ⚙️ Planning Preferences -->
                 <div class="planning-block">
@@ -888,8 +1237,8 @@
                         <p>Your recent writing history</p>
                     </div>
 
-                    <div class="progress-grid" *ngIf="progressEntries.length > 0">
-                        <div class="progress-update-card" *ngFor="let entry of progressEntries.slice(0, 20)">
+                    <div class="progress-grid" *ngIf="getSortedProgressEntries().length > 0">
+                        <div class="progress-update-card" *ngFor="let entry of getSortedProgressEntries()">
                             <div class="card-left">
                                 <div class="entry-date">{{ entry.date | date:'EEE, MMM d' }}</div>
                                 <div class="entry-target" style="font-size: 0.8rem; color: #94a3b8;">Target: {{
@@ -909,7 +1258,7 @@
                         </div>
                     </div>
 
-                    <div class="empty-state" *ngIf="progressEntries.length === 0">
+                    <div class="empty-state" *ngIf="getSortedProgressEntries().length === 0">
                         <i class="fas fa-pencil-alt"></i>
                         <p>No writing history logged yet.</p>
                         <p class="sub">Update your progress using the table or chart to see your history here.</p>

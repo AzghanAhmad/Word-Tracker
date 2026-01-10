@@ -163,6 +163,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             filter(event => event instanceof NavigationEnd)
         ).subscribe((event: any) => {
             if (event.url.includes('/plans/') && !event.url.includes('/edit')) {
+                console.log('🔄 Navigation detected, reloading plan data...');
+                // Force refresh all data when navigating back to the page
                 this.loadPlanData();
             }
         });
@@ -372,16 +374,24 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     }
 
     loadActivityLogs() {
-        if (!this.planId) {
+        if (!this.planId || !this.plan) {
             this.isLoading = false;
             this.cdr.detectChanges();
             return;
         }
 
+        console.log('📊 Loading activity logs for plan:', this.planId);
+
+        // Clear existing data to ensure fresh load
+        this.allPlanDays = [];
+        this.activityLogs = [];
+        this.planNotes = {};
+
         // Fetch plan days for activity logs
         this.apiService.getPlanDays(this.planId).subscribe({
             next: (response) => {
-                if (response.success && response.data) {
+                console.log('✅ Received plan days response:', response);
+                if (response.success && response.data && Array.isArray(response.data)) {
                     // Calculate fallback daily target if DB returns 0s
                     const totalTarget = this.plan.target_amount || this.plan.total_word_count || 50000;
                     const fallbackDailyTarget = response.data.length > 0
@@ -437,27 +447,20 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 notes: d.notes || ''
                         };
                     }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
+                    
+                    console.log('✅ Processed allPlanDays:', this.allPlanDays.length, 'days');
 
+                    // Generate calendar and charts with fresh data
                     this.generateCalendarDays();
                     this.generateChart();
 
                     // Filter only days where work has been done (actual_count > 0) - these are "working days"
                     // Sort by date descending (newest first) and take the last 10 working days
-                    this.activityLogs = response.data
-                        .filter((d: any) => (d.actual_count || 0) > 0)
-                        .map((d: any) => {
-                            // Parse date - handle both YYYY-MM-DD and ISO formats
-                            let dateObj: Date;
-                            if (typeof d.date === 'string') {
-                                // If date is already in YYYY-MM-DD format, parse it correctly
-                                if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                                    dateObj = new Date(d.date + 'T00:00:00');
-                                } else {
-                                    dateObj = new Date(d.date);
-                                }
-                            } else {
-                                dateObj = new Date(d.date);
-                            }
+                    // Use the filtered and processed allPlanDays instead of raw response.data for consistency
+                    const allDaysWithWork = this.allPlanDays.filter((d: any) => (d.actual_count || 0) > 0);
+                    this.activityLogs = allDaysWithWork.map((d: any) => {
+                            // Use the already processed date from allPlanDays
+                            const dateObj = d.dateObj;
                             
                             let dayTarget = (d.target_count && d.target_count > 0) ? d.target_count : fallbackDailyTarget;
 
@@ -465,17 +468,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 dayTarget = fallbackDailyTarget;
                             }
 
-                            // Ensure rawDate is in YYYY-MM-DD format
-                            let rawDateStr = d.date;
-                            if (typeof rawDateStr === 'string') {
-                                if (rawDateStr.includes('T')) {
-                                    rawDateStr = rawDateStr.split('T')[0];
-                                } else if (rawDateStr.includes(' ')) {
-                                    rawDateStr = dateObj.toISOString().split('T')[0];
-                                }
-                            } else {
-                                rawDateStr = dateObj.toISOString().split('T')[0];
-                            }
+                            // Use the normalized dateKey from allPlanDays
+                            const rawDateStr = d.date;
 
                             return {
                                 id: d.id || dateObj.getTime(),
@@ -487,43 +481,44 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 words: d.actual_count || 0,
                                 target: dayTarget,
                                 dateObj: dateObj,
-                                rawDate: rawDateStr || dateObj.toISOString().split('T')[0],
+                                rawDate: rawDateStr,
                                 notes: d.notes || ''
                             };
                         })
                         .sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime()) // Newest first
                         .slice(0, 10); // Last 10 working days
 
-                    // Update completed amount from logs
-                    let validLogs = response.data;
-                    if (this.plan.start_date && this.plan.end_date) {
-                        const start = new Date(this.plan.start_date);
-                        start.setHours(0, 0, 0, 0);
-                        const end = new Date(this.plan.end_date);
-                        end.setHours(23, 59, 59, 999);
-
-                        validLogs = response.data.filter((d: any) => {
-                            const date = new Date(d.date);
-                            return date >= start && date <= end;
-                        });
-                    }
-
-                    const totalFromLogs = validLogs.reduce((sum: number, d: any) => sum + (d.actual_count || 0), 0);
+                    // Update completed amount from allPlanDays (already filtered by date range)
+                    const totalFromLogs = this.allPlanDays.reduce((sum: number, d: any) => sum + (d.actual_count || 0), 0);
                     if (this.plan) {
                         this.plan.completed_amount = totalFromLogs;
                     }
+                    
+                    console.log('✅ Updated activity logs:', this.activityLogs.length, 'entries');
+                    console.log('✅ Total completed amount:', totalFromLogs);
+                } else {
+                    console.warn('⚠ No plan days data received or invalid response format');
+                    this.allPlanDays = [];
+                    this.activityLogs = [];
                 }
 
-                // Defer calculateStats to avoid change detection errors
+                // Force change detection and update stats
+                this.cdr.detectChanges();
+                
+                // Defer calculateStats to ensure all data is processed
                 setTimeout(() => {
                     this.calculateStats();
                     this.isLoading = false;
+                    // Trigger change detection again after stats calculation
                     this.cdr.detectChanges();
-                }, 0);
+                }, 100);
             },
             error: (err) => {
-                console.error('Error loading activity logs', err);
+                console.error('❌ Error loading activity logs:', err);
+                console.error('Error details:', err.error || err.message);
+                this.allPlanDays = [];
                 this.activityLogs = [];
+                this.planNotes = {};
                 setTimeout(() => {
                     this.calculateStats();
                     this.isLoading = false;
@@ -821,8 +816,13 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     this.editingSessionValue = 0;
                     this.notificationService.showSuccess('Session updated successfully');
 
-                    // Reload plan details to get updated progress percentage and refresh recent activity
-                    this.loadPlanDetails();
+                    // Force refresh all plan days data to ensure Schedule and Analytics are updated
+                    this.refreshPlanDaysData();
+                    
+                    // Also reload plan details to update progress percentage
+                    setTimeout(() => {
+                        this.loadPlanDetails();
+                    }, 100);
                 } else {
                     this.notificationService.showError('Failed to update session');
                 }
@@ -861,8 +861,14 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                         if (index !== -1) {
                             this.activityLogs.splice(index, 1);
                         }
-                        // Reload plan details to get updated progress percentage and refresh all data
-                        this.loadPlanDetails();
+                        
+                        // Force refresh all plan days data to ensure Schedule and Analytics are updated
+                        this.refreshPlanDaysData();
+                        
+                        // Also reload plan details to update progress percentage
+                        setTimeout(() => {
+                            this.loadPlanDetails();
+                        }, 100);
                     } else {
                         this.notificationService.showError('Failed to delete session');
                     }
@@ -946,8 +952,13 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     // This allows users to add multiple entries for the same date if needed
                     this.newSessionWords = 0;
 
-                    // Reload plan details to refresh stats, history, and ensure data is in sync
-                    this.loadPlanDetails();
+                    // Force refresh all plan days data to ensure Schedule and Analytics are updated
+                    this.refreshPlanDaysData();
+                    
+                    // Also reload plan details to refresh stats, history, and ensure data is in sync
+                    setTimeout(() => {
+                        this.loadPlanDetails();
+                    }, 100);
                 } else {
                     this.notificationService.showError('Failed to save progress');
                 }
@@ -1074,6 +1085,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     if (planDay) {
                         planDay.notes = note;
                     }
+                    // Refresh plan days data to ensure Schedule shows updated notes
+                    this.refreshPlanDaysData();
                 }
             },
             error: (err) => {
@@ -1208,5 +1221,86 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     onMouseLeavePoint() {
         this.hoveredPoint = null;
         this.hoveredChart = null;
+    }
+
+    /**
+     * Handles tab change and refreshes data when switching to Schedule or Analytics tabs
+     */
+    onTabChange(tab: 'plan' | 'schedule' | 'progress' | 'stats') {
+        this.activeTab = tab;
+        // Refresh data when switching to Schedule or Analytics tabs to ensure latest data is shown
+        if ((tab === 'schedule' || tab === 'stats') && this.planId && this.plan) {
+            console.log(`🔄 Tab changed to ${tab}, refreshing plan days data...`);
+            this.refreshPlanDaysData();
+        }
+    }
+
+    /**
+     * Force refresh plan days data from backend
+     * This ensures Schedule and Analytics always show the latest saved data
+     */
+    refreshPlanDaysData() {
+        if (!this.planId || !this.plan) {
+            console.warn('⚠ Cannot refresh plan days: planId or plan data missing');
+            return;
+        }
+        
+        console.log('🔄 Force refreshing plan days data for Schedule/Analytics...');
+        // Clear existing data first to force fresh load
+        this.allPlanDays = [];
+        this.activityLogs = [];
+        this.cdr.detectChanges();
+        
+        // Reload activity logs which will refresh all data
+        this.loadActivityLogs();
+    }
+
+    /**
+     * Normalizes algorithm_type to handle case differences between database and frontend
+     * Returns the strategy in the format used in create-plan component (e.g., 'Steady', 'Front-load')
+     */
+    getNormalizedAlgorithmType(): string {
+        if (!this.plan || !this.plan.algorithm_type) {
+            return 'Steady';
+        }
+        const algo = this.plan.algorithm_type.toString().trim().toLowerCase();
+        
+        // Map database values to frontend format (case-sensitive matching)
+        const strategyMap: { [key: string]: string } = {
+            'steady': 'Steady',
+            'front-load': 'Front-load',
+            'frontload': 'Front-load',
+            'back-load': 'Back-load',
+            'backload': 'Back-load',
+            'mountain': 'Mountain',
+            'valley': 'Valley',
+            'oscillating': 'Oscillating',
+            'randomly': 'Randomly',
+            'random': 'Randomly'
+        };
+        
+        // Check exact match first
+        if (strategyMap[algo]) {
+            return strategyMap[algo];
+        }
+        
+        // Fallback: capitalize first letter and handle hyphens
+        const normalized = algo.split('-').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join('-');
+        
+        // Check if normalized version exists in map
+        if (strategyMap[normalized.toLowerCase()]) {
+            return strategyMap[normalized.toLowerCase()];
+        }
+        
+        return normalized || 'Steady';
+    }
+
+    /**
+     * Checks if a given strategy is the active one for this plan
+     */
+    isActiveStrategy(strategy: string): boolean {
+        return this.getNormalizedAlgorithmType() === strategy;
     }
 }

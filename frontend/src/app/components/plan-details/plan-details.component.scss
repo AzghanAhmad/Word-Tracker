@@ -185,6 +185,7 @@
         transform: translateY(-1px);
         box-shadow: var(--shadow-sm);
     }
+
     cursor: pointer;
     font-weight: 500;
     display: flex;
@@ -319,9 +320,141 @@
         }
 
         .description-text {
-            line-height: 1.7;
-            color: #334155;
-            font-size: 1.0625rem;
+            line-height: 1.8 !important;
+            color: #1e293b !important;
+            font-size: 1.0625rem !important;
+            font-family: 'Montserrat', sans-serif !important;
+
+            ::ng-deep {
+
+                h1,
+                h2,
+                h3,
+                h4,
+                h5,
+                h6 {
+                    color: #1c2e4a !important;
+                    font-weight: 800 !important;
+                    line-height: 1.2 !important;
+                    margin-bottom: 1.5rem !important;
+                    margin-top: 2rem !important;
+                    font-family: 'Montserrat', sans-serif !important;
+
+                    &:first-child {
+                        margin-top: 0 !important;
+                    }
+                }
+
+                h1 {
+                    font-size: 2.25rem !important;
+                }
+
+                h2 {
+                    font-size: 1.85rem !important;
+                }
+
+                h3 {
+                    font-size: 1.5rem !important;
+                }
+
+                p {
+                    margin-bottom: 1.25rem !important;
+                    font-size: 1.0625rem !important;
+                    line-height: 1.8 !important;
+                    color: #1e293b !important;
+                    font-family: 'Montserrat', sans-serif !important;
+
+                    &:last-child {
+                        margin-bottom: 0 !important;
+                    }
+                }
+
+                ul,
+                ol {
+                    margin-bottom: 1.5rem !important;
+                    padding-left: 0 !important;
+                    list-style-position: outside !important;
+
+                    li {
+                        margin-bottom: 0.5rem !important;
+                        padding-left: 0.5rem !important;
+                        line-height: 1.8 !important;
+                        font-size: 1.0625rem !important;
+
+                        &:last-child {
+                            margin-bottom: 0 !important;
+                        }
+                    }
+                }
+
+                ul {
+                    list-style-type: disc !important;
+                    margin-left: 1.5rem !important;
+                }
+
+                ol {
+                    list-style-type: decimal !important;
+                    margin-left: 1.5rem !important;
+                }
+
+                // Quill Indentation Support
+                .ql-indent-1 {
+                    padding-left: 3rem !important;
+                }
+
+                .ql-indent-2 {
+                    padding-left: 6rem !important;
+                }
+
+                .ql-indent-3 {
+                    padding-left: 9rem !important;
+                }
+
+                .ql-indent-4 {
+                    padding-left: 12rem !important;
+                }
+
+                .ql-indent-5 {
+                    padding-left: 15rem !important;
+                }
+
+                .ql-indent-6 {
+                    padding-left: 18rem !important;
+                }
+
+                .ql-indent-7 {
+                    padding-left: 21rem !important;
+                }
+
+                .ql-indent-8 {
+                    padding-left: 24rem !important;
+                }
+
+                strong {
+                    font-weight: 800 !important;
+                    color: #1c2e4a !important;
+                }
+
+                em {
+                    font-style: italic !important;
+                }
+
+                u {
+                    text-decoration: underline !important;
+                }
+
+                span.ql-size-large {
+                    font-size: 1.5rem !important;
+                }
+
+                span.ql-size-huge {
+                    font-size: 2.5rem !important;
+                }
+
+                span.ql-size-small {
+                    font-size: 0.75rem !important;
+                }
+            }
         }
     }
 
@@ -353,6 +486,64 @@
             &.active {
                 border-color: var(--primary-accent);
                 background: #f5f3ff;
+            }
+        }
+    }
+
+    .strategy-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+
+        @media (min-width: 768px) {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        @media (min-width: 1200px) {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .strategy-option {
+            padding: 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            cursor: default;
+            transition: var(--transition);
+            background: var(--bg-card);
+            opacity: 0.7;
+
+            h4 {
+                margin: 0 0 0.5rem 0;
+                font-weight: 600;
+                color: var(--text-main);
+            }
+
+            p {
+                margin: 0;
+                font-size: 0.8125rem;
+                color: var(--text-muted);
+                line-height: 1.5;
+            }
+
+            &.active {
+                border-color: var(--primary-accent);
+                background: linear-gradient(135deg, rgba(28, 46, 74, 0.05) 0%, rgba(28, 46, 74, 0.1) 100%);
+                box-shadow: 0 2px 8px rgba(28, 46, 74, 0.15);
+                opacity: 1;
+                
+                h4 {
+                    color: var(--primary-accent);
+                    font-weight: 700;
+                }
+
+                p {
+                    color: var(--text-main);
+                }
+            }
+
+            &:not(.active) {
+                opacity: 0.6;
             }
         }
     }

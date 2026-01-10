@@ -93,7 +93,7 @@ import { CommonModule } from '@angular/common';
 
         &:hover {
           background: rgba(255,255,255,0.5);
-          color: #1C2E4A;
+          color: #273853;
         }
 
         i {
@@ -121,12 +121,12 @@ import { CommonModule } from '@angular/common';
           transition: all 0.2s ease;
 
           &:hover {
-            color: #1C2E4A;
+            color: #273853;
             background: rgba(255,255,255,0.5);
           }
 
           &.active {
-            background: #1C2E4A;
+            background: #273853;
             color: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
           }
