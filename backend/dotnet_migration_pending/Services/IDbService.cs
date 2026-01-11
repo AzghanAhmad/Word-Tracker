@@ -10,7 +10,7 @@ public interface IDbService
     string GetPlansJson(int userId);
     string? GetPlanJson(int id, int userId);
     string GetPlanDaysJson(int planId, int userId);
-    bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null);
+    bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null, bool skipProgressRecalculation = false);
     bool DeletePlan(int id, int userId);
     int CreateChecklist(int userId, int? planId, string name);
     int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items);

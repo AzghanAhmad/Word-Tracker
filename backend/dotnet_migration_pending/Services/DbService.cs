@@ -699,13 +699,16 @@ public class DbService : IDbService
                 {
                     // Use INSERT...ON DUPLICATE KEY UPDATE
                     // On INSERT (new day): insert with calculated target_count, 0 actual_count, NULL notes
-                    // On UPDATE (existing day): update target_count only, actual_count and notes remain unchanged
+                    // On UPDATE (existing day): explicitly preserve actual_count and notes, only update target_count
                     updateCmd.CommandText = @"
                         INSERT INTO plan_days (plan_id, date, target_count, actual_count, notes)
                         VALUES (@pid, @date, @target, @actual, @notes)
                         ON DUPLICATE KEY UPDATE 
-                            target_count = @target";
-                    // Note: actual_count and notes are preserved on UPDATE because they're not in the UPDATE clause
+                            target_count = @target,
+                            actual_count = COALESCE(plan_days.actual_count, @actual),
+                            notes = COALESCE(plan_days.notes, @notes)";
+                    // Explicitly preserve existing actual_count and notes using COALESCE
+                    // This ensures notes and actual_count are never overwritten with NULL/0 when updating target_count
                     updateCmd.Parameters.AddWithValue("@pid", planId);
                     updateCmd.Parameters.AddWithValue("@date", dateKey);
                     updateCmd.Parameters.AddWithValue("@target", targetCount);
@@ -1434,7 +1437,7 @@ public class DbService : IDbService
         }
     }
 
-    public bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null)
+    public bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null, bool skipProgressRecalculation = false)
     {
         _lastError = string.Empty;
         try
@@ -1489,23 +1492,52 @@ public class DbService : IDbService
             int finalTargetCount = targetCount ?? existingTargetCount; // Use provided target or preserve existing
             
             // If actualCount is 0 and we have existing actual_count, preserve it (don't overwrite with 0)
-            // This handles the case where we're only updating target_count and want to preserve existing progress
-            if (actualCount == 0 && existingActualCount > 0)
+            // UNLESS we're also providing targetCount - in that case, we're doing a full update and should respect the 0
+            // This handles:
+            // 1. "Only updating target_count" - preserve existing actual_count
+            // 2. "Explicitly setting actual_count to 0" (e.g., when reducing progress) - overwrite it
+            if (actualCount == 0 && existingActualCount > 0 && !targetCount.HasValue)
             {
-                // Preserve existing actual_count if provided value is 0 and there's existing progress
+                // Preserve existing actual_count only if we're NOT providing target_count
+                // (meaning we're only updating target_count, not doing a full update)
                 finalActualCount = existingActualCount;
+                Console.WriteLine($"ℹ Preserving existing actual_count ({existingActualCount}) because actualCount is 0 and no targetCount provided");
+            }
+            else if (actualCount == 0 && existingActualCount > 0 && targetCount.HasValue)
+            {
+                // Explicitly setting actual_count to 0 when both actualCount and targetCount are provided
+                // This allows clearing actual_count when reducing progress
+                Console.WriteLine($"✓ Setting actual_count to 0 (was {existingActualCount}) because both actualCount and targetCount are provided");
             }
 
             // Always update target_count if provided, otherwise use existing
             if (targetCount.HasValue)
             {
-                cmd.CommandText = @"
-                    INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
-                    VALUES (@pid, @date, @count, @notes, @target)
-                    ON DUPLICATE KEY UPDATE 
-                        actual_count = @count,
-                        notes = @notes,
-                        target_count = @target";
+                // When updating target_count, preserve existing notes if notes parameter is null/empty
+                // This prevents notes from being overwritten when only target_count is being updated
+                if (string.IsNullOrWhiteSpace(notes))
+                {
+                    // Don't update notes - preserve existing value
+                    // Don't include notes in UPDATE clause, so existing notes are preserved
+                    cmd.CommandText = @"
+                        INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
+                        VALUES (@pid, @date, @count, NULL, @target)
+                        ON DUPLICATE KEY UPDATE 
+                            actual_count = @count,
+                            target_count = @target";
+                    // notes is not in UPDATE clause, so existing notes are preserved
+                }
+                else
+                {
+                    // Update notes if explicitly provided
+                    cmd.CommandText = @"
+                        INSERT INTO plan_days (plan_id, date, actual_count, notes, target_count)
+                        VALUES (@pid, @date, @count, @notes, @target)
+                        ON DUPLICATE KEY UPDATE 
+                            actual_count = @count,
+                            notes = @notes,
+                            target_count = @target";
+                }
             }
             else
             {
@@ -1521,11 +1553,30 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@pid", planId);
             cmd.Parameters.AddWithValue("@date", parsedDate.ToString("yyyy-MM-dd")); // Ensure consistent date format
             cmd.Parameters.AddWithValue("@count", finalActualCount);
-            cmd.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
+            // Always add notes parameter (needed for INSERT clause)
+            // When notes is empty and targetCount is provided, we don't include notes in UPDATE clause to preserve existing
+            if (targetCount.HasValue && string.IsNullOrWhiteSpace(notes))
+            {
+                // Add NULL parameter for INSERT (will not affect UPDATE since notes isn't in UPDATE clause)
+                cmd.Parameters.AddWithValue("@notes", DBNull.Value);
+            }
+            else
+            {
+                // Add notes parameter normally
+                cmd.Parameters.AddWithValue("@notes", notes ?? (object)DBNull.Value);
+            }
             cmd.Parameters.AddWithValue("@target", finalTargetCount);
             
             cmd.ExecuteNonQuery();
             Console.WriteLine($"✓ Successfully logged progress for plan {planId}, date {date}");
+            
+            // Skip progress recalculation if requested (e.g., during batch updates)
+            if (skipProgressRecalculation)
+            {
+                Console.WriteLine($"ℹ Skipping progress recalculation for plan {planId} (batch update mode)");
+                Console.WriteLine("✅ Progress logged successfully");
+                return true;
+            }
             
             // Recalculate and update progress percentage based on total words logged
             // Use separate command objects for each operation to avoid "Failed to read the result set" errors

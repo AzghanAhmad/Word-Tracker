@@ -191,7 +191,7 @@
                     <div class="day-label">Fri</div>
                     <div class="day-label">Sat</div>
 
-                    <div *ngFor="let day of calendarDays" class="calendar-day" [class.outside]="day.month !== 'current'"
+                    <div *ngFor="let day of calendarDays; trackBy: trackByDateKey" class="calendar-day" [class.outside]="day.month !== 'current'"
                         [class.writing-day]="day.isWritingDay"
                         [class.day-off]="!day.isWritingDay && day.month === 'current'" [class.today]="day.isToday">
                         <div
@@ -231,8 +231,12 @@
                             <!-- Annotation Input (Pure Annotation) -->
                             <div *ngIf="day.month === 'current'"
                                 style="margin-top: auto; padding-top: 0.5rem; border-top: 1px dashed rgba(0,0,0,0.05);">
-                                <input type="text" [ngModel]="planNotes[day.dateKey]"
-                                    (ngModelChange)="savePlanNote(day.dateKey, $event)" placeholder="Add note..."
+                                <input type="text" 
+                                    [(ngModel)]="planNotes[day.dateKey]"
+                                    [ngModelOptions]="{updateOn: 'blur'}"
+                                    (blur)="savePlanNoteToBackend(day.dateKey)" 
+                                    (keyup.enter)="savePlanNoteToBackend(day.dateKey)"
+                                    placeholder="Add note..."
                                     style="width: 100%; border: none; background: transparent; font-size: 0.75rem; color: var(--text-secondary); outline: none; padding: 2px 0;">
                             </div>
                         </div>

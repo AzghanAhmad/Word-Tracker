@@ -474,12 +474,15 @@
                                 <div class="progress-input-wrapper">
                                     <input 
                                         type="number" 
-                                        [(ngModel)]="currentProgress" 
+                                        [ngModel]="currentProgress" 
                                         (ngModelChange)="onManualProgressChange($event)"
+                                        (blur)="onManualProgressChange(progressInput.value)"
                                         min="0" 
                                         max="100" 
+                                        step="0.01"
                                         class="progress-percentage-input"
-                                        placeholder="0">
+                                        placeholder="0"
+                                        #progressInput>
                                     <span class="percentage-symbol">%</span>
                                 </div>
                                 <p class="hint mt-2" style="font-size: 0.8rem; color: #64748b;">
