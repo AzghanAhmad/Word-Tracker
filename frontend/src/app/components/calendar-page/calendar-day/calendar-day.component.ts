@@ -18,10 +18,16 @@ import { CommonModule } from '@angular/common';
       <div class="content-area">
         <div class="deadline-badge" *ngIf="isDeadline">DEADLINE</div>
         
-        <!-- Daily Total Mode: Show single box with total words -->
-        <div *ngIf="viewMode === 'daily-total' && plans && plans.length > 0" class="total-box">
-          <span class="total-label">Total</span>
-          <span class="total-words">{{ getTotalWords() | number }} words</span>
+        <!-- Daily Total Mode: Show separate boxes for planned and actual words -->
+        <div *ngIf="viewMode === 'daily-total' && plans && plans.length > 0" class="daily-total-container">
+          <div class="total-box planned-box">
+            <span class="total-label">Planned</span>
+            <span class="total-words">{{ getTotalPlannedWords() | number }} words</span>
+          </div>
+          <div class="total-box actual-box" *ngIf="getTotalActualWords() > 0">
+            <span class="total-label">Actual</span>
+            <span class="total-words">{{ getTotalActualWords() | number }} words</span>
+          </div>
         </div>
         
         <!-- Progress vs Plan Mode: Show individual plan pills -->
@@ -167,6 +173,14 @@ import { CommonModule } from '@angular/common';
         box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
     }
 
+    /* Daily Total Container for Daily Total Mode */
+    .daily-total-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: auto;
+    }
+
     /* Total Box for Daily Total Mode */
     .total-box {
         background: #273853;
@@ -177,7 +191,14 @@ import { CommonModule } from '@angular/common';
         flex-direction: column;
         gap: 4px;
         font-size: 0.75rem;
-        margin-top: auto;
+    }
+
+    .planned-box {
+        /* Uses same color as .total-box */
+    }
+
+    .actual-box {
+        /* Uses same color as .total-box */
     }
 
     .total-label {
@@ -315,6 +336,28 @@ export class CalendarDayComponent {
         ? plan.actualProgress 
         : (plan.dailyTarget || 0);
       return total + words;
+    }, 0);
+  }
+
+  getTotalActualWords(): number {
+    if (!this.plans || this.plans.length === 0) {
+      return 0;
+    }
+    
+    // Sum up all actual words across all plans
+    return this.plans.reduce((total, plan) => {
+      return total + (plan.actualProgress || 0);
+    }, 0);
+  }
+
+  getTotalPlannedWords(): number {
+    if (!this.plans || this.plans.length === 0) {
+      return 0;
+    }
+    
+    // Sum up all planned/target words across all plans
+    return this.plans.reduce((total, plan) => {
+      return total + (plan.dailyTarget || 0);
     }, 0);
   }
 }

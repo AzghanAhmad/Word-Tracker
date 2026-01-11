@@ -1101,79 +1101,136 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
     }
 
     onManualProgressChange(val: any) {
-        // Ensure val is a number
-        let progress = parseFloat(val);
-        if (isNaN(progress) || this.targetWordCount <= 0 || progress === null) return;
+        // Ensure val is a number - handle both string and number inputs
+        let progress: number;
+        if (typeof val === 'string') {
+            progress = parseFloat(val.trim());
+        } else {
+            progress = Number(val);
+        }
+        
+        // Validate the input
+        if (isNaN(progress) || this.targetWordCount <= 0 || progress === null || progress === undefined) {
+            // If invalid, restore the previous value and return
+            console.warn(`⚠️ Invalid progress value: ${val}, keeping previous value: ${this.currentProgress}%`);
+            this.cdr.detectChanges();
+            return;
+        }
 
         // STRICT VALIDATION: Clamp value between 0 and 100
-        // The user requested 1-100, checking for logical percentage bounds
         if (progress > 100) {
             progress = 100;
         } else if (progress < 0) {
             progress = 0;
         }
 
-        // Update the model immediately to the clamped value logic
+        // Store the previous value to detect if it actually changed
+        const previousProgress = this.currentProgress;
+        
+        // Update the model immediately to the clamped value
         this.currentProgress = progress;
 
-        // Calculate expected total words based on manual %
-        const targetTotal = Math.round((progress / 100) * this.targetWordCount);
+        console.log(`📊 Progress change: ${previousProgress}% → ${progress}%`);
 
-        // Calculate current total in table
-        let currentTableTotal = 0;
-        this.planDays.forEach(d => currentTableTotal += (d.actualWorkDone || 0));
+        // Check if the value actually changed (with small epsilon for floating point comparison)
+        const progressChanged = Math.abs(previousProgress - progress) > 0.001;
+        
+        // Only skip redistribution if value didn't change AND distribution already matches
+        if (!progressChanged && this.planDays.length > 0) {
+            const currentTotal = this.planDays.reduce((sum, d) => sum + (d.actualWorkDone || 0), 0);
+            const expectedTotal = Math.round((progress / 100) * this.targetWordCount);
+            if (Math.abs(currentTotal - expectedTotal) <= 1) { // Allow 1 word difference for rounding
+                // Already matches, no need to redistribute
+                console.log(`ℹ️ Progress unchanged and distribution matches, skipping redistribution`);
+                return;
+            }
+        }
 
-        const diff = targetTotal - currentTableTotal;
+        // Calculate expected total words based on manual % with EXACT precision
+        // Use Math.round for the final total to ensure accuracy
+        const exactTotal = (progress / 100) * this.targetWordCount;
+        const targetTotal = Math.round(exactTotal);
 
-        // Always redistribute from scratch when manual progress is changed
-        // This ensures progress is distributed sequentially from day 1
-        if (diff !== 0) {
-            // Reset all days to 0 first
-            this.planDays.forEach(d => d.actualWorkDone = 0);
+        console.log(`🔄 Manual progress changed to ${progress}%: Target total = ${targetTotal} words (exact: ${exactTotal})`);
 
-            // Distribute progress sequentially across days based on their target word counts
-            // Start from day 1 and fill each day until we reach the target total
-            let remainingToDistribute = targetTotal;
+        // ALWAYS redistribute from scratch when manual progress is changed (both increase and decrease)
+        // Reset all days to 0 first
+        this.planDays.forEach(d => d.actualWorkDone = 0);
 
-            // Clear existing progress entries for fresh start
-            this.progressEntries = [];
+        // Clear existing progress entries for fresh start
+        this.progressEntries = [];
 
-            // Distribute progress sequentially across days
-            for (let i = 0; i < this.planDays.length && remainingToDistribute > 0; i++) {
-                const day = this.planDays[i];
-                const dayTarget = day.workToComplete || 0;
+        // Distribute progress sequentially across days based on their target word counts
+        // Start from day 1 and fill each day until we reach the target total
+        let remainingToDistribute = targetTotal;
+        let totalDistributed = 0;
 
-                if (dayTarget > 0) {
-                    // Calculate how much to add to this day
-                    const wordsForThisDay = Math.min(dayTarget, remainingToDistribute);
-                    day.actualWorkDone = wordsForThisDay;
-                    remainingToDistribute -= wordsForThisDay;
+        // Distribute progress sequentially across days
+        for (let i = 0; i < this.planDays.length && remainingToDistribute > 0; i++) {
+            const day = this.planDays[i];
+            const dayTarget = day.workToComplete || 0;
 
-                    // Also update progressEntries for Daily Updates section
-                    if (wordsForThisDay > 0) {
-                        const dateStr = day.isoDate || day.date;
-                        const entryDate = day.dateObj || new Date(dateStr);
-                        this.progressEntries.push({
-                            id: day.num,
-                            date: entryDate,
-                            targetWords: dayTarget,
-                            actualWords: wordsForThisDay,
-                            notes: '',
-                            isToday: this.isSameDay(entryDate, new Date()),
-                            trend: 'steady' as 'up' | 'down' | 'steady'
-                        });
-                    }
+            if (dayTarget > 0) {
+                // Calculate how much to add to this day
+                const wordsForThisDay = Math.min(dayTarget, remainingToDistribute);
+                day.actualWorkDone = wordsForThisDay;
+                remainingToDistribute -= wordsForThisDay;
+                totalDistributed += wordsForThisDay;
+
+                // Also update progressEntries for Daily Updates section
+                if (wordsForThisDay > 0) {
+                    const dateStr = day.isoDate || day.date;
+                    const entryDate = day.dateObj || new Date(dateStr);
+                    this.progressEntries.push({
+                        id: day.num,
+                        date: entryDate,
+                        targetWords: dayTarget,
+                        actualWords: wordsForThisDay,
+                        notes: '',
+                        isToday: this.isSameDay(entryDate, new Date()),
+                        trend: 'steady' as 'up' | 'down' | 'steady'
+                    });
                 }
             }
-
-            // Recalculate stats/columns, but DO NOT overwrite my manually typed %
-            this.recalculateCumulativeStats(true);
-
-            // Force update to visual table
-            this.cdr.detectChanges();
-
-
         }
+
+        // Handle any rounding difference by adjusting the last day with progress
+        // This ensures the total matches exactly the target percentage
+        if (Math.abs(totalDistributed - targetTotal) > 0 && this.planDays.length > 0) {
+            // Find the last day with progress
+            for (let i = this.planDays.length - 1; i >= 0; i--) {
+                const day = this.planDays[i];
+                if (day.actualWorkDone > 0) {
+                    const adjustment = targetTotal - totalDistributed;
+                    day.actualWorkDone = Math.max(0, day.actualWorkDone + adjustment);
+                    
+                    // Update the corresponding progress entry
+                    const entryIndex = this.progressEntries.findIndex(e => {
+                        const entryDateStr = e.date.toISOString().split('T')[0];
+                        const dayDateStr = day.isoDate || day.date;
+                        return entryDateStr === dayDateStr || this.isSameDay(e.date, day.dateObj);
+                    });
+                    if (entryIndex >= 0) {
+                        this.progressEntries[entryIndex].actualWords = day.actualWorkDone;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Verify the final total matches the target
+        const finalTotal = this.planDays.reduce((sum, d) => sum + (d.actualWorkDone || 0), 0);
+        const finalPercentage = this.targetWordCount > 0 
+            ? (finalTotal / this.targetWordCount) * 100 
+            : 0;
+        
+        console.log(`✅ Progress distribution complete: ${finalTotal} words = ${finalPercentage.toFixed(2)}% (target: ${progress}%)`);
+
+        // Recalculate stats/columns, but DO NOT overwrite my manually typed %
+        this.recalculateCumulativeStats(true);
+
+        // Force update to visual table
+        this.cdr.detectChanges();
     }
 
     onTableProgressChange(day: PlanDay) {
@@ -1556,6 +1613,15 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                         : this.saveTableProgressUpdatesForExistingPlan();
 
                     savePromise.then(() => {
+                        // After saving all plan days, update the plan's current_progress to match the manual value
+                        // This is needed because LogPlanProgress recalculates progress, but we want to preserve
+                        // the manual percentage set by the user
+                        if (!wasNewPlan && this.planId) {
+                            console.log(`🔄 Updating plan's current_progress to manual value: ${this.currentProgress}%`);
+                            return this.updatePlanProgress(this.planId, this.currentProgress);
+                        }
+                        return Promise.resolve();
+                    }).then(() => {
                         this.notificationService.showSuccess(`Plan ${this.isEditMode ? 'updated' : 'created'} successfully!`);
                         if (this.planId) {
                             this.router.navigate(['/plans', this.planId]);
@@ -1672,6 +1738,64 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         if (failedCount > 0) {
             console.warn(`⚠ Warning: ${failedCount} plan days failed to save. Manual target edits may not be persisted.`);
         }
+    }
+
+    /**
+     * Update the plan's current_progress field to the manual value
+     * This is used to preserve the manual progress percentage after saving plan days
+     * (which recalculate progress based on actual word counts)
+     */
+    async updatePlanProgress(planId: number, progress: number): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            // Build complete payload with all plan fields (backend UpdatePlan requires all fields)
+            const updatePayload = {
+                title: this.planName,
+                total_word_count: Math.round(this.targetWordCount),
+                start_date: this.startDate,
+                end_date: this.endDate,
+                algorithm_type: (this.strategyType || 'Steady').toLowerCase(),
+                description: this.planDescription || '',
+                is_private: !!this.isPrivate,
+                starting_point: Math.round(this.startingPoint || 0),
+                measurement_unit: this.measurementUnit,
+                is_daily_target: !!this.isDailyTarget,
+                fixed_deadline: !!this.fixedDeadline,
+                target_finish_date: (this.targetFinishDate && this.fixedDeadline) ? this.targetFinishDate : null,
+                strategy_intensity: this.strategyIntensity,
+                weekend_approach: this.weekendApproach,
+                reserve_days: Math.round(this.reserveDays || 0),
+                display_view_type: this.displayViewType,
+                week_start_day: this.weekStartDay,
+                grouping_type: this.groupingType,
+                dashboard_color: this.dashboardColor,
+                show_historical_data: !!this.showHistoricalData,
+                progress_tracking_type: this.progressTrackingType,
+                activity_type: 'Writing',
+                content_type: this.contentType,
+                status: this.status || 'active',
+                current_progress: Math.round(progress || 0)  // Use the manual progress value
+            };
+            
+            console.log(`📊 Updating plan ${planId} progress to manual value: ${progress}%`);
+            
+            this.apiService.updatePlan(planId, updatePayload).subscribe({
+                next: (response) => {
+                    if (response.success) {
+                        console.log(`✅ Successfully updated plan progress to ${progress}%`);
+                        resolve();
+                    } else {
+                        console.error(`✗ Failed to update plan progress:`, response.message || 'Unknown error');
+                        // Don't reject - this is not critical, just log the error
+                        resolve();
+                    }
+                },
+                error: (err) => {
+                    console.error(`✗ Error updating plan progress:`, err);
+                    // Don't reject - this is not critical, just log the error
+                    resolve();
+                }
+            });
+        });
     }
 
     cancel() {

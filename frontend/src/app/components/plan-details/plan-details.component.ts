@@ -113,6 +113,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     hoveredChart: 'cumulative' | 'daily' | null = null;
     planNotes: { [key: string]: string } = {};
     calendarDays: any[] = [];
+    
+    trackByDateKey(index: number, day: any): string {
+        return day.dateKey || index.toString();
+    }
 
     // Expanded Stats Metrics
     extendedStats: any = {
@@ -433,10 +437,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             // The backend already calculates this based on the writing strategy
                             let dailyTarget = d.target_count || 0;
                             
-                            // Load notes into planNotes object
-                            if (d.notes) {
-                                this.planNotes[dateKey] = d.notes;
-                        }
+                            // Load notes into planNotes object (including empty strings)
+                            if (d.notes !== null && d.notes !== undefined) {
+                                this.planNotes[dateKey] = d.notes || '';
+                            }
 
                         return {
                             ...d,
@@ -453,6 +457,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     // Generate calendar and charts with fresh data
                     this.generateCalendarDays();
                     this.generateChart();
+                    
+                    // Ensure calendar is generated even if schedule tab is active
+                    // This fixes the issue where schedule tab doesn't show data until clicked
+                    this.cdr.detectChanges();
 
                     // Filter only days where work has been done (actual_count > 0) - these are "working days"
                     // Sort by date descending (newest first) and take the last 10 working days
@@ -1068,14 +1076,19 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         this.generateCalendarDays();
     }
 
-    savePlanNote(dateKey: string, note: string) {
+    savePlanNoteToBackend(dateKey: string) {
         if (!this.planId) return;
         
-        this.planNotes[dateKey] = note;
+        const note = this.planNotes[dateKey] || '';
         
         // Find the plan day to get actual_count
-        const planDay = this.allPlanDays.find(d => d.date.split('T')[0] === dateKey);
+        const planDay = this.allPlanDays.find(d => {
+            const dayDateKey = d.date.split('T')[0];
+            return dayDateKey === dateKey;
+        });
         const actualCount = planDay?.actual_count || 0;
+        
+        console.log(`💾 Saving note for ${dateKey}: "${note}"`);
         
         // Save note to backend
         this.apiService.logProgress(this.planId, dateKey, actualCount, note).subscribe({
@@ -1085,8 +1098,13 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     if (planDay) {
                         planDay.notes = note;
                     }
-                    // Refresh plan days data to ensure Schedule shows updated notes
-                    this.refreshPlanDaysData();
+                    // Ensure planNotes is also updated (important for persistence)
+                    this.planNotes[dateKey] = note;
+                    console.log(`✅ Note saved successfully for ${dateKey}: "${note}"`);
+                    // Don't refresh all data - just update local state to avoid losing focus
+                } else {
+                    console.error('Failed to save note:', response.message);
+                    this.notificationService.showError(response.message || 'Failed to save note');
                 }
             },
             error: (err) => {
@@ -1224,14 +1242,15 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Handles tab change and refreshes data when switching to Schedule or Analytics tabs
+     * Handles tab change - data is already loaded, just switch tabs
      */
     onTabChange(tab: 'plan' | 'schedule' | 'progress' | 'stats') {
         this.activeTab = tab;
-        // Refresh data when switching to Schedule or Analytics tabs to ensure latest data is shown
-        if ((tab === 'schedule' || tab === 'stats') && this.planId && this.plan) {
-            console.log(`🔄 Tab changed to ${tab}, refreshing plan days data...`);
-            this.refreshPlanDaysData();
+        // Data is already loaded in loadActivityLogs() when the page loads
+        // Only regenerate calendar if it's not already generated
+        if (tab === 'schedule' && this.calendarDays.length === 0 && this.allPlanDays.length > 0) {
+            console.log('📅 Schedule tab opened, generating calendar...');
+            this.generateCalendarDays();
         }
     }
 
