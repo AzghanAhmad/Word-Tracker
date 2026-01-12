@@ -4,6 +4,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WordTracker.Api.Services;
+using WordTracker.Api.Middleware;
 
 // Clear default claim type mapping to keep JWT claims as is
 System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -214,6 +215,10 @@ else
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add login tracking middleware (records login on every authenticated request)
+// This ensures any authenticated activity counts as "logging in" for streak purposes
+app.UseMiddleware<LoginTrackingMiddleware>();
 
 // Map API controllers with /api prefix using route group
 app.MapGroup("api").MapControllers();

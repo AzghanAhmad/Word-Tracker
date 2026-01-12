@@ -262,6 +262,14 @@ $card-bg: rgba(255, 255, 255, 0.85);
                 font-weight: 800;
                 color: $text-dark;
                 margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+
+                .fire-emoji {
+                    font-size: 1.25rem;
+                    animation: pulse 2s ease-in-out infinite;
+                }
             }
 
             span {
@@ -269,9 +277,28 @@ $card-bg: rgba(255, 255, 255, 0.85);
                 color: $text-light;
                 font-weight: 500;
             }
+
+            .streak-hint {
+                font-size: 0.75rem;
+                color: $text-light;
+                margin-top: 0.25rem;
+                font-style: italic;
+            }
         }
+
     }
 }
+
+// Animations for streak
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
 
 // Details Card (Bio & Form)
 .details-card {

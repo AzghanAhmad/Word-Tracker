@@ -93,6 +93,15 @@ public class DbInitService
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             )",
+            // User logins table to track daily logins for streak calculation
+            @"CREATE TABLE IF NOT EXISTS user_logins (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                login_date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_user_login_date (user_id, login_date)
+            )",
             
             @"CREATE TABLE IF NOT EXISTS user_settings (
                 id INT AUTO_INCREMENT PRIMARY KEY,

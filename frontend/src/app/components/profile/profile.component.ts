@@ -153,11 +153,18 @@ export class ProfileComponent implements OnInit {
             next: (response) => {
                 if (response.success && response.data) {
                     this.currentStreak = response.data.currentStreak || 0;
+                    console.log('🔥 Streak loaded:', this.currentStreak);
+                    this.cdr.detectChanges();
+                } else {
+                    console.warn('⚠ Stats response not successful:', response);
+                    this.currentStreak = 0;
                     this.cdr.detectChanges();
                 }
             },
             error: (err) => {
-                console.error('Error loading detailed stats:', err);
+                console.error('❌ Error loading detailed stats:', err);
+                this.currentStreak = 0;
+                this.cdr.detectChanges();
             }
         });
     }

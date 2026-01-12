@@ -56,4 +56,5 @@ public interface IDbService
     bool SubscribeNewsletter(string email);
     bool ResetPasswordByEmail(string email, string newPasswordHash);
     string GetLastError();
+    bool RecordUserLogin(int userId);
 }

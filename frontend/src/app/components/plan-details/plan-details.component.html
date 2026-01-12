@@ -232,7 +232,8 @@
                             <div *ngIf="day.month === 'current'"
                                 style="margin-top: auto; padding-top: 0.5rem; border-top: 1px dashed rgba(0,0,0,0.05);">
                                 <input type="text" 
-                                    [(ngModel)]="planNotes[day.dateKey]"
+                                    [ngModel]="planNotes[day.dateKey] || ''"
+                                    (ngModelChange)="planNotes[day.dateKey] = $event"
                                     [ngModelOptions]="{updateOn: 'blur'}"
                                     (blur)="savePlanNoteToBackend(day.dateKey)" 
                                     (keyup.enter)="savePlanNoteToBackend(day.dateKey)"

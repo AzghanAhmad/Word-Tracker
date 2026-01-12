@@ -423,8 +423,16 @@ public class DbService : IDbService
                     try
                     {
                         // Regenerate plan days with new strategy - this will update all target_count values
-                        RegeneratePlanDays(planId, totalWordCount, startDate, endDate, algorithmType, strategyIntensity, weekendApproach, conn);
-                        Console.WriteLine($"✅ Plan days regeneration completed successfully for plan {planId}");
+                        // Ensure non-null values before calling RegeneratePlanDays
+                        if (!string.IsNullOrEmpty(startDate) && !string.IsNullOrEmpty(endDate) && !string.IsNullOrEmpty(algorithmType))
+                        {
+                            RegeneratePlanDays(planId, totalWordCount, startDate, endDate, algorithmType, strategyIntensity, weekendApproach, conn);
+                            Console.WriteLine($"✅ Plan days regeneration completed successfully for plan {planId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"⚠ Warning: Cannot regenerate plan days - missing required parameters (startDate, endDate, or algorithmType)");
+                        }
                     }
                     catch (Exception regenEx)
                     {
@@ -3899,26 +3907,84 @@ public class DbService : IDbService
                 return dateA.CompareTo(dateB);
             });
             
-            // Calculate current streak (counting backwards from today)
-            // We allow today to be 0 without breaking the streak yet (user has all day to write)
-            for (int i = allDaysData.Count - 1; i >= 0; i--)
+            // Get user login dates for streak calculation
+            var loginDates = new HashSet<string>();
+            try
             {
-                var count = Convert.ToInt32(allDaysData[i]["count"]);
+                using (var loginCmd = conn.CreateCommand())
+                {
+                    loginCmd.CommandText = @"
+                        SELECT DISTINCT login_date
+                        FROM user_logins
+                        WHERE user_id = @u
+                            AND login_date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)
+                        ORDER BY login_date ASC";
+                    loginCmd.Parameters.AddWithValue("@u", userId);
+                    using var loginReader = loginCmd.ExecuteReader();
+                    while (loginReader.Read())
+                    {
+                        var loginDate = loginReader.GetDateTime(0).ToString("yyyy-MM-dd");
+                        loginDates.Add(loginDate);
+                    }
+                }
+                Console.WriteLine($"✓ Found {loginDates.Count} login dates for user {userId}");
+            }
+            catch (MySqlException ex)
+            {
+                // Table might not exist yet - log warning but continue
+                Console.WriteLine($"⚠ Warning: Could not fetch login dates (table might not exist): {ex.Message}");
+                // Continue with empty loginDates - streak will be 0 until table is created
+            }
+            
+            // Calculate current streak (counting backwards from today)
+            // Streak logic: Only counts consecutive days of login
+            // - User must login (any authenticated API call counts as login) each day
+            // - If user logs in on day 1, streak = 1
+            // - If user logs in on day 1 and day 2, streak = 2, etc.
+            // - If a day is missed (no login), the streak breaks
+            // - We allow today to be 0 without breaking the streak yet (user has all day to login)
+            // - Login is tracked automatically via LoginTrackingMiddleware on every authenticated request
+            Console.WriteLine($"📊 Calculating streak: Found {loginDates.Count} login dates");
+            
+            // Build a set of all dates from the last 365 days to check for consecutive logins
+            // Reuse existing 'today' variable defined earlier in the method
+            var allDates = new List<string>();
+            for (int i = 364; i >= 0; i--)
+            {
+                var date = today.AddDays(-i);
+                allDates.Add(date.ToString("yyyy-MM-dd"));
+            }
+            
+            // Calculate streak by counting backwards from today
+            for (int i = allDates.Count - 1; i >= 0; i--)
+            {
+                var dateKey = allDates[i];
+                bool userLoggedIn = loginDates.Contains(dateKey);
                 
-                if (count > 0)
+                // Debug logging for today and recent days
+                if (i >= allDates.Count - 3)
+                {
+                    Console.WriteLine($"  Day {dateKey}: Login={userLoggedIn}");
+                }
+                
+                // Streak increases if user logged in on this day
+                if (userLoggedIn)
                 {
                     currentStreak++;
                 }
-                else if (i == allDaysData.Count - 1)
+                else if (i == allDates.Count - 1)
                 {
-                    // Today is empty, but we don't break yet - keep looking at previous days
+                    // Today might not have login yet, but we don't break yet - keep looking at previous days
                     continue;
                 }
                 else
                 {
-                    break; // Gap found in previous days
+                    // Gap found in previous days (no login)
+                    Console.WriteLine($"  Streak broken at {dateKey}: No login recorded");
+                    break;
                 }
             }
+            Console.WriteLine($"✓ Final streak: {currentStreak} days");
             
             // Calculate weekly average (last 90 days = ~12.86 weeks)
             var weeklyAvg = totalWords > 0 ? (int)Math.Round(totalWords / 12.86) : 0;
@@ -3967,6 +4033,80 @@ public class DbService : IDbService
                 ["allDaysData"] = new List<object>()
             };
             return JsonSerializer.Serialize(defaultStats);
+        }
+    }
+
+    public bool RecordUserLogin(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            
+            // Insert or update login date for today (using INSERT ... ON DUPLICATE KEY UPDATE)
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                INSERT INTO user_logins (user_id, login_date)
+                VALUES (@uid, CURDATE())
+                ON DUPLICATE KEY UPDATE login_date = login_date";
+            cmd.Parameters.AddWithValue("@uid", userId);
+            cmd.ExecuteNonQuery();
+            
+            Console.WriteLine($"✓ Recorded login for user {userId} on {DateTime.Today:yyyy-MM-dd}");
+            return true;
+        }
+        catch (MySqlException ex)
+        {
+            // If table doesn't exist (error 1146), try to create it
+            if (ex.Number == 1146) // Table doesn't exist
+            {
+                Console.WriteLine($"⚠ user_logins table doesn't exist, attempting to create it...");
+                try
+                {
+                    using var createConn = new MySqlConnection(_connectionString);
+                    createConn.Open();
+                    using var createCmd = createConn.CreateCommand();
+                    createCmd.CommandText = @"
+                        CREATE TABLE IF NOT EXISTS user_logins (
+                            id INT AUTO_INCREMENT PRIMARY KEY,
+                            user_id INT NOT NULL,
+                            login_date DATE NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            UNIQUE KEY unique_user_login_date (user_id, login_date)
+                        )";
+                    createCmd.ExecuteNonQuery();
+                    Console.WriteLine($"✓ Created user_logins table");
+                    
+                    // Retry the insert
+                    using var retryCmd = createConn.CreateCommand();
+                    retryCmd.CommandText = @"
+                        INSERT INTO user_logins (user_id, login_date)
+                        VALUES (@uid, CURDATE())
+                        ON DUPLICATE KEY UPDATE login_date = login_date";
+                    retryCmd.Parameters.AddWithValue("@uid", userId);
+                    retryCmd.ExecuteNonQuery();
+                    Console.WriteLine($"✓ Recorded login for user {userId} on {DateTime.Today:yyyy-MM-dd} (after table creation)");
+                    return true;
+                }
+                catch (Exception createEx)
+                {
+                    _lastError = $"Error creating user_logins table: {createEx.Message}";
+                    Console.WriteLine($"✗ Error creating user_logins table: {createEx.Message}");
+                    return false;
+                }
+            }
+            
+            _lastError = $"Database error ({ex.Number}): {ex.Message}";
+            Console.WriteLine($"✗ MySQL Error recording login: {ex.Number} - {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error recording login: {ex.Message}");
+            return false;
         }
     }
 
@@ -4082,11 +4222,11 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@uid", userId);
             
             using var reader = cmd.ExecuteReader();
-            var projects = new List<Dictionary<string, object>>();
+            var projects = new List<Dictionary<string, object?>>();
             
             while (reader.Read())
             {
-                var project = new Dictionary<string, object>
+                var project = new Dictionary<string, object?>
                 {
                     ["id"] = reader.GetInt32(0),
                     ["name"] = reader.GetString(1),
@@ -4135,7 +4275,7 @@ public class DbService : IDbService
             using var reader = cmd.ExecuteReader();
             if (reader.Read())
             {
-                var project = new Dictionary<string, object>
+                var project = new Dictionary<string, object?>
                 {
                     ["id"] = reader.GetInt32(0),
                     ["name"] = reader.GetString(1),

@@ -65,12 +65,14 @@
                     </div>
                 </div>
 
-                <div class="stat-box">
+                <div class="stat-box streak-box" [class.has-streak]="currentStreak > 0">
                     <div class="icon-circle yellow-bg">
                         <i class="fas fa-fire"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>{{ currentStreak }}</h3>
+                        <h3>
+                            {{ currentStreak }}
+                        </h3>
                         <span>Day Streak</span>
                     </div>
                 </div>
