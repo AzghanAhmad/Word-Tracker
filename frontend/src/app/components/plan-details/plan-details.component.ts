@@ -437,10 +437,23 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             // The backend already calculates this based on the writing strategy
                             let dailyTarget = d.target_count || 0;
                             
-                            // Load notes into planNotes object (including empty strings)
+                            // Load notes into planNotes object (ensure it's always a string or undefined)
+                            // Only set if notes exists and is a valid string (not an object)
                             if (d.notes !== null && d.notes !== undefined) {
-                                this.planNotes[dateKey] = d.notes || '';
+                                // Ensure notes is a string, not an object
+                                if (typeof d.notes === 'string') {
+                                    // Only set if it's not empty (empty strings will show placeholder)
+                                    if (d.notes.trim() !== '') {
+                                        this.planNotes[dateKey] = d.notes;
+                                    }
+                                    // If empty string, don't set (will show placeholder)
+                                } else {
+                                    // If it's an object or other type, don't set it
+                                    // This prevents "[object] [object]" from appearing
+                                    console.warn(`⚠ Skipping invalid notes value for ${dateKey}:`, d.notes);
+                                }
                             }
+                            // If notes is null/undefined, don't set it (will show placeholder)
 
                         return {
                             ...d,
@@ -928,8 +941,15 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             next: (response) => {
                 if (response.success) {
                     this.notificationService.showSuccess('Progress recorded successfully');
-                    this.saveSuccess = true;
-                    setTimeout(() => this.saveSuccess = false, 3000);
+                    // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+                    setTimeout(() => {
+                        this.saveSuccess = true;
+                        this.cdr.detectChanges();
+                        setTimeout(() => {
+                            this.saveSuccess = false;
+                            this.cdr.detectChanges();
+                        }, 3000);
+                    }, 0);
 
                     // Immediately add the new entry to the top of Recent Activity for instant feedback
                     const dateObj = new Date(dateStr + 'T00:00:00');

@@ -98,6 +98,10 @@ public class AuthController : ControllerBase
             }
             
             var token = _auth.GenerateToken(user.Value.id);
+            
+            // Record login date for streak calculation
+            _db.RecordUserLogin(user.Value.id);
+            
             Console.WriteLine($"✅ Login successful: {user.Value.username} (ID: {user.Value.id})");
             return Ok(new { 
                 success = true, 
