@@ -97,7 +97,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
     recordingType: 'overall' | 'daily' = 'overall';
 
     viewMode: 'plan' | 'schedule' | 'progress' | 'stats' = 'schedule';
-    manualInputDate: string = new Date().toISOString().split('T')[0];
+    manualInputDate: string = '';
     manualWordCount: number | null = null;
 
     // Collapsible Section States
@@ -109,6 +109,15 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         customizations: true,
         progressBehavior: true
     };
+
+    // Helper function to format date as YYYY-MM-DD in local timezone (no UTC conversion)
+    // This ensures dates match between create plan page and plan details page
+    private formatDateLocal(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
     getUnitLabel(count: number): string {
         const unit = this.measurementUnit?.toLowerCase() || 'word';
@@ -284,7 +293,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
                 const weekStart = new Date(date);
                 weekStart.setDate(date.getDate() - diff);
-                key = weekStart.toISOString().split('T')[0];
+                key = this.formatDateLocal(weekStart);
             } else if (this.groupingType === 'Month') {
                 key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
             } else if (this.groupingType === 'Year') {
@@ -483,14 +492,15 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
     initializeNewPlan() {
         this.viewMode = 'schedule';
-        // Default start date to today
+        // Default start date to today (use local timezone)
         const today = new Date();
-        this.startDate = today.toISOString().split('T')[0];
+        this.startDate = this.formatDateLocal(today);
+        this.manualInputDate = this.formatDateLocal(today);
 
-        // Default end date to 30 days from now
+        // Default end date to 30 days from now (use local timezone)
         const thirtyDaysLater = new Date();
         thirtyDaysLater.setDate(today.getDate() + 30);
-        this.endDate = thirtyDaysLater.toISOString().split('T')[0];
+        this.endDate = this.formatDateLocal(thirtyDaysLater);
 
         this.generatePlanData();
         this.planDescription = '';
@@ -521,7 +531,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                                 console.warn(`⚠️ Invalid date: ${dateStr}`);
                                 return '';
                             }
-                            return date.toISOString().split('T')[0];
+                            return this.formatDateLocal(date);
                         } catch (e) {
                             console.error(`❌ Error parsing date ${dateStr}:`, e);
                             return '';
@@ -682,7 +692,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
                                 try {
                                     const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime())
-                                        ? entry.date.toISOString().split('T')[0]
+                                        ? this.formatDateLocal(entry.date)
                                         : 'unknown';
                                     console.log(`  ✓ Updated day ${dateStr}: ${entry.actualWords} words (Target: ${entry.targetWords || day.workToComplete})`);
                                 } catch (e) {
@@ -691,7 +701,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                             } else {
                                 try {
                                     const dateStr = entry.date instanceof Date && !isNaN(entry.date.getTime())
-                                        ? entry.date.toISOString().split('T')[0]
+                                        ? this.formatDateLocal(entry.date)
                                         : 'unknown';
                                     console.log(`  ⚠️ Day not found in planDays for date: ${dateStr}`);
                                 } catch (e) {
@@ -824,7 +834,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 day: prevMonthDays - i,
                 month: 'prev',
                 date,
-                dateKey: date.toISOString().split('T')[0],
+                dateKey: this.formatDateLocal(date),
                 isToday: false,
                 workToComplete: 0,
                 actualWorkDone: 0
@@ -834,7 +844,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // Fill current month days
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(year, month, i);
-            const dateKey = date.toISOString().split('T')[0];
+            const dateKey = this.formatDateLocal(date);
 
             // Find matching plan day
             const planDay = this.planDays.find(d => {
@@ -849,7 +859,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 dateKey,
                 workToComplete: planDay?.workToComplete || 0,
                 actualWorkDone: planDay?.actualWorkDone || 0,
-                isToday: dateKey === new Date().toISOString().split('T')[0]
+                isToday: dateKey === this.formatDateLocal(new Date())
             });
         }
 
@@ -861,7 +871,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 day: i,
                 month: 'next',
                 date,
-                dateKey: date.toISOString().split('T')[0],
+                dateKey: this.formatDateLocal(date),
                 isToday: false,
                 workToComplete: 0,
                 actualWorkDone: 0
@@ -892,7 +902,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // Create a map of progress entries by date for quick lookup
         const progressMap = new Map<string, ProgressUpdate>();
         this.progressEntries.forEach(entry => {
-            const dateStr = entry.date.toISOString().split('T')[0];
+            const dateStr = this.formatDateLocal(entry.date);
             // Only use progress entry if it has actual progress, otherwise prefer planDay data
             if (entry.actualWords > 0) {
                 progressMap.set(dateStr, entry);
@@ -981,7 +991,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         for (let i = 0; i < this.totalDays; i++) {
             const current = new Date(start);
             current.setDate(start.getDate() + i);
-            const isoDate = current.toISOString().split('T')[0];
+            const isoDate = this.formatDateLocal(current);
             const dayOfWeek = current.getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
@@ -1108,7 +1118,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 num: i + 1,
                 day: current.toLocaleDateString('en-US', { weekday: 'short' }),
                 date: current.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
-                isoDate: current.toISOString().split('T')[0],
+                isoDate: this.formatDateLocal(current),
                 dateObj: new Date(current),
                 workToComplete: dailyTarget,
                 actualWorkDone: 0,
@@ -1163,7 +1173,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // Create a map of saved data by date
         const savedDataMap = new Map<string, { target: number, actual: number }>();
         this.progressEntries.forEach(entry => {
-            const dateStr = entry.date.toISOString().split('T')[0];
+            const dateStr = this.formatDateLocal(entry.date);
             savedDataMap.set(dateStr, {
                 target: entry.targetWords || 0,
                 actual: entry.actualWords || 0
@@ -1175,7 +1185,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             const current = new Date(start);
             current.setDate(start.getDate() + i);
 
-            const dateStr = current.toISOString().split('T')[0];
+            const dateStr = this.formatDateLocal(current);
             const savedData = savedDataMap.get(dateStr);
 
             const target = savedData?.target || 0;
@@ -1353,7 +1363,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
                     // Update the corresponding progress entry
                     const entryIndex = this.progressEntries.findIndex(e => {
-                        const entryDateStr = e.date.toISOString().split('T')[0];
+                        const entryDateStr = this.formatDateLocal(e.date);
                         const dayDateStr = day.isoDate || day.date;
                         return entryDateStr === dayDateStr || this.isSameDay(e.date, day.dateObj);
                     });
@@ -1386,7 +1396,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // Update progressEntries for immediate display in Daily Updates section
         const dateStr = day.isoDate || day.date;
         const existingEntryIndex = this.progressEntries.findIndex(e => {
-            const entryDateStr = e.date.toISOString().split('T')[0];
+            const entryDateStr = this.formatDateLocal(e.date);
             return entryDateStr === dateStr || this.isSameDay(e.date, day.dateObj);
         });
 
@@ -1518,7 +1528,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // Recent Activity Chart (Last 7 Days)
         const activityMap = new Map<string, number>();
         this.progressEntries.forEach(e => {
-            const dateStr = e.date.toISOString().split('T')[0];
+            const dateStr = this.formatDateLocal(e.date);
             activityMap.set(dateStr, (activityMap.get(dateStr) || 0) + e.actualWords);
         });
 
@@ -1526,7 +1536,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         if (this.progressEntries.length === 0) {
             this.planDays.forEach(d => {
                 if (d.actualWorkDone > 0) {
-                    const dateStr = d.dateObj.toISOString().split('T')[0];
+                    const dateStr = this.formatDateLocal(d.dateObj);
                     activityMap.set(dateStr, d.actualWorkDone);
                 }
             });
@@ -1539,7 +1549,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         for (let i = 6; i >= 0; i--) {
             const d = new Date(todayDate);
             d.setDate(todayDate.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = this.formatDateLocal(d);
             const count = activityMap.get(dateStr) || 0;
             if (count > chartMaxCount) chartMaxCount = count;
 
@@ -1674,7 +1684,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         // Naive loop implementation - in production, backend should have bulk endpoint
         entries.forEach(entry => {
-            const dateStr = new Date(entry.date).toISOString().split('T')[0];
+            const dateStr = this.formatDateLocal(new Date(entry.date));
             this.apiService.logProgress(this.planId!, dateStr, entry.actualWords, entry.notes).subscribe({
                 next: (res) => {
                     successCount++;
@@ -1822,7 +1832,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // This ensures the mountain approach and other algorithms are preserved
         const promises = this.planDays.map(day => {
             return new Promise<void>((resolve) => {
-                const dateStr = day.dateObj.toISOString().split('T')[0];
+                const dateStr = this.formatDateLocal(day.dateObj);
                 const actualCount = day.actualWorkDone || 0;
                 const targetCount = day.workToComplete || 0;
 
@@ -1853,7 +1863,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         const promises = this.planDays.map(day => {
             return new Promise<void>((resolve) => {
-                const dateStr = day.dateObj.toISOString().split('T')[0];
+                const dateStr = this.formatDateLocal(day.dateObj);
                 const targetCount = day.workToComplete || 0;
                 const actualCount = day.actualWorkDone || 0; // Use existing actual_count to preserve progress
 

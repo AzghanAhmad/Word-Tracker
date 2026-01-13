@@ -612,8 +612,8 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
       }
       
       console.log('generatePlansByDate: Processing plan', plan.id, plan.title || plan.plan_name, {
-        start: startDate.toISOString().split('T')[0],
-        end: endDate.toISOString().split('T')[0],
+        start: this.formatDateKey(startDate),
+        end: this.formatDateKey(endDate),
         total_words: plan.total_word_count || plan.target_amount
       });
       
