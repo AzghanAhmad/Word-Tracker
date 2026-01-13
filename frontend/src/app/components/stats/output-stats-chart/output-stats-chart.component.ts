@@ -23,6 +23,8 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
     @Input() initialCount: number = 0;
     @Input() color: string = '#1C2E4A'; // Default premium navy
     @Input() showActualProgress: boolean = true; // Control whether to show actual progress line
+    @Input() unit: string = 'word';
+    @Input() pluralUnit: string = 'words';
 
     @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
     private chart?: Chart;
@@ -200,9 +202,11 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                             label: (context) => {
                                 const value = context.parsed.y;
                                 const label = context.dataset.label;
-                                
+
+                                const unitLabel = Math.abs(value) === 1 ? this.unit : this.pluralUnit;
+
                                 // Only show cumulative total, no daily details
-                                return `${label}: ${new Intl.NumberFormat('en-US').format(value)} words`;
+                                return `${label}: ${new Intl.NumberFormat('en-US').format(value)} ${unitLabel}`;
                             }
                         }
                     }
@@ -221,7 +225,7 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                             maxTicksLimit: 15, // Show more dates on x-axis
                             maxRotation: 45, // Allow rotation for better readability
                             autoSkip: true,
-                            callback: function(value, index, ticks) {
+                            callback: function (value, index, ticks) {
                                 // Show every nth label to avoid crowding
                                 const step = Math.max(1, Math.floor(ticks.length / 12));
                                 if (index % step === 0 || index === ticks.length - 1) {
@@ -275,10 +279,10 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
         const { labels, progressData, targetData } = this.processData();
         if (this.chart) {
             const baseColor = this.getComputedColor(this.color || '#1C2E4A');
-            
+
             this.chart.data.labels = labels;
             this.chart.data.datasets[0].data = targetData;
-            
+
             // Update or add/remove actual progress dataset based on showActualProgress
             if (this.showActualProgress) {
                 if (this.chart.data.datasets.length === 1) {
@@ -288,7 +292,7 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
                         gradient.addColorStop(0, `${baseColor}26`);
                         gradient.addColorStop(1, `${baseColor}03`);
-                        
+
                         this.chart.data.datasets.push({
                             label: 'Your Progress',
                             data: progressData,
@@ -314,7 +318,7 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                     progressDataset.borderColor = baseColor;
                     progressDataset.pointBorderColor = baseColor;
                     progressDataset.pointHoverBackgroundColor = baseColor;
-                    
+
                     const ctx = this.chartCanvas.nativeElement.getContext('2d');
                     if (ctx) {
                         const gradient = ctx.createLinearGradient(0, 0, 0, 400);

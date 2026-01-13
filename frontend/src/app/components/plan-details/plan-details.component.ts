@@ -39,11 +39,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 // Use dateObj if available
                 dateStr = day.dateObj.toISOString().split('T')[0];
             }
-            
+
             return {
                 date: dateStr,
-            count: day.actual_count || 0,
-            target: day.target_count || 0
+                count: day.actual_count || 0,
+                target: day.target_count || 0
             };
         });
     }
@@ -70,11 +70,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 // Use dateObj if available
                 dateStr = day.dateObj.toISOString().split('T')[0];
             }
-            
+
             return {
                 date: dateStr,
-            count: day.actual_count || 0,
-            target: day.target_count || 0
+                count: day.actual_count || 0,
+                target: day.target_count || 0
             };
         });
     }
@@ -113,7 +113,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     hoveredChart: 'cumulative' | 'daily' | null = null;
     planNotes: { [key: string]: string } = {};
     calendarDays: any[] = [];
-    
+
     trackByDateKey(index: number, day: any): string {
         return day.dateKey || index.toString();
     }
@@ -203,7 +203,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 if (response.success && response.data) {
                     // Process the plan data before assigning to avoid ExpressionChangedAfterItHasBeenCheckedError
                     const planData = { ...response.data };
-                    
+
                     // Ensure dates are strings, not objects (handle MySqlDateTime serialization)
                     if (planData.start_date && typeof planData.start_date === 'object') {
                         const sd = planData.start_date as any;
@@ -223,17 +223,17 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             planData.target_finish_date = `${tfd.Year}-${String(tfd.Month).padStart(2, '0')}-${String(tfd.Day).padStart(2, '0')}`;
                         }
                     }
-                    
+
                     // Assign the processed plan data
                     this.plan = planData;
-                    
+
                     this.activeView = (this.plan.display_view_type === 'Table' || this.plan.display_view_type === 'Calendar')
                         ? this.plan.display_view_type
                         : 'Graph';
-                    
+
                     // Use setTimeout to defer change detection after all modifications
                     setTimeout(() => {
-                    this.loadActivityLogs();
+                        this.loadActivityLogs();
                         // Defer calculateStats and isLoading to next tick to avoid change detection errors
                         setTimeout(() => {
                             this.calculateStats();
@@ -250,7 +250,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 if (found) {
                                     // Process the plan data before assigning
                                     const planData = { ...found };
-                                    
+
                                     // Ensure dates are strings, not objects
                                     if (planData.start_date && typeof planData.start_date === 'object') {
                                         const sd = planData.start_date as any;
@@ -264,12 +264,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                             planData.end_date = `${ed.Year}-${String(ed.Month).padStart(2, '0')}-${String(ed.Day).padStart(2, '0')}`;
                                         }
                                     }
-                                    
+
                                     this.plan = planData;
                                     this.activeView = (this.plan.display_view_type === 'Table' || this.plan.display_view_type === 'Calendar')
                                         ? this.plan.display_view_type
                                         : 'Graph';
-                                    
+
                                     // Use setTimeout to defer change detection
                                     setTimeout(() => {
                                         this.loadActivityLogs();
@@ -340,10 +340,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(year, month, i);
             const dateKey = date.toISOString().split('T')[0];
-            
+
             // Find matching plan day - handle both ISO format and YYYY-MM-DD format
             const planDay = this.allPlanDays.find(d => {
-                const dayDateKey = typeof d.date === 'string' 
+                const dayDateKey = typeof d.date === 'string'
                     ? (d.date.includes('T') ? d.date.split('T')[0] : d.date)
                     : new Date(d.date).toISOString().split('T')[0];
                 return dayDateKey === dateKey;
@@ -418,7 +418,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             return dayDate >= planStartDate && dayDate <= planEndDate;
                         })
                         .map((d: any) => {
-                        const dateObj = new Date(d.date);
+                            const dateObj = new Date(d.date);
                             // Normalize date to YYYY-MM-DD format for consistent matching
                             let dateKey: string;
                             if (typeof d.date === 'string') {
@@ -432,11 +432,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             } else {
                                 dateKey = dateObj.toISOString().split('T')[0];
                             }
-                            
+
                             // Use DB target_count directly from plan_days table
                             // The backend already calculates this based on the writing strategy
                             let dailyTarget = d.target_count || 0;
-                            
+
                             // Load notes into planNotes object (ensure it's always a string or undefined)
                             // Only set if notes exists and is a valid string (not an object)
                             if (d.notes !== null && d.notes !== undefined) {
@@ -455,22 +455,22 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             }
                             // If notes is null/undefined, don't set it (will show placeholder)
 
-                        return {
-                            ...d,
+                            return {
+                                ...d,
                                 date: dateKey, // Store normalized date
-                            dateObj: dateObj,
+                                dateObj: dateObj,
                                 target_count: dailyTarget, // Use actual database value
                                 actual_count: d.actual_count || 0,
                                 notes: d.notes || ''
-                        };
-                    }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
+                            };
+                        }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
 
                     console.log('✅ Processed allPlanDays:', this.allPlanDays.length, 'days');
 
                     // Generate calendar and charts with fresh data
                     this.generateCalendarDays();
                     this.generateChart();
-                    
+
                     // Ensure calendar is generated even if schedule tab is active
                     // This fixes the issue where schedule tab doesn't show data until clicked
                     this.cdr.detectChanges();
@@ -480,32 +480,32 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     // Use the filtered and processed allPlanDays instead of raw response.data for consistency
                     const allDaysWithWork = this.allPlanDays.filter((d: any) => (d.actual_count || 0) > 0);
                     this.activityLogs = allDaysWithWork.map((d: any) => {
-                            // Use the already processed date from allPlanDays
-                            const dateObj = d.dateObj;
-                            
-                            let dayTarget = (d.target_count && d.target_count > 0) ? d.target_count : fallbackDailyTarget;
+                        // Use the already processed date from allPlanDays
+                        const dateObj = d.dateObj;
 
-                            if (this.allPlanDays.length > 1 && dayTarget >= totalTarget) {
-                                dayTarget = fallbackDailyTarget;
-                            }
+                        let dayTarget = (d.target_count && d.target_count > 0) ? d.target_count : fallbackDailyTarget;
 
-                            // Use the normalized dateKey from allPlanDays
-                            const rawDateStr = d.date;
+                        if (this.allPlanDays.length > 1 && dayTarget >= totalTarget) {
+                            dayTarget = fallbackDailyTarget;
+                        }
 
-                            return {
-                                id: d.id || dateObj.getTime(),
-                                date: dateObj.toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                }),
-                                words: d.actual_count || 0,
-                                target: dayTarget,
-                                dateObj: dateObj,
-                                rawDate: rawDateStr,
-                                notes: d.notes || ''
-                            };
-                        })
+                        // Use the normalized dateKey from allPlanDays
+                        const rawDateStr = d.date;
+
+                        return {
+                            id: d.id || dateObj.getTime(),
+                            date: dateObj.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                            }),
+                            words: d.actual_count || 0,
+                            target: dayTarget,
+                            dateObj: dateObj,
+                            rawDate: rawDateStr,
+                            notes: d.notes || ''
+                        };
+                    })
                         .sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime()) // Newest first
                         .slice(0, 10); // Last 10 working days
 
@@ -514,7 +514,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     if (this.plan) {
                         this.plan.completed_amount = totalFromLogs;
                     }
-                    
+
                     console.log('✅ Updated activity logs:', this.activityLogs.length, 'entries');
                     console.log('✅ Total completed amount:', totalFromLogs);
                 } else {
@@ -551,7 +551,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     calculateStats() {
         if (!this.plan) return;
-        
+
         // All analytics calculations use backend data from allPlanDays
         // This function is called after loadActivityLogs() completes, ensuring data is available
 
@@ -632,7 +632,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         newExtendedStats.avgWordsPerDay = writingDays.length > 0
             ? Math.round(totalCompleted / writingDays.length)
             : 0;
-        
+
         // Ensure we have valid data for analytics
         if (this.allPlanDays.length === 0) {
             console.warn('No plan days data available for analytics calculations');
@@ -642,7 +642,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         // Find today's cumulative stats
         const todayStr = this.todayDate;
         const pastAndTodayDays = this.allPlanDays.filter(d => {
-            const dayDateKey = typeof d.date === 'string' 
+            const dayDateKey = typeof d.date === 'string'
                 ? (d.date.includes('T') ? d.date.split('T')[0] : d.date)
                 : new Date(d.date).toISOString().split('T')[0];
             return dayDateKey <= todayStr;
@@ -752,7 +752,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
         const isArchived = this.plan.status?.toLowerCase() === 'archived';
         const action = isArchived ? 'restore' : 'archive';
-        const confirmMessage = isArchived 
+        const confirmMessage = isArchived
             ? 'Are you sure you want to restore this plan?'
             : 'Are you sure you want to archive this plan? It will be moved to archived plans.';
 
@@ -822,7 +822,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         } else if (dateStr && dateStr.includes('T')) {
             dateStr = dateStr.split('T')[0];
         }
-        
+
         if (!dateStr) {
             this.notificationService.showError('Invalid date for session');
             return;
@@ -839,10 +839,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                     // Force refresh all plan days data to ensure Schedule and Analytics are updated
                     this.refreshPlanDaysData();
-                    
+
                     // Also reload plan details to update progress percentage
                     setTimeout(() => {
-                    this.loadPlanDetails();
+                        this.loadPlanDetails();
                     }, 100);
                 } else {
                     this.notificationService.showError('Failed to update session');
@@ -866,7 +866,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             } else if (dateStr && dateStr.includes('T')) {
                 dateStr = dateStr.split('T')[0];
             }
-            
+
             if (!dateStr) {
                 this.notificationService.showError('Invalid date for session');
                 return;
@@ -882,13 +882,13 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                         if (index !== -1) {
                             this.activityLogs.splice(index, 1);
                         }
-                        
+
                         // Force refresh all plan days data to ensure Schedule and Analytics are updated
                         this.refreshPlanDaysData();
-                        
+
                         // Also reload plan details to update progress percentage
                         setTimeout(() => {
-                        this.loadPlanDetails();
+                            this.loadPlanDetails();
                         }, 100);
                     } else {
                         this.notificationService.showError('Failed to delete session');
@@ -931,7 +931,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         const selectedDate = new Date(dateStr + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         if (selectedDate > today) {
             this.notificationService.showError('Cannot log progress for future dates');
             return;
@@ -966,10 +966,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                         rawDate: dateStr,
                         notes: ''
                     };
-                    
+
                     // Add the new entry to activityLogs array
                     this.activityLogs.push(newEntry);
-                    
+
                     // Sort by date descending (newest first) and keep only the most recent 10 entries
                     this.activityLogs.sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime());
                     if (this.activityLogs.length > 10) {
@@ -982,10 +982,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                     // Force refresh all plan days data to ensure Schedule and Analytics are updated
                     this.refreshPlanDaysData();
-                    
+
                     // Also reload plan details to refresh stats, history, and ensure data is in sync
                     setTimeout(() => {
-                    this.loadPlanDetails();
+                        this.loadPlanDetails();
                     }, 100);
                 } else {
                     this.notificationService.showError('Failed to save progress');
@@ -1098,18 +1098,18 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     savePlanNoteToBackend(dateKey: string) {
         if (!this.planId) return;
-        
+
         const note = this.planNotes[dateKey] || '';
-        
+
         // Find the plan day to get actual_count
         const planDay = this.allPlanDays.find(d => {
             const dayDateKey = d.date.split('T')[0];
             return dayDateKey === dateKey;
         });
         const actualCount = planDay?.actual_count || 0;
-        
+
         console.log(`💾 Saving note for ${dateKey}: "${note}"`);
-        
+
         // Save note to backend
         this.apiService.logProgress(this.planId, dateKey, actualCount, note).subscribe({
             next: (response) => {
@@ -1136,7 +1136,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     updateWritingStrategy(strategy: string) {
         if (!this.planId || !this.plan) return;
-        
+
         // Map frontend strategy names to backend values
         // Based on descriptions:
         // - "Weekdays Only": Monday-Friday only, weekends are rest days
@@ -1147,9 +1147,9 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             'The Usual': 'The Usual',          // All days (Mon-Sun) get word targets
             'Adaptive rest': 'None'            // Weekends are rest days (Mon-Fri only)
         };
-        
+
         const backendStrategy = strategyMap[strategy] || strategy;
-        
+
         // Helper function to ensure date is in YYYY-MM-DD format
         const formatDate = (date: any): string => {
             if (!date) return '';
@@ -1175,7 +1175,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             }
             return '';
         };
-        
+
         // Update plan with new weekend approach
         const updateData = {
             title: this.plan.title || this.plan.plan_name,
@@ -1212,12 +1212,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             })(),
             current_progress: this.plan.current_progress || this.plan.progress || 0
         };
-        
+
         this.isLoading = true;
         this.cdr.detectChanges();
-        
+
         console.log('Updating plan with data:', updateData);
-        
+
         this.apiService.updatePlan(this.planId, updateData).subscribe({
             next: (response) => {
                 if (response.success) {
@@ -1283,13 +1283,13 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             console.warn('⚠ Cannot refresh plan days: planId or plan data missing');
             return;
         }
-        
+
         console.log('🔄 Force refreshing plan days data for Schedule/Analytics...');
         // Clear existing data first to force fresh load
         this.allPlanDays = [];
         this.activityLogs = [];
         this.cdr.detectChanges();
-        
+
         // Reload activity logs which will refresh all data
         this.loadActivityLogs();
     }
@@ -1303,7 +1303,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             return 'Steady';
         }
         const algo = this.plan.algorithm_type.toString().trim().toLowerCase();
-        
+
         // Map database values to frontend format (case-sensitive matching)
         const strategyMap: { [key: string]: string } = {
             'steady': 'Steady',
@@ -1317,22 +1317,22 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             'randomly': 'Randomly',
             'random': 'Randomly'
         };
-        
+
         // Check exact match first
         if (strategyMap[algo]) {
             return strategyMap[algo];
         }
-        
+
         // Fallback: capitalize first letter and handle hyphens
-        const normalized = algo.split('-').map(word => 
+        const normalized = algo.split('-').map(word =>
             word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
         ).join('-');
-        
+
         // Check if normalized version exists in map
         if (strategyMap[normalized.toLowerCase()]) {
             return strategyMap[normalized.toLowerCase()];
         }
-        
+
         return normalized || 'Steady';
     }
 
@@ -1341,5 +1341,27 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
      */
     isActiveStrategy(strategy: string): boolean {
         return this.getNormalizedAlgorithmType() === strategy;
+    }
+
+    getUnitLabel(count: number): string {
+        const unit = this.plan?.measurement_unit?.toLowerCase() || 'word';
+
+        if (Math.abs(count) === 1) {
+            return unit;
+        }
+
+        const mappings: { [key: string]: string } = {
+            'word': 'words', 'page': 'pages', 'poem': 'poems', 'chapter': 'chapters',
+            'section': 'sections', 'character': 'characters', 'verse': 'verses', 'act': 'acts',
+            'scene': 'scenes', 'stanza': 'stanzas', 'line': 'lines', 'book': 'books',
+            'day': 'days', 'hour': 'hours', 'minute': 'minutes', 'unit': 'units',
+            'item': 'items', 'task': 'tasks', 'todo': 'todos', 'step': 'steps',
+            'entry': 'entries', 'post': 'posts', 'worksheet': 'worksheets', 'dollar': 'dollars',
+            'mile': 'miles', 'km': 'kilometers', 'lb': 'pounds', 'kg': 'kilograms',
+            'stitch': 'stitches', 'time': 'times', 'episode': 'episodes', 'video': 'videos',
+            'movie': 'movies', 'lesson': 'lessons', 'feature': 'features'
+        };
+
+        return mappings[unit] || unit + 's';
     }
 }

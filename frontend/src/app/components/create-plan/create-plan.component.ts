@@ -110,10 +110,61 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         progressBehavior: true
     };
 
+    getUnitLabel(count: number): string {
+        const unit = this.measurementUnit?.toLowerCase() || 'word';
+
+        if (Math.abs(count) === 1) {
+            return unit;
+        }
+
+        // Handle specific irregulars or abbreviations from the dropdown
+        const mappings: { [key: string]: string } = {
+            'word': 'words',
+            'page': 'pages',
+            'poem': 'poems',
+            'chapter': 'chapters',
+            'section': 'sections',
+            'character': 'characters',
+            'verse': 'verses',
+            'act': 'acts',
+            'scene': 'scenes',
+            'stanza': 'stanzas',
+            'line': 'lines',
+            'book': 'books',
+            'day': 'days',
+            'hour': 'hours',
+            'minute': 'minutes',
+            'unit': 'units',
+            'item': 'items',
+            'task': 'tasks',
+            'todo': 'todos',
+            'step': 'steps',
+            'entry': 'entries',
+            'post': 'posts',
+            'worksheet': 'worksheets',
+            'dollar': 'dollars',
+            'mile': 'miles',
+            'km': 'kilometers',
+            'lb': 'pounds',
+            'kg': 'kilograms',
+            'stitch': 'stitches',
+            'time': 'times',
+            'episode': 'episodes',
+            'video': 'videos',
+            'movie': 'movies',
+            'lesson': 'lessons',
+            'feature': 'features'
+        };
+
+        return mappings[unit] || unit + 's';
+    }
+
     username: string = 'User';
 
     // Display Views data
     planDays: PlanDay[] = [];
+    calendarDays: any[] = [];
+    currentCalendarDate: Date = new Date();
     totalDays: number = 0;
     daysLeft: number = 0;
 
@@ -154,7 +205,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             });
         } else {
             // New plan mode - update progressEntries locally
-            const existingEntryIndex = this.progressEntries.findIndex(e => 
+            const existingEntryIndex = this.progressEntries.findIndex(e =>
                 this.isSameDay(e.date, progressDate)
             );
 
@@ -177,6 +228,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
             // Recalculate stats and update UI
             this.recalculateCumulativeStats();
+            this.generateCalendarDays();
             this.notificationService.showSuccess('Progress recorded locally');
             this.manualWordCount = null;
             this.cdr.detectChanges();
@@ -720,6 +772,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
                     // Mark loading as complete and update UI
                     this.isLoading = false;
+                    this.generateCalendarDays();
                     this.cdr.detectChanges();
                     resolve();
                 },
@@ -742,6 +795,80 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         return d1.getFullYear() === d2.getFullYear() &&
             d1.getMonth() === d2.getMonth() &&
             d1.getDate() === d2.getDate();
+    }
+
+    changeCalendarMonth(delta: number) {
+        const newDate = new Date(this.currentCalendarDate);
+        newDate.setMonth(newDate.getMonth() + delta);
+        this.currentCalendarDate = newDate;
+        this.generateCalendarDays();
+    }
+
+    generateCalendarDays() {
+        const year = this.currentCalendarDate.getFullYear();
+        const month = this.currentCalendarDate.getMonth();
+        const firstDay = new Date(year, month, 1).getDay(); // 0 is Sunday
+
+        // Adjust for Monday start if needed
+        const MondayStartOffset = (firstDay === 0 ? 6 : firstDay - 1);
+        const startOffset = this.weekStartDay === 'Mondays' ? MondayStartOffset : firstDay;
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const days = [];
+        // Fill previous month padding
+        const prevMonthDays = new Date(year, month, 0).getDate();
+        for (let i = startOffset - 1; i >= 0; i--) {
+            const date = new Date(year, month - 1, prevMonthDays - i);
+            days.push({
+                day: prevMonthDays - i,
+                month: 'prev',
+                date,
+                dateKey: date.toISOString().split('T')[0],
+                isToday: false,
+                workToComplete: 0,
+                actualWorkDone: 0
+            });
+        }
+
+        // Fill current month days
+        for (let i = 1; i <= daysInMonth; i++) {
+            const date = new Date(year, month, i);
+            const dateKey = date.toISOString().split('T')[0];
+
+            // Find matching plan day
+            const planDay = this.planDays.find(d => {
+                const dayDateKey = d.isoDate || d.date;
+                return dayDateKey === dateKey;
+            });
+
+            days.push({
+                day: i,
+                month: 'current',
+                date,
+                dateKey,
+                workToComplete: planDay?.workToComplete || 0,
+                actualWorkDone: planDay?.actualWorkDone || 0,
+                isToday: dateKey === new Date().toISOString().split('T')[0]
+            });
+        }
+
+        // Fill next month padding to reach 42 cells (6 weeks)
+        const remaining = 42 - days.length;
+        for (let i = 1; i <= remaining; i++) {
+            const date = new Date(year, month + 1, i);
+            days.push({
+                day: i,
+                month: 'next',
+                date,
+                dateKey: date.toISOString().split('T')[0],
+                isToday: false,
+                workToComplete: 0,
+                actualWorkDone: 0
+            });
+        }
+
+        this.calendarDays = days;
     }
 
     /**
@@ -812,7 +939,26 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             this.planDays = [];
             this.totalDays = 0;
             this.calculateStats();
+            this.generateCalendarDays();
             return;
+        }
+
+        // Set current calendar date to start date if it hasn't been set by user navigation yet
+        if (this.startDate) {
+            const startStr = this.startDate;
+            const startD = new Date(startStr);
+            if (!isNaN(startD.getTime())) {
+                // Only sync if they are in different months/years (don't force back to start if user is navigating)
+                const currentMonth = this.currentCalendarDate.getMonth();
+                const currentYear = this.currentCalendarDate.getFullYear();
+                const startMonth = startD.getMonth();
+                const startYear = startD.getFullYear();
+
+                // If it's the first run or we just loaded a plan, sync them
+                if (this.planDays.length === 0) {
+                    this.currentCalendarDate = new Date(startD);
+                }
+            }
         }
 
         const start = new Date(this.startDate);
@@ -1054,6 +1200,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         console.log(`✓ Built ${this.planDays.length} plan days from saved data`);
         this.calculateStats();
+        this.generateCalendarDays();
         this.cdr.detectChanges();
     }
 
@@ -1108,7 +1255,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         } else {
             progress = Number(val);
         }
-        
+
         // Validate the input
         if (isNaN(progress) || this.targetWordCount <= 0 || progress === null || progress === undefined) {
             // If invalid, restore the previous value and return
@@ -1126,7 +1273,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         // Store the previous value to detect if it actually changed
         const previousProgress = this.currentProgress;
-        
+
         // Update the model immediately to the clamped value
         this.currentProgress = progress;
 
@@ -1134,7 +1281,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         // Check if the value actually changed (with small epsilon for floating point comparison)
         const progressChanged = Math.abs(previousProgress - progress) > 0.001;
-        
+
         // Only skip redistribution if value didn't change AND distribution already matches
         if (!progressChanged && this.planDays.length > 0) {
             const currentTotal = this.planDays.reduce((sum, d) => sum + (d.actualWorkDone || 0), 0);
@@ -1203,7 +1350,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 if (day.actualWorkDone > 0) {
                     const adjustment = targetTotal - totalDistributed;
                     day.actualWorkDone = Math.max(0, day.actualWorkDone + adjustment);
-                    
+
                     // Update the corresponding progress entry
                     const entryIndex = this.progressEntries.findIndex(e => {
                         const entryDateStr = e.date.toISOString().split('T')[0];
@@ -1220,10 +1367,10 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         // Verify the final total matches the target
         const finalTotal = this.planDays.reduce((sum, d) => sum + (d.actualWorkDone || 0), 0);
-        const finalPercentage = this.targetWordCount > 0 
-            ? (finalTotal / this.targetWordCount) * 100 
+        const finalPercentage = this.targetWordCount > 0
+            ? (finalTotal / this.targetWordCount) * 100
             : 0;
-        
+
         console.log(`✅ Progress distribution complete: ${finalTotal} words = ${finalPercentage.toFixed(2)}% (target: ${progress}%)`);
 
         // Recalculate stats/columns, but DO NOT overwrite my manually typed %
@@ -1555,7 +1702,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         }
 
         if (this.targetWordCount <= 0) {
-            this.notificationService.showError('Please enter a valid target word count.');
+            this.notificationService.showError('Please enter a valid target amount.');
             return;
         }
 
@@ -1581,7 +1728,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             dashboard_color: this.dashboardColor,
             show_historical_data: !!this.showHistoricalData,
             progress_tracking_type: this.progressTrackingType,
-            activity_type: 'Writing',
+            activity_type: this.activityType || 'Writing',
             content_type: this.contentType,
             status: this.status || 'active',
             current_progress: Math.round(this.currentProgress || 0)
@@ -1700,10 +1847,10 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         // This ensures manual edits persist even if RegeneratePlanDays ran during plan update
         // Use existing actual_count from planDays to preserve user's logged progress
         console.log(`💾 Saving target_count changes for ${this.planDays.length} plan days for plan ${this.planId}...`);
-        
+
         let savedCount = 0;
         let failedCount = 0;
-        
+
         const promises = this.planDays.map(day => {
             return new Promise<void>((resolve) => {
                 const dateStr = day.dateObj.toISOString().split('T')[0];
@@ -1731,10 +1878,10 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 });
             });
         });
-        
+
         await Promise.all(promises);
         console.log(`✅ Completed saving plan days: ${savedCount} succeeded, ${failedCount} failed out of ${this.planDays.length} total`);
-        
+
         if (failedCount > 0) {
             console.warn(`⚠ Warning: ${failedCount} plan days failed to save. Manual target edits may not be persisted.`);
         }
@@ -1775,9 +1922,9 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 status: this.status || 'active',
                 current_progress: Math.round(progress || 0)  // Use the manual progress value
             };
-            
+
             console.log(`📊 Updating plan ${planId} progress to manual value: ${progress}%`);
-            
+
             this.apiService.updatePlan(planId, updatePayload).subscribe({
                 next: (response) => {
                     if (response.success) {
