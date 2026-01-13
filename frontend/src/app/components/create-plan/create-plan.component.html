@@ -207,7 +207,8 @@
                     </div>
                     <div class="form-group">
                         <label>HOW IT'S MEASURED</label>
-                        <select [(ngModel)]="measurementUnit" class="white-bg-input" style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                        <select [(ngModel)]="measurementUnit" class="white-bg-input"
+                            style="width: 100%; padding: 8px; border: 1px solid #e5e7eb; border-radius: 4px;">
                             <option value="feature">Features</option>
                             <option value="word">Words</option>
                             <option value="paragraph">Paragraphs</option>
@@ -472,21 +473,15 @@
                             <div class="form-group">
                                 <label>Current Progress (%)</label>
                                 <div class="progress-input-wrapper">
-                                    <input 
-                                        type="number" 
-                                        [ngModel]="currentProgress" 
+                                    <input type="number" [ngModel]="currentProgress"
                                         (ngModelChange)="onManualProgressChange($event)"
-                                        (blur)="onManualProgressChange(progressInput.value)"
-                                        min="0" 
-                                        max="100" 
-                                        step="0.01"
-                                        class="progress-percentage-input"
-                                        placeholder="0"
-                                        #progressInput>
+                                        (blur)="onManualProgressChange(progressInput.value)" min="0" max="100"
+                                        step="0.01" class="progress-percentage-input" placeholder="0" #progressInput>
                                     <span class="percentage-symbol">%</span>
                                 </div>
                                 <p class="hint mt-2" style="font-size: 0.8rem; color: #64748b;">
-                                    Enter a percentage (0-100) to automatically distribute actual work done across the plan from the start date according to this progress level.
+                                    Enter a percentage (0-100) to automatically distribute actual work done across the
+                                    plan from the start date according to this progress level.
                                 </p>
                             </div>
                         </div>
@@ -713,8 +708,8 @@
                             <option value="daily">Daily Sprints (Session)</option>
                         </select>
                         <p class="hint mt-1" style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">
-                            {{ recordingType === 'overall' ? 'Record novel word count reached so far.' : 'Record words
-                            written in each session.' }}
+                            {{ recordingType === 'overall' ? 'Record total progress reached so far.' : 'Record amount
+                            completed in each session.' }}
                         </p>
                     </div>
                 </div>
@@ -848,9 +843,9 @@
                     <div class="block-content" *ngIf="sections.goalDefinition">
                         <div class="option-row">
                             <div class="option-label-group">
-                                <label>Total Word Count Goal</label>
+                                <label>Total Goal ({{ getUnitLabel(0) | titlecase }})</label>
                                 <p class="explanation">Set the final destination for your project. This is the total
-                                    number of words you want to write by your deadline.</p>
+                                    number of {{ getUnitLabel(0) }} you want to complete by your deadline.</p>
                             </div>
                             <div class="option-control">
                                 <input type="number" [(ngModel)]="targetWordCount" (ngModelChange)="onTargetChange()"
@@ -858,7 +853,7 @@
                                 <div class="hint-box" *ngIf="targetWordCount > 0">
                                     <i class="fas fa-tachometer-alt"></i>
                                     <span>Based on your timeline, you need to average <strong>{{ dailyAvg | number }}
-                                            words</strong> per day.</span>
+                                            {{ getUnitLabel(dailyAvg) }}</strong> per day.</span>
                                 </div>
                             </div>
                         </div>
@@ -866,7 +861,8 @@
                         <div class="option-row">
                             <div class="option-label-group">
                                 <label>Measurement Unit</label>
-                                <p class="explanation">Choose how you want to track your progress. Select the unit that best fits your project type and workflow.</p>
+                                <p class="explanation">Choose how you want to track your progress. Select the unit that
+                                    best fits your project type and workflow.</p>
                             </div>
                             <div class="option-control">
                                 <select [(ngModel)]="measurementUnit" class="form-control">
@@ -963,7 +959,8 @@
                             <div class="option-label-group">
                                 <label>Strategy Intensity</label>
                                 <p class="explanation">How dramatic should the changes in your daily targets be? Higher
-                                    intensity leads to steeper increases or decreases in your daily word goals.</p>
+                                    intensity leads to steeper increases or decreases in your daily {{ getUnitLabel(0)
+                                    }} goals.</p>
                             </div>
                             <div class="option-control">
                                 <select [(ngModel)]="strategyIntensity" (change)="onStrategyChange()">
@@ -1093,8 +1090,8 @@
                                 </div>
                                 <div class="hint-box">
                                     <i class="fas fa-save"></i>
-                                    <span>{{ recordingType === 'overall' ? 'Record your total word count reached so
-                                        far.' : 'Record exactly how many words you wrote today.' }}</span>
+                                    <span>{{ recordingType === 'overall' ? 'Record your total progress reached so far.'
+                                        : 'Record exactly how much you completed today.' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -1114,7 +1111,7 @@
             <div *ngIf="viewMode === 'schedule'">
                 <div class="schedule-summary">
                     <div class="word-badge">
-                        <span class="count">{{ targetWordCount | number }} words</span>
+                        <span class="count">{{ targetWordCount | number }} {{ getUnitLabel(targetWordCount) }}</span>
                         &nbsp;<span class="label">over</span>&nbsp;
                         <span class="days">{{ totalDays }} days</span>
                     </div>
@@ -1162,22 +1159,64 @@
 
                     <!-- Calendar View -->
                     <div *ngSwitchCase="'Calendar'" class="view-card calendar-view">
-                        <div class="calendar-header">
-                            <h2>{{ startDate | date:'MMMM' }}</h2>
+                        <div class="calendar-header"
+                            style="display: flex; justify-content: center; align-items: center; gap: 2rem; margin-bottom: 2rem;">
+                            <button (click)="changeCalendarMonth(-1)" class="nav-btn"
+                                style="background: var(--bg-surface); border: 1px solid var(--border-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: all 0.2s ease;">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <h2
+                                style="margin: 0; font-size: 1.75rem; font-weight: 700; color: var(--text-primary); min-width: 200px; text-align: center;">
+                                {{ currentCalendarDate | date:'MMMM yyyy' }}
+                            </h2>
+                            <button (click)="changeCalendarMonth(1)" class="nav-btn"
+                                style="background: var(--bg-surface); border: 1px solid var(--border-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: all 0.2s ease;">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
                         </div>
                         <div class="calendar-grid">
-                            <div class="day-label">Monday</div>
-                            <div class="day-label">Tuesday</div>
-                            <div class="day-label">Wednesday</div>
-                            <div class="day-label">Thursday</div>
-                            <div class="day-label">Friday</div>
-                            <div class="day-label">Saturday</div>
-                            <div class="day-label">Sunday</div>
+                            <!-- Day Labels -->
+                            <ng-container *ngIf="weekStartDay === 'Mondays'">
+                                <div class="day-label">Monday</div>
+                                <div class="day-label">Tuesday</div>
+                                <div class="day-label">Wednesday</div>
+                                <div class="day-label">Thursday</div>
+                                <div class="day-label">Friday</div>
+                                <div class="day-label">Saturday</div>
+                                <div class="day-label">Sunday</div>
+                            </ng-container>
+                            <ng-container *ngIf="weekStartDay !== 'Mondays'">
+                                <div class="day-label">Sunday</div>
+                                <div class="day-label">Monday</div>
+                                <div class="day-label">Tuesday</div>
+                                <div class="day-label">Wednesday</div>
+                                <div class="day-label">Thursday</div>
+                                <div class="day-label">Friday</div>
+                                <div class="day-label">Saturday</div>
+                            </ng-container>
 
-                            <div *ngFor="let day of planDays" class="day-cell">
-                                <span class="date-num">{{ day.dateObj | date:'dd' }}</span>
-                                <div class="word-bubble" [style.background]="dashboardColor">
-                                    {{ day.workToComplete | number }} words
+                            <div *ngFor="let day of calendarDays" class="day-cell"
+                                [class.other-month]="day.month !== 'current'"
+                                [style.opacity]="day.month === 'current' ? 1 : 0.3"
+                                style="display: flex; flex-direction: column; gap: 4px; padding: 8px; min-height: 100px; border: 1px solid var(--border-color); background: var(--bg-surface);">
+                                <span class="date-num" [style.color]="day.isToday ? 'var(--primary-accent)' : 'inherit'"
+                                    [style.fontWeight]="day.isToday ? '700' : '400'">
+                                    {{ day.day }}
+                                </span>
+
+                                <!-- Goal Bubble -->
+                                <div class="word-bubble" *ngIf="day.workToComplete > 0"
+                                    style="background: #1C2E4A; color: white; padding: 4px 8px; border-radius: 0px; font-size: 0.7rem; font-weight: 600; width: 100%; box-sizing: border-box; text-align: left;">
+                                    <div style="opacity: 0.7; font-size: 0.6rem; text-transform: uppercase;">GOAL</div>
+                                    {{ day.workToComplete | number }} {{ getUnitLabel(day.workToComplete) }}
+                                </div>
+
+                                <!-- Actual Progress Bubble (Show only if progress exists) -->
+                                <div class="word-bubble" *ngIf="day.actualWorkDone > 0"
+                                    style="background: #10b981; color: white; padding: 4px 8px; border-radius: 0px; font-size: 0.7rem; font-weight: 600; width: 100%; box-sizing: border-box; text-align: left;">
+                                    <div style="opacity: 0.8; font-size: 0.6rem; text-transform: uppercase;">ACTUAL
+                                    </div>
+                                    {{ day.actualWorkDone | number }} {{ getUnitLabel(day.actualWorkDone) }}
                                 </div>
                             </div>
                         </div>
@@ -1200,7 +1239,8 @@
                             <!-- Overall Progress Chart -->
                             <div class="chart-body">
                                 <app-output-stats-chart [data]="scheduledWorkData"
-                                    [color]="selectedColor || dashboardColor">
+                                    [color]="selectedColor || dashboardColor" [unit]="measurementUnit"
+                                    [pluralUnit]="getUnitLabel(0)">
                                 </app-output-stats-chart>
                             </div>
                         </div>
@@ -1213,7 +1253,7 @@
                         <div class="chart-card-clean">
                             <div class="chart-header">
                                 <div class="header-left">
-                                    <h3>Daily Quota vs. Actual</h3>
+                                    <h3>Daily Progress vs. Target</h3>
                                     <p class="chart-subtitle">How your daily performance stacks up against your target
                                     </p>
                                 </div>
@@ -1224,7 +1264,8 @@
                             </div>
                             <div class="chart-body">
                                 <app-daily-stats-chart [data]="scheduledWorkData" mode="bar"
-                                    [color]="selectedColor || dashboardColor" [useSlicing]="false">
+                                    [color]="selectedColor || dashboardColor" [useSlicing]="false"
+                                    [unit]="measurementUnit" [pluralUnit]="getUnitLabel(0)">
                                 </app-daily-stats-chart>
                             </div>
                         </div>
@@ -1241,7 +1282,8 @@
                     <div class="stats-row">
                         <div class="percentage">{{ currentProgress }}%</div>
                         <div class="word-counts">
-                            {{ totalWordsLogged | number }} / {{ targetWordCount | number }} words
+                            {{ totalWordsLogged | number }} / {{ targetWordCount | number }} {{
+                            getUnitLabel(targetWordCount) }}
                         </div>
                     </div>
                     <div class="progress-bar-container">
@@ -1267,7 +1309,7 @@
                             <div class="card-right">
                                 <div class="entry-words" [class.over]="entry.actualWords >= entry.targetWords">
                                     {{ entry.actualWords | number }}
-                                    <span class="unit">words</span>
+                                    <span class="unit">{{ getUnitLabel(entry.actualWords) }}</span>
                                 </div>
                                 <div class="entry-trend" [ngSwitch]="entry.trend">
                                     <i *ngSwitchCase="'up'" class="fas fa-caret-up text-success"></i>
@@ -1308,11 +1350,11 @@
                         <div class="completion-stats">
                             <div class="stat">
                                 <span class="val">{{ totalWordsLogged | number }}</span>
-                                <span class="lbl">Words Logged</span>
+                                <span class="lbl">{{ getUnitLabel(0) | titlecase }} Logged</span>
                             </div>
                             <div class="stat">
                                 <span class="val">{{ wordsRemaining | number }}</span>
-                                <span class="lbl">Words Left</span>
+                                <span class="lbl">{{ getUnitLabel(0) | titlecase }} Left</span>
                             </div>
                         </div>
                     </div>
@@ -1354,7 +1396,8 @@
                             <p>A day-by-day comparison of your writing output against your plan</p>
                         </div>
                     </div>
-                    <app-daily-stats-chart [data]="chartData" [useSlicing]="false"></app-daily-stats-chart>
+                    <app-daily-stats-chart [data]="chartData" [useSlicing]="false" [unit]="measurementUnit"
+                        [pluralUnit]="getUnitLabel(0)"></app-daily-stats-chart>
                 </div>
 
                 <!-- Secondary Stats Grid -->
@@ -1388,7 +1431,8 @@
                         </div>
                     </div>
                     <app-output-stats-chart [data]="chartData" [totalTarget]="targetWordCount"
-                        [color]="selectedColor || dashboardColor"></app-output-stats-chart>
+                        [color]="selectedColor || dashboardColor" [unit]="measurementUnit"
+                        [pluralUnit]="getUnitLabel(0)"></app-output-stats-chart>
                 </div>
             </div>
         </main>

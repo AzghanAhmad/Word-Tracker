@@ -37,9 +37,10 @@
             <button (click)="navigateToEdit()" class="btn-config">
                 <i class="fas fa-cog"></i> Project Configuration
             </button>
-            <button (click)="archivePlan()" class="btn-archive" 
+            <button (click)="archivePlan()" class="btn-archive"
                 [style.background-color]="plan.status?.toLowerCase() === 'archived' ? 'var(--primary-accent)' : '#6b7280'">
-                <i class="fas" [class.fa-box-open]="plan.status?.toLowerCase() === 'archived'" [class.fa-archive]="plan.status?.toLowerCase() !== 'archived'"></i>
+                <i class="fas" [class.fa-box-open]="plan.status?.toLowerCase() === 'archived'"
+                    [class.fa-archive]="plan.status?.toLowerCase() !== 'archived'"></i>
                 {{ plan.status?.toLowerCase() === 'archived' ? 'Restore' : 'Archive' }}
             </button>
             <button (click)="deletePlan()" class="btn-delete">
@@ -91,14 +92,17 @@
                 <h3><i class="fas fa-bullseye"></i> Goal Configuration</h3>
                 <div class="info-grid">
                     <div class="info-block">
-                        <label>Total Word Goal</label>
-                        <div class="value">{{ plan.target_amount | number }} words</div>
-                        <div class="explanation">This is the total volume of writing you aim to complete by the
+                        <label>Total {{ getUnitLabel(0) | titlecase }} Goal</label>
+                        <div class="value">{{ plan.target_amount | number }} {{ getUnitLabel(plan.target_amount) }}
+                        </div>
+                        <div class="explanation">This is the total volume of {{ getUnitLabel(0) }} you aim to complete
+                            by the
                             deadline.</div>
                     </div>
                     <div class="info-block">
                         <label>Daily Target</label>
-                        <div class="value">{{ stats.wordsPerDay | number }} words / day</div>
+                        <div class="value">{{ stats.wordsPerDay | number }} {{ getUnitLabel(stats.wordsPerDay) }} / day
+                        </div>
                         <div class="explanation">To stay on track, we have calculated that you need to write this much
                             every active day.</div>
                     </div>
@@ -110,40 +114,40 @@
                 <div class="info-block">
                     <label>Progress Distribution Strategy</label>
                     <div class="strategy-grid">
-                        <div class="strategy-option" 
-                            [class.active]="isActiveStrategy('Steady')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Steady')">
                             <h4>Steady</h4>
-                            <p>Write an equal amount every single day. Consistent and predictable progress throughout your project.</p>
+                            <p>Write an equal amount every single day. Consistent and predictable progress throughout
+                                your project.</p>
                         </div>
-                        <div class="strategy-option"
-                            [class.active]="isActiveStrategy('Front-load')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Front-load')">
                             <h4>Front-load</h4>
-                            <p>Start with high intensity and taper off towards the end. Bite the bullet early and finish with momentum.</p>
+                            <p>Start with high intensity and taper off towards the end. Bite the bullet early and finish
+                                with momentum.</p>
                         </div>
-                        <div class="strategy-option"
-                            [class.active]="isActiveStrategy('Back-load')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Back-load')">
                             <h4>Back-load</h4>
-                            <p>Start small and increase your pace as you approach the deadline. Rising to the challenge and finishing strong.</p>
+                            <p>Start small and increase your pace as you approach the deadline. Rising to the challenge
+                                and finishing strong.</p>
                         </div>
-                        <div class="strategy-option"
-                            [class.active]="isActiveStrategy('Mountain')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Mountain')">
                             <h4>Mountain</h4>
-                            <p>Build up to a peak intensity mid-project, then gradually slow down. Effort concentrated in the middle.</p>
+                            <p>Build up to a peak intensity mid-project, then gradually slow down. Effort concentrated
+                                in the middle.</p>
                         </div>
-                        <div class="strategy-option"
-                            [class.active]="isActiveStrategy('Valley')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Valley')">
                             <h4>Valley</h4>
-                            <p>Fast start, quiet middle, and a strong finish. Effort at the beginning and end with a restful period in between.</p>
+                            <p>Fast start, quiet middle, and a strong finish. Effort at the beginning and end with a
+                                restful period in between.</p>
                         </div>
-                        <div class="strategy-option"
-                            [class.active]="isActiveStrategy('Oscillating')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Oscillating')">
                             <h4>Oscillating</h4>
-                            <p>Alternate between high-intensity and low-intensity periods. Mixed loads for varied pacing.</p>
+                            <p>Alternate between high-intensity and low-intensity periods. Mixed loads for varied
+                                pacing.</p>
                         </div>
-                        <div class="strategy-option"
-                            [class.active]="isActiveStrategy('Randomly')">
+                        <div class="strategy-option" [class.active]="isActiveStrategy('Randomly')">
                             <h4>Randomly</h4>
-                            <p>Every day is a surprise. Pseudo-random distribution that stays consistent unless recalculated.</p>
+                            <p>Every day is a surprise. Pseudo-random distribution that stays consistent unless
+                                recalculated.</p>
                         </div>
                     </div>
                 </div>
@@ -191,8 +195,8 @@
                     <div class="day-label">Fri</div>
                     <div class="day-label">Sat</div>
 
-                    <div *ngFor="let day of calendarDays; trackBy: trackByDateKey" class="calendar-day" [class.outside]="day.month !== 'current'"
-                        [class.writing-day]="day.isWritingDay"
+                    <div *ngFor="let day of calendarDays; trackBy: trackByDateKey" class="calendar-day"
+                        [class.outside]="day.month !== 'current'" [class.writing-day]="day.isWritingDay"
                         [class.day-off]="!day.isWritingDay && day.month === 'current'" [class.today]="day.isToday">
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
@@ -202,18 +206,21 @@
                         </div>
 
                         <div class="day-content" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div *ngIf="day.isWritingDay" style="display: flex; flex-direction: column; gap: 0.25rem; opacity: 0.9;">
+                            <div *ngIf="day.isWritingDay"
+                                style="display: flex; flex-direction: column; gap: 0.25rem; opacity: 0.9;">
                                 <div style="display: flex; flex-direction: column;">
                                     <span
                                         style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Goal</span>
-                                    <span style="font-weight: 700; color: var(--primary-accent);">{{ day.target | number }}
-                                        wd</span>
+                                    <span style="font-weight: 700; color: var(--primary-accent);">{{ day.target | number
+                                        }}
+                                        {{ getUnitLabel(day.target) }}</span>
                                 </div>
-                                <div *ngIf="day.actual > 0" style="display: flex; flex-direction: column; margin-top: 0.25rem;">
+                                <div *ngIf="day.actual > 0"
+                                    style="display: flex; flex-direction: column; margin-top: 0.25rem;">
                                     <span
                                         style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Actual</span>
                                     <span style="font-weight: 700; color: #10b981;">{{ day.actual | number }}
-                                        wd</span>
+                                        {{ getUnitLabel(day.actual) }}</span>
                                 </div>
                             </div>
                             <div *ngIf="!day.isWritingDay && day.month === 'current'"
@@ -221,25 +228,15 @@
                                 <i class="fas fa-mug-hot"></i>
                                 <span>Rest day</span>
                             </div>
-                            <div *ngIf="!day.isWritingDay && day.month === 'current' && day.actual > 0" 
+                            <div *ngIf="!day.isWritingDay && day.month === 'current' && day.actual > 0"
                                 style="display: flex; flex-direction: column; margin-top: 0.25rem;">
                                 <span
                                     style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Actual</span>
-                                <span style="font-weight: 700; color: #10b981;">{{ day.actual | number }} wd</span>
+                                <span style="font-weight: 700; color: #10b981;">{{ day.actual | number }} {{
+                                    getUnitLabel(day.actual) }}</span>
                             </div>
 
-                            <!-- Annotation Input (Pure Annotation) -->
-                            <div *ngIf="day.month === 'current'"
-                                style="margin-top: auto; padding-top: 0.5rem; border-top: 1px dashed rgba(0,0,0,0.05);">
-                                <input type="text" 
-                                    [ngModel]="planNotes[day.dateKey] || ''"
-                                    (ngModelChange)="planNotes[day.dateKey] = $event"
-                                    [ngModelOptions]="{updateOn: 'blur'}"
-                                    (blur)="savePlanNoteToBackend(day.dateKey)" 
-                                    (keyup.enter)="savePlanNoteToBackend(day.dateKey)"
-                                    placeholder="Add note..."
-                                    style="width: 100%; border: none; background: transparent; font-size: 0.75rem; color: var(--text-secondary); outline: none; padding: 2px 0;">
-                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -254,7 +251,8 @@
                         <div>
                             <h3 style="margin: 0 0 0.25rem 0;">Progress Chart</h3>
                             <p style="margin: 0; color: var(--text-muted); font-size: 0.875rem;">A visual map of your
-                                progress towards {{ plan.target_amount | number }} words.</p>
+                                progress towards {{ plan.target_amount | number }} {{ getUnitLabel(plan.target_amount)
+                                }}.</p>
                         </div>
                         <div class="chart-legend">
                             <div class="legend-item goal"><span></span> Planned Goal</div>
@@ -262,7 +260,8 @@
                     </div>
                     <div class="chart-container-inner" style="height: 350px;">
                         <app-output-stats-chart [data]="cumulativeChartData" [totalTarget]="plan.target_amount"
-                            [color]="'var(--primary-accent)'" [showActualProgress]="false">
+                            [color]="'var(--primary-accent)'" [showActualProgress]="false"
+                            [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
                         </app-output-stats-chart>
                     </div>
 
@@ -299,14 +298,14 @@
                 <!-- Main Log Card -->
                 <div class="entry-card">
                     <div class="card-header">
-                        <h2>Record Writing Progress</h2>
-                        <p>How many words did you add to your project?</p>
+                        <h2>Record {{ getUnitLabel(0) | titlecase }} Progress</h2>
+                        <p>How many {{ getUnitLabel(0) }} did you add to your project?</p>
                     </div>
 
                     <div class="input-focus-group">
                         <div class="word-input-container">
                             <input type="number" [(ngModel)]="newSessionWords" placeholder="0" min="0">
-                            <span class="unit">Words</span>
+                            <span class="unit">{{ getUnitLabel(0) | titlecase }}</span>
                         </div>
 
                         <div class="date-selector-row">
@@ -314,7 +313,8 @@
                                 (click)="newSessionDate = todayDate">
                                 Today
                             </div>
-                            <input type="date" [(ngModel)]="newSessionDate" [max]="todayDate" class="mini-date-picker" title="Select any date to log progress">
+                            <input type="date" [(ngModel)]="newSessionDate" [max]="todayDate" class="mini-date-picker"
+                                title="Select any date to log progress">
                         </div>
                     </div>
 
@@ -338,42 +338,32 @@
                         <div *ngFor="let session of activityLogs.slice(0, 7)" class="history-item">
                             <div class="session-info">
                                 <span class="session-date">{{ session.dateObj | date:'MMM d' }}</span>
-                                <span class="session-words" *ngIf="editingSessionId !== session.id">{{ session.words | number }} words</span>
-                                <div *ngIf="editingSessionId === session.id" style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="number" [(ngModel)]="editingSessionValue" 
-                                        class="words-input" 
-                                        min="0" 
+                                <span class="session-words" *ngIf="editingSessionId !== session.id">{{ session.words |
+                                    number }} {{ getUnitLabel(session.words) }}</span>
+                                <div *ngIf="editingSessionId === session.id"
+                                    style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="number" [(ngModel)]="editingSessionValue" class="words-input" min="0"
                                         style="width: 80px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px;"
-                                        (keyup.enter)="saveSession(session)"
-                                        (keyup.escape)="cancelEditingSession()">
-                                    <span style="font-size: 0.875rem; color: var(--text-muted);">words</span>
+                                        (keyup.enter)="saveSession(session)" (keyup.escape)="cancelEditingSession()">
+                                    <span style="font-size: 0.875rem; color: var(--text-muted);">{{ getUnitLabel(0)
+                                        }}</span>
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn-edit-icon" 
-                                    *ngIf="editingSessionId !== session.id"
-                                    (click)="startEditingSession(session)"
-                                    title="Edit this session">
+                                <button class="btn-edit-icon" *ngIf="editingSessionId !== session.id"
+                                    (click)="startEditingSession(session)" title="Edit this session">
                                     <i class="fas fa-pen"></i>
                                 </button>
-                                <button class="btn-edit-icon" 
-                                    *ngIf="editingSessionId === session.id"
-                                    (click)="saveSession(session)"
-                                    title="Save changes"
-                                    style="color: #10b981;">
+                                <button class="btn-edit-icon" *ngIf="editingSessionId === session.id"
+                                    (click)="saveSession(session)" title="Save changes" style="color: #10b981;">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button class="btn-edit-icon" 
-                                    *ngIf="editingSessionId === session.id"
-                                    (click)="cancelEditingSession()"
-                                    title="Cancel editing"
-                                    style="color: #ef4444;">
+                                <button class="btn-edit-icon" *ngIf="editingSessionId === session.id"
+                                    (click)="cancelEditingSession()" title="Cancel editing" style="color: #ef4444;">
                                     <i class="fas fa-times"></i>
                                 </button>
-                                <button class="btn-edit-icon" 
-                                    *ngIf="editingSessionId !== session.id"
-                                    (click)="deleteSession(session)"
-                                    title="Delete this session"
+                                <button class="btn-edit-icon" *ngIf="editingSessionId !== session.id"
+                                    (click)="deleteSession(session)" title="Delete this session"
                                     style="color: #ef4444;">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -419,14 +409,16 @@
                         <div class="metric-icon"><i class="fas fa-trophy"></i></div>
                         <div class="metric-info">
                             <span class="label">Best Session</span>
-                            <span class="value">{{ extendedStats.bestDay | number }}</span>
+                            <span class="value">{{ extendedStats.bestDay | number }} {{
+                                getUnitLabel(extendedStats.bestDay) }}</span>
                         </div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
                         <div class="metric-info">
                             <span class="label">Daily Average</span>
-                            <span class="value">{{ extendedStats.avgWordsPerDay | number }}</span>
+                            <span class="value">{{ extendedStats.avgWordsPerDay | number }} {{
+                                getUnitLabel(extendedStats.avgWordsPerDay) }}</span>
                         </div>
                     </div>
                 </div>
@@ -439,7 +431,7 @@
                             <div class="header-left">
                                 <h3>Plan Cumulative Growth</h3>
                                 <p class="chart-subtitle">Your journey towards the {{ plan.target_amount | number }}
-                                    word goal</p>
+                                    {{ getUnitLabel(plan.target_amount) }} goal</p>
                             </div>
                             <div class="chart-legend">
                                 <div class="legend-item goal"><span></span> Planned Goal</div>
@@ -448,7 +440,8 @@
                         </div>
                         <div class="chart-body">
                             <app-output-stats-chart [data]="cumulativeChartData" [totalTarget]="plan.target_amount"
-                                [color]="'var(--primary-accent)'" [showActualProgress]="true">
+                                [color]="'var(--primary-accent)'" [showActualProgress]="true"
+                                [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
                             </app-output-stats-chart>
                         </div>
                     </div>
@@ -457,7 +450,7 @@
                     <div class="chart-card-clean">
                         <div class="chart-header">
                             <div class="header-left">
-                                <h3>Daily Quota vs. Actual</h3>
+                                <h3>Daily Progress vs. Target</h3>
                                 <p class="chart-subtitle">How your daily performance stacks up against your target</p>
                             </div>
                             <div class="chart-legend">
@@ -469,7 +462,7 @@
                         </div>
                         <div class="chart-body">
                             <app-daily-stats-chart [data]="dailyChartData" mode="bar" [color]="'var(--primary-accent)'"
-                                [useSlicing]="false">
+                                [useSlicing]="false" [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
                             </app-daily-stats-chart>
                         </div>
                     </div>

@@ -54,6 +54,8 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
     @Input() color: string = '#1e293b';
     @Input() useSlicing: boolean = true;
     @Input() mode: 'line' | 'bar' = 'line';
+    @Input() unit: string = 'word';
+    @Input() pluralUnit: string = 'words';
 
     @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
     private chart?: Chart;
@@ -118,7 +120,7 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
             // Format date consistently for both bar and line charts
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
-        
+
         const actuals = displayedData.map(d => d.count || 0);
         const targets = displayedData.map(d => d.target || 0);
 
@@ -147,7 +149,7 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         categoryPercentage: 0.8
                     },
                     {
-                        label: 'Actual Words',
+                        label: 'Actual Progress',
                         data: actuals,
                         backgroundColor: '#10b981', // Success green for actuals
                         borderRadius: 4,
@@ -166,7 +168,7 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         tension: 0.1
                     },
                     {
-                        label: 'Actual Words',
+                        label: 'Actual Progress',
                         data: actuals,
                         borderColor: this.getComputedColor(this.color),
                         backgroundColor: this.getGradient(ctx, this.getComputedColor(this.color)),
@@ -206,24 +208,30 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                                 const value = context.parsed.y;
                                 const datasetLabel = context.dataset.label || '';
                                 const index = context.dataIndex;
-                                
+
                                 // Get target if available
                                 if (chartData && index < chartData.length) {
                                     const dayData = chartData[index];
                                     const target = dayData.target || 0;
-                                    
-                                    if (datasetLabel === 'Actual Words') {
+
+                                    const unitLabel = Math.abs(value) === 1 ? this.unit : this.pluralUnit;
+                                    const targetUnitLabel = Math.abs(target) === 1 ? this.unit : this.pluralUnit;
+                                    const diff = value - target;
+                                    const diffUnitLabel = Math.abs(diff) === 1 ? this.unit : this.pluralUnit;
+
+                                    if (datasetLabel === 'Actual Progress') {
                                         return [
-                                            `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} words`,
-                                            `Target: ${new Intl.NumberFormat('en-US').format(target)} words`,
-                                            `Difference: ${new Intl.NumberFormat('en-US').format(value - target)} words`
+                                            `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} ${unitLabel}`,
+                                            `Target: ${new Intl.NumberFormat('en-US').format(target)} ${targetUnitLabel}`,
+                                            `Difference: ${new Intl.NumberFormat('en-US').format(diff)} ${diffUnitLabel}`
                                         ];
                                     } else if (datasetLabel === 'Planned Target') {
-                                        return `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} words`;
+                                        return `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} ${unitLabel}`;
                                     }
                                 }
-                                
-                                return `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} words`;
+
+                                const finalUnitLabel = Math.abs(value) === 1 ? this.unit : this.pluralUnit;
+                                return `${datasetLabel}: ${new Intl.NumberFormat('en-US').format(value)} ${finalUnitLabel}`;
                             }
                         }
                     }
