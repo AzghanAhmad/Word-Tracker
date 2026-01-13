@@ -157,9 +157,9 @@ export class ChallengeDetailComponent implements OnInit {
         const wordsToAdd = this.todayWords;
         const challengeId = parseInt(this.challengeId!);
         
-        // Get today's date as YYYY-MM-DD
+        // Get today's date as YYYY-MM-DD (local timezone)
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = this.formatDateLocal(today);
 
         this.apiService.updateChallengeProgress(challengeId, wordsToAdd).subscribe({
             next: (response) => {
@@ -200,7 +200,7 @@ export class ChallengeDetailComponent implements OnInit {
     private updateUserLogs() {
         const logs: any[] = [];
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = this.formatDateLocal(today);
         
         // Sort dates descending (newest first)
         const sortedDates = Object.keys(this.dailyLogs).sort((a, b) => b.localeCompare(a));
@@ -222,7 +222,7 @@ export class ChallengeDetailComponent implements OnInit {
      */
     getTodayTotal(): number {
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
+        const todayStr = this.formatDateLocal(today);
         return this.dailyLogs[todayStr] || 0;
     }
     
@@ -292,7 +292,16 @@ export class ChallengeDetailComponent implements OnInit {
         
         // Handle string dates (YYYY-MM-DD format from backend)
         if (typeof dateValue === 'string') {
-            const dateStr = dateValue.split('T')[0]; // Remove time if present
+            let dateStr = dateValue;
+            if (dateValue.includes('T')) {
+                // If it's ISO format, parse as Date and format in local timezone
+                const date = new Date(dateValue);
+                if (!isNaN(date.getTime())) {
+                    dateStr = this.formatDateLocal(date);
+                } else {
+                    dateStr = dateValue.split('T')[0]; // Fallback
+                }
+            }
             if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
                 return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
             }
@@ -311,5 +320,13 @@ export class ChallengeDetailComponent implements OnInit {
         // Try standard Date parsing as fallback
         const parsed = new Date(dateValue);
         return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    // Helper function to format date in local timezone (YYYY-MM-DD)
+    private formatDateLocal(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 }

@@ -66,22 +66,42 @@ export class CommunityComponent implements OnInit {
         console.log('Community response:', response);
         if (response.success && response.data) {
           // Map public plans for display
-          this.plans = response.data.map((plan: any) => ({
-            id: plan.id,
-            title: plan.title,
-            goal_amount: plan.goal_amount || 0,
-            goal_unit: plan.goal_unit || 'words',
-            progress_percent: plan.progress_percent || 0,
-            total_progress: plan.total_progress || 0,
-            activity_type: plan.activity_type || 'Writing',
-            content_type: plan.content_type || 'Novel',
-            creator_username: plan.creator_username || 'Anonymous',
-            description: plan.description || '',
-            start_date: plan.start_date,
-            end_date: plan.end_date,
-            status: plan.status,
-            graph_data: plan.graph_data || [0, 0, 0, 0, 0]
-          }));
+          this.plans = response.data.map((plan: any) => {
+            // Parse and format dates in local timezone
+            let startDate = plan.start_date;
+            let endDate = plan.end_date;
+            
+            if (startDate) {
+              const parsedStartDate = this.parseDate(startDate);
+              if (parsedStartDate) {
+                startDate = this.formatDateLocal(parsedStartDate);
+              }
+            }
+            
+            if (endDate) {
+              const parsedEndDate = this.parseDate(endDate);
+              if (parsedEndDate) {
+                endDate = this.formatDateLocal(parsedEndDate);
+              }
+            }
+            
+            return {
+              id: plan.id,
+              title: plan.title,
+              goal_amount: plan.goal_amount || 0,
+              goal_unit: plan.goal_unit || 'words',
+              progress_percent: plan.progress_percent || 0,
+              total_progress: plan.total_progress || 0,
+              activity_type: plan.activity_type || 'Writing',
+              content_type: plan.content_type || 'Novel',
+              creator_username: plan.creator_username || 'Anonymous',
+              description: plan.description || '',
+              start_date: startDate,
+              end_date: endDate,
+              status: plan.status,
+              graph_data: plan.graph_data || [0, 0, 0, 0, 0]
+            };
+          });
 
           // Pre-calculate graph points and paths for performance
           this.plans.forEach(plan => {
@@ -147,5 +167,60 @@ export class CommunityComponent implements OnInit {
     if (!points || points.length === 0) return '';
     const pathPoints = points.map(p => `${p.x},${p.y}`);
     return `M ${pathPoints.join(' L ')}`;
+  }
+
+  // Helper function to format date in local timezone (YYYY-MM-DD)
+  private formatDateLocal(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Helper function to parse date from various formats
+  private parseDate(dateValue: any): Date | null {
+    if (!dateValue) return null;
+    
+    // Handle JSON string containing MySqlDateTime object
+    if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(dateValue);
+        if (parsed.Year && parsed.Month && parsed.Day) {
+          return new Date(parsed.Year, parsed.Month - 1, parsed.Day);
+        }
+      } catch (e) {
+        // If JSON parse fails, continue to other formats
+      }
+    }
+    
+    // Handle string dates (YYYY-MM-DD format from backend or ISO format)
+    if (typeof dateValue === 'string') {
+      let dateStr = dateValue;
+      if (dateValue.includes('T')) {
+        // If it's ISO format, parse as Date to handle timezone conversion
+        const date = new Date(dateValue);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+        dateStr = dateValue.split('T')[0]; // Fallback: extract date part
+      }
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+      }
+      // Try standard Date parsing
+      const parsed = new Date(dateValue);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+    
+    // Handle MySqlDateTime-like objects (already parsed)
+    if (dateValue && typeof dateValue === 'object') {
+      if (dateValue.Year && dateValue.Month && dateValue.Day) {
+        return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
+      }
+    }
+    
+    // Try standard Date parsing as fallback
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 }

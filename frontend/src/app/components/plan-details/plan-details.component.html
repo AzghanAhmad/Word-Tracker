@@ -33,18 +33,18 @@
             </div>
         </div>
 
-        <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+        <div class="header-actions">
             <button (click)="navigateToEdit()" class="btn-config">
-                <i class="fas fa-cog"></i> Project Configuration
+                <i class="fas fa-cog"></i> <span class="btn-text">Project Configuration</span>
             </button>
             <button (click)="archivePlan()" class="btn-archive"
                 [style.background-color]="plan.status?.toLowerCase() === 'archived' ? 'var(--primary-accent)' : '#6b7280'">
                 <i class="fas" [class.fa-box-open]="plan.status?.toLowerCase() === 'archived'"
                     [class.fa-archive]="plan.status?.toLowerCase() !== 'archived'"></i>
-                {{ plan.status?.toLowerCase() === 'archived' ? 'Restore' : 'Archive' }}
+                <span class="btn-text">{{ plan.status?.toLowerCase() === 'archived' ? 'Restore' : 'Archive' }}</span>
             </button>
             <button (click)="deletePlan()" class="btn-delete">
-                <i class="fas fa-trash"></i> Delete
+                <i class="fas fa-trash"></i> <span class="btn-text">Delete</span>
             </button>
         </div>
     </div>
@@ -337,35 +337,42 @@
 
                         <div *ngFor="let session of activityLogs.slice(0, 7)" class="history-item">
                             <div class="session-info">
-                                <span class="session-date">{{ session.dateObj | date:'MMM d' }}</span>
-                                <span class="session-words" *ngIf="editingSessionId !== session.id">{{ session.words |
-                                    number }} {{ getUnitLabel(session.words) }}</span>
-                                <div *ngIf="editingSessionId === session.id"
-                                    style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="number" [(ngModel)]="editingSessionValue" class="words-input" min="0"
-                                        style="width: 80px; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 4px;"
-                                        (keyup.enter)="saveSession(session)" (keyup.escape)="cancelEditingSession()">
-                                    <span style="font-size: 0.875rem; color: var(--text-muted);">{{ getUnitLabel(0)
-                                        }}</span>
+                                <div *ngIf="editingSessionId !== session.id">
+                                    <span class="session-date">{{ session.dateObj | date:'MMM d' }}</span>
+                                    <span class="session-words">{{ session.words | number }} {{ getUnitLabel(session.words) }}</span>
+                                </div>
+                                <div *ngIf="editingSessionId === session.id" class="edit-session-form">
+                                    <div class="edit-form-row">
+                                        <input type="date" [(ngModel)]="editingSessionDate" class="date-input"
+                                            (keyup.enter)="saveSession(session)" (keyup.escape)="cancelEditingSession()">
+                                    </div>
+                                    <div class="edit-form-row">
+                                        <div class="words-input-wrapper">
+                                            <input type="number" [(ngModel)]="editingSessionValue" class="words-input" min="0"
+                                                (keyup.enter)="saveSession(session)" (keyup.escape)="cancelEditingSession()">
+                                            <span class="unit-label">{{ getUnitLabel(0) }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="edit-form-actions">
+                                        <button class="btn-save"
+                                            (click)="saveSession(session)" title="Save changes">
+                                            <i class="fas fa-check"></i> Save
+                                        </button>
+                                        <button class="btn-delete"
+                                            (click)="cancelEditingSession()" title="Cancel editing">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn-edit-icon" *ngIf="editingSessionId !== session.id"
+                            <div class="action-buttons" *ngIf="editingSessionId !== session.id">
+                                <button class="btn-edit"
                                     (click)="startEditingSession(session)" title="Edit this session">
-                                    <i class="fas fa-pen"></i>
+                                    <i class="fas fa-pen"></i> Edit
                                 </button>
-                                <button class="btn-edit-icon" *ngIf="editingSessionId === session.id"
-                                    (click)="saveSession(session)" title="Save changes" style="color: #10b981;">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button class="btn-edit-icon" *ngIf="editingSessionId === session.id"
-                                    (click)="cancelEditingSession()" title="Cancel editing" style="color: #ef4444;">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <button class="btn-edit-icon" *ngIf="editingSessionId !== session.id"
-                                    (click)="deleteSession(session)" title="Delete this session"
-                                    style="color: #ef4444;">
-                                    <i class="fas fa-trash"></i>
+                                <button class="btn-delete"
+                                    (click)="deleteSession(session)" title="Delete this session">
+                                    <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
                         </div>

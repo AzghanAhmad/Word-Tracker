@@ -55,6 +55,36 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+
+        @media (max-width: 640px) {
+            width: 100%;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 480px) {
+            flex-direction: column;
+            width: 100%;
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    }
 
     .header-info {
         h1 {
@@ -132,7 +162,7 @@
     background-color: var(--border-color);
     color: var(--text-main);
     border: none;
-    padding: 0.6rem 1.2rem;
+    padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
     font-weight: 600;
@@ -140,17 +170,42 @@
     align-items: center;
     gap: 0.5rem;
     transition: var(--transition);
+    font-size: 0.875rem;
+    white-space: nowrap;
+
+    @media (min-width: 640px) {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9375rem;
+    }
+
+    @media (min-width: 1024px) {
+        padding: 0.625rem 1.25rem;
+    }
 
     &:hover {
         background-color: #e2e8f0;
         transform: translateY(-1px);
         box-shadow: var(--shadow-sm);
     }
+
+    .btn-text {
+        @media (max-width: 640px) {
+            display: none;
+        }
+    }
+
+    i {
+        font-size: 0.875rem;
+
+        @media (min-width: 640px) {
+            font-size: 1rem;
+        }
+    }
 }
 
 .btn-archive {
     border: none;
-    padding: 0.625rem 1.25rem;
+    padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
     font-weight: 600;
@@ -159,17 +214,42 @@
     align-items: center;
     gap: 0.5rem;
     transition: var(--transition);
+    font-size: 0.875rem;
+    white-space: nowrap;
+
+    @media (min-width: 640px) {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.9375rem;
+    }
+
+    @media (min-width: 1024px) {
+        padding: 0.625rem 1.25rem;
+    }
 
     &:hover {
         opacity: 0.9;
         transform: translateY(-1px);
         box-shadow: var(--shadow-sm);
     }
+
+    .btn-text {
+        @media (max-width: 640px) {
+            display: none;
+        }
+    }
+
+    i {
+        font-size: 0.875rem;
+
+        @media (min-width: 640px) {
+            font-size: 1rem;
+        }
+    }
 }
 
 .btn-delete {
     border: none;
-    padding: 0.625rem 1.25rem;
+    padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
     font-weight: 600;
@@ -179,6 +259,17 @@
     align-items: center;
     gap: 0.5rem;
     transition: var(--transition);
+    font-size: 0.875rem;
+    white-space: nowrap;
+
+    @media (min-width: 640px) {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.9375rem;
+    }
+
+    @media (min-width: 1024px) {
+        padding: 0.625rem 1.25rem;
+    }
 
     &:hover {
         background-color: #dc2626;
@@ -186,15 +277,18 @@
         box-shadow: var(--shadow-sm);
     }
 
-    cursor: pointer;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: var(--transition);
+    .btn-text {
+        @media (max-width: 640px) {
+            display: none;
+        }
+    }
 
-    &:hover {
-        background-color: #e2e8f0;
+    i {
+        font-size: 0.875rem;
+
+        @media (min-width: 640px) {
+            font-size: 1rem;
+        }
     }
 }
 
@@ -671,9 +765,23 @@
 
     .progress-main-grid {
         display: grid;
-        grid-template-columns: 1fr 320px;
+        grid-template-columns: 1fr;
         gap: 2.5rem;
         align-items: start;
+
+        @media (min-width: 768px) {
+            grid-template-columns: 1fr 320px;
+        }
+
+        @media (min-width: 1024px) {
+            grid-template-columns: 1fr 380px;
+            gap: 3rem;
+        }
+
+        @media (min-width: 1440px) {
+            grid-template-columns: 1fr 420px;
+            gap: 3.5rem;
+        }
     }
 
     .entry-card {
@@ -832,13 +940,35 @@
         background: white;
         border: 1px solid var(--border-color);
         border-radius: 1.5rem;
-        padding: 2rem;
+        padding: 1.5rem;
+        width: 100%;
+
+        @media (min-width: 768px) {
+            padding: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            padding: 2.5rem;
+        }
+
+        @media (min-width: 1440px) {
+            padding: 3rem;
+        }
 
         h3 {
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 700;
             margin: 0 0 1.5rem 0;
             color: var(--text-main);
+
+            @media (min-width: 768px) {
+                font-size: 1rem;
+            }
+
+            @media (min-width: 1024px) {
+                font-size: 1.125rem;
+                margin-bottom: 2rem;
+            }
             display: flex;
             align-items: center;
             gap: 0.75rem;
@@ -863,12 +993,24 @@
             .history-item {
                 display: flex;
                 justify-content: space-between;
-                align-items: center;
-                padding: 1rem;
+                align-items: flex-start;
+                padding: 0.875rem;
                 background: #f8fafc;
                 border-radius: 0.75rem;
                 transition: var(--transition);
                 border: 1px solid transparent;
+                gap: 1rem;
+                flex-wrap: wrap;
+
+                @media (min-width: 768px) {
+                    padding: 1rem;
+                    flex-wrap: nowrap;
+                    align-items: center;
+                }
+
+                @media (min-width: 1024px) {
+                    padding: 1.25rem;
+                }
 
                 &:hover {
                     background: white;
@@ -876,41 +1018,285 @@
                     box-shadow: var(--shadow-sm);
                 }
 
-                .session-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.25rem;
+                // When editing, make layout vertical
+                .session-info:has(.edit-session-form) {
+                    width: 100%;
+                    flex: 1;
 
-                    .session-date {
-                        font-size: 0.75rem;
-                        font-weight: 600;
-                        color: var(--text-muted);
-                        text-transform: uppercase;
-                    }
-
-                    .session-words {
-                        font-size: 1rem;
-                        font-weight: 700;
-                        color: var(--text-main);
+                    @media (min-width: 768px) {
+                        width: auto;
                     }
                 }
 
-                .btn-edit-icon {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 8px;
+                .session-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                    flex: 1;
+                    min-width: 0;
+
+                    .session-date {
+                        font-size: 0.7rem;
+                        font-weight: 600;
+                        color: var(--text-muted);
+                        text-transform: uppercase;
+                        line-height: 1.2;
+                        display: block;
+
+                        @media (min-width: 768px) {
+                            font-size: 0.75rem;
+                        }
+
+                        @media (min-width: 1024px) {
+                            font-size: 0.8rem;
+                        }
+                    }
+
+                    .session-words {
+                        font-size: 0.9rem;
+                        font-weight: 700;
+                        color: var(--text-main);
+                        line-height: 1.2;
+                        display: block;
+
+                        @media (min-width: 768px) {
+                            font-size: 1rem;
+                        }
+
+                        @media (min-width: 1024px) {
+                            font-size: 1.125rem;
+                        }
+                    }
+                }
+
+                .action-buttons {
+                    display: flex;
+                    gap: 0.5rem;
+                    flex-shrink: 0;
+                    flex-wrap: wrap;
+
+                    @media (min-width: 768px) {
+                        flex-wrap: nowrap;
+                    }
+                }
+
+                .btn-edit {
+                    padding: 6px 12px;
+                    border-radius: 6px;
                     border: none;
-                    background: transparent;
-                    color: var(--text-muted);
+                    background: #6b7280;
+                    color: white;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    gap: 0.5rem;
+                    font-size: 0.8rem;
+                    font-weight: 500;
                     transition: var(--transition);
+                    white-space: nowrap;
+
+                    @media (min-width: 768px) {
+                        padding: 6px 12px;
+                        font-size: 0.875rem;
+                    }
+
+                    @media (min-width: 1024px) {
+                        padding: 7px 14px;
+                        font-size: 0.9rem;
+                    }
 
                     &:hover {
-                        background: #f1f5f9;
-                        color: var(--primary-accent);
+                        background: #4b5563;
+                        opacity: 0.9;
+                    }
+
+                    i {
+                        font-size: 0.75rem;
+
+                        @media (min-width: 768px) {
+                            font-size: 0.875rem;
+                        }
+                    }
+                }
+
+                .btn-save {
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    border: none;
+                    background: #10b981;
+                    color: white;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    transition: var(--transition);
+                    white-space: nowrap;
+
+                    @media (min-width: 768px) {
+                        padding: 6px 12px;
+                        font-size: 0.875rem;
+                    }
+
+                    @media (min-width: 1024px) {
+                        padding: 7px 14px;
+                        font-size: 0.9rem;
+                    }
+
+                    &:hover {
+                        background: #059669;
+                    }
+
+                    i {
+                        font-size: 0.75rem;
+
+                        @media (min-width: 768px) {
+                            font-size: 0.875rem;
+                        }
+                    }
+                }
+
+                .btn-delete {
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    border: none;
+                    background: #ef4444;
+                    color: white;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    transition: var(--transition);
+                    white-space: nowrap;
+
+                    @media (min-width: 768px) {
+                        padding: 6px 12px;
+                        font-size: 0.875rem;
+                    }
+
+                    @media (min-width: 1024px) {
+                        padding: 7px 14px;
+                        font-size: 0.9rem;
+                    }
+
+                    &:hover {
+                        background: #dc2626;
+                    }
+
+                    i {
+                        font-size: 0.75rem;
+
+                        @media (min-width: 768px) {
+                            font-size: 0.875rem;
+                        }
+                    }
+                }
+
+                .edit-session-form {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                    width: 100%;
+
+                    .edit-form-row {
+                        display: flex;
+                        width: 100%;
+
+                        &:first-child {
+                            margin-bottom: 0;
+                        }
+                    }
+
+                    .date-input {
+                        width: 100%;
+                        padding: 6px 10px;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 0.875rem;
+                        transition: var(--transition);
+
+                        @media (min-width: 768px) {
+                            width: 180px;
+                        }
+
+                        @media (min-width: 1024px) {
+                            width: 200px;
+                            padding: 7px 12px;
+                        }
+
+                        &:focus {
+                            outline: none;
+                            border-color: #3b82f6;
+                            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                        }
+                    }
+
+                    .words-input-wrapper {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        width: 100%;
+
+                        @media (min-width: 768px) {
+                            width: auto;
+                        }
+                    }
+
+                    .words-input {
+                        width: 100px;
+                        padding: 6px 10px;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 6px;
+                        font-size: 0.875rem;
+                        transition: var(--transition);
+
+                        @media (min-width: 768px) {
+                            width: 100px;
+                        }
+
+                        @media (min-width: 1024px) {
+                            width: 120px;
+                            padding: 7px 12px;
+                        }
+
+                        &:focus {
+                            outline: none;
+                            border-color: #3b82f6;
+                            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                        }
+                    }
+
+                    .unit-label {
+                        font-size: 0.875rem;
+                        color: var(--text-muted);
+                        white-space: nowrap;
+                    }
+
+                    .edit-form-actions {
+                        display: flex;
+                        gap: 0.5rem;
+                        margin-top: 0.5rem;
+                        flex-wrap: wrap;
+                        width: 100%;
+
+                        @media (min-width: 768px) {
+                            flex-wrap: nowrap;
+                            width: auto;
+                        }
+
+                        button {
+                            flex: 1;
+
+                            @media (min-width: 768px) {
+                                flex: none;
+                            }
+                        }
                     }
                 }
             }
@@ -1195,12 +1581,6 @@
 }
 
 @media (max-width: 768px) {
-    .details-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1.5rem;
-    }
-
     .stats-tab {
         .metrics-grid {
             grid-template-columns: 1fr;

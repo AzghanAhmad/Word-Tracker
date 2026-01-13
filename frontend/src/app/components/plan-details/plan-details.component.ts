@@ -26,18 +26,21 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
                     dateStr = dateStr;
                 } else if (dateStr.includes('T')) {
-                    // If it's ISO format, extract date part
-                    dateStr = dateStr.split('T')[0];
-                } else {
-                    // Try to parse and format
+                    // If it's ISO format, parse as Date and format in local timezone
                     const date = new Date(dateStr);
                     if (!isNaN(date.getTime())) {
-                        dateStr = date.toISOString().split('T')[0];
+                        dateStr = this.formatDateLocal(date);
+                    }
+                } else {
+                    // Try to parse and format (use local timezone)
+                    const date = new Date(dateStr);
+                    if (!isNaN(date.getTime())) {
+                        dateStr = this.formatDateLocal(date);
                     }
                 }
             } else if (day.dateObj) {
-                // Use dateObj if available
-                dateStr = day.dateObj.toISOString().split('T')[0];
+                // Use dateObj if available (use local timezone)
+                dateStr = this.formatDateLocal(day.dateObj);
             }
 
             return {
@@ -57,18 +60,21 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
                     dateStr = dateStr;
                 } else if (dateStr.includes('T')) {
-                    // If it's ISO format, extract date part
-                    dateStr = dateStr.split('T')[0];
-                } else {
-                    // Try to parse and format
+                    // If it's ISO format, parse as Date and format in local timezone
                     const date = new Date(dateStr);
                     if (!isNaN(date.getTime())) {
-                        dateStr = date.toISOString().split('T')[0];
+                        dateStr = this.formatDateLocal(date);
+                    }
+                } else {
+                    // Try to parse and format (use local timezone)
+                    const date = new Date(dateStr);
+                    if (!isNaN(date.getTime())) {
+                        dateStr = this.formatDateLocal(date);
                     }
                 }
             } else if (day.dateObj) {
-                // Use dateObj if available
-                dateStr = day.dateObj.toISOString().split('T')[0];
+                // Use dateObj if available (use local timezone)
+                dateStr = this.formatDateLocal(day.dateObj);
             }
 
             return {
@@ -109,6 +115,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     activityLogs: any[] = [];
     editingSessionId: number | null = null;
     editingSessionValue: number = 0;
+    editingSessionDate: string = '';
     hoveredPoint: any = null;
     hoveredChart: 'cumulative' | 'daily' | null = null;
     planNotes: { [key: string]: string } = {};
@@ -144,8 +151,9 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         // Set today's date as max for date input and default for new sessions
+        // Use local timezone to avoid date shifts
         const today = new Date();
-        this.todayDate = today.toISOString().split('T')[0];
+        this.todayDate = this.formatDateLocal(today);
         this.newSessionDate = this.todayDate; // Default to today
 
         // Load data immediately
@@ -316,6 +324,15 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         return desc !== '{}' && desc !== '<p><br></p>' && desc !== '';
     }
 
+    // Helper function to format date as YYYY-MM-DD in local timezone (no UTC conversion)
+    // This ensures dates match between progress page and schedule page
+    private formatDateLocal(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     generateCalendarDays() {
         const year = this.currentCalendarDate.getFullYear();
         const month = this.currentCalendarDate.getMonth();
@@ -331,7 +348,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 day: prevMonthDays - i,
                 month: 'prev',
                 date,
-                dateKey: date.toISOString().split('T')[0],
+                dateKey: this.formatDateLocal(date),
                 isToday: false
             });
         }
@@ -339,13 +356,27 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         // Fill current month days
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(year, month, i);
-            const dateKey = date.toISOString().split('T')[0];
+            const dateKey = this.formatDateLocal(date);
 
             // Find matching plan day - handle both ISO format and YYYY-MM-DD format
+            // Use local timezone formatting for consistent matching
             const planDay = this.allPlanDays.find(d => {
-                const dayDateKey = typeof d.date === 'string'
-                    ? (d.date.includes('T') ? d.date.split('T')[0] : d.date)
-                    : new Date(d.date).toISOString().split('T')[0];
+                let dayDateKey: string;
+                if (typeof d.date === 'string') {
+                    if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        dayDateKey = d.date;
+                    } else if (d.date.includes('T')) {
+                        // Parse ISO date and format in local timezone
+                        const parsedDate = new Date(d.date);
+                        dayDateKey = this.formatDateLocal(parsedDate);
+                    } else {
+                        const parsedDate = new Date(d.date);
+                        dayDateKey = this.formatDateLocal(parsedDate);
+                    }
+                } else {
+                    const parsedDate = new Date(d.date);
+                    dayDateKey = this.formatDateLocal(parsedDate);
+                }
                 return dayDateKey === dateKey;
             });
 
@@ -369,7 +400,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 day: i,
                 month: 'next',
                 date,
-                dateKey: date.toISOString().split('T')[0],
+                dateKey: this.formatDateLocal(date),
                 isToday: false
             });
         }
@@ -418,20 +449,25 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             return dayDate >= planStartDate && dayDate <= planEndDate;
                         })
                         .map((d: any) => {
-                            const dateObj = new Date(d.date);
-                            // Normalize date to YYYY-MM-DD format for consistent matching
+                            // Normalize date to YYYY-MM-DD format for consistent matching (use local timezone)
                             let dateKey: string;
                             if (typeof d.date === 'string') {
                                 if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
                                     dateKey = d.date;
                                 } else if (d.date.includes('T')) {
-                                    dateKey = d.date.split('T')[0];
+                                    // Parse ISO date and format in local timezone
+                                    const dateObj = new Date(d.date);
+                                    dateKey = this.formatDateLocal(dateObj);
                                 } else {
-                                    dateKey = dateObj.toISOString().split('T')[0];
+                                    const dateObj = new Date(d.date);
+                                    dateKey = this.formatDateLocal(dateObj);
                                 }
                             } else {
-                                dateKey = dateObj.toISOString().split('T')[0];
+                                const dateObj = new Date(d.date);
+                                dateKey = this.formatDateLocal(dateObj);
                             }
+                            
+                            const dateObj = new Date(dateKey + 'T00:00:00');
 
                             // Use DB target_count directly from plan_days table
                             // The backend already calculates this based on the writing strategy
@@ -501,6 +537,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             }),
                             words: d.actual_count || 0,
                             target: dayTarget,
+                            target_count: d.target_count || dayTarget, // Store actual target_count from database
                             dateObj: dateObj,
                             rawDate: rawDateStr,
                             notes: d.notes || ''
@@ -642,9 +679,21 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         // Find today's cumulative stats
         const todayStr = this.todayDate;
         const pastAndTodayDays = this.allPlanDays.filter(d => {
-            const dayDateKey = typeof d.date === 'string'
-                ? (d.date.includes('T') ? d.date.split('T')[0] : d.date)
-                : new Date(d.date).toISOString().split('T')[0];
+            let dayDateKey: string;
+            if (typeof d.date === 'string') {
+                if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    dayDateKey = d.date;
+                } else if (d.date.includes('T')) {
+                    const dateObj = new Date(d.date);
+                    dayDateKey = this.formatDateLocal(dateObj);
+                } else {
+                    const dateObj = new Date(d.date);
+                    dayDateKey = this.formatDateLocal(dateObj);
+                }
+            } else {
+                const dateObj = new Date(d.date);
+                dayDateKey = this.formatDateLocal(dateObj);
+            }
             return dayDateKey <= todayStr;
         });
 
@@ -796,7 +845,21 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     startEditingSession(log: any) {
         this.editingSessionId = log.id;
         this.editingSessionValue = log.words;
-        // Focus the input after a brief delay to ensure it's rendered
+        // Set the editing date in YYYY-MM-DD format (use local timezone)
+        if (log.rawDate) {
+            if (log.rawDate.includes('T')) {
+                // Parse ISO date and format in local timezone
+                const dateObj = new Date(log.rawDate);
+                this.editingSessionDate = this.formatDateLocal(dateObj);
+            } else {
+                this.editingSessionDate = log.rawDate;
+            }
+        } else if (log.dateObj) {
+            this.editingSessionDate = this.formatDateLocal(log.dateObj);
+        } else {
+            this.editingSessionDate = '';
+        }
+        // Focus the words input after a brief delay to ensure it's rendered
         setTimeout(() => {
             const input = document.querySelector('.words-input') as HTMLInputElement;
             if (input) {
@@ -809,18 +872,25 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     cancelEditingSession() {
         this.editingSessionId = null;
         this.editingSessionValue = 0;
+        this.editingSessionDate = '';
     }
 
     saveSession(log: any) {
         if (!this.planId) return;
 
         const words = Math.max(0, this.editingSessionValue || 0);
-        // Ensure date is in YYYY-MM-DD format
-        let dateStr = log.rawDate;
+        // Use the edited date if available, otherwise fall back to original date
+        // Format in local timezone to match schedule page
+        let dateStr = this.editingSessionDate || log.rawDate;
         if (!dateStr && log.dateObj) {
-            dateStr = log.dateObj.toISOString().split('T')[0];
+            dateStr = this.formatDateLocal(log.dateObj);
         } else if (dateStr && dateStr.includes('T')) {
-            dateStr = dateStr.split('T')[0];
+            // Parse ISO date and format in local timezone
+            const dateObj = new Date(dateStr);
+            dateStr = this.formatDateLocal(dateObj);
+        } else if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Already in YYYY-MM-DD format, use as is
+            dateStr = dateStr;
         }
 
         if (!dateStr) {
@@ -828,13 +898,58 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             return;
         }
 
-        this.apiService.logProgress(this.planId, dateStr, words, log.notes || '').subscribe({
+        // If date changed, we need to delete the old entry and create a new one
+        const originalDateStr = log.rawDate || (log.dateObj ? this.formatDateLocal(log.dateObj) : '');
+        const dateChanged = originalDateStr && dateStr !== originalDateStr;
+
+        // If date changed, delete old entry first
+        if (dateChanged && originalDateStr) {
+            // Get target_count from the original log entry to properly delete it
+            const targetCount = log.target_count || log.target || null;
+            this.apiService.logProgress(this.planId, originalDateStr, 0, log.notes || '', targetCount).subscribe({
+                next: (deleteResponse) => {
+                    if (deleteResponse.success) {
+                        // Now create/update the new entry
+                        this.updateSessionEntry(this.planId, dateStr, words, log);
+                    } else {
+                        this.notificationService.showError('Failed to update session date');
+                        this.cancelEditingSession();
+                    }
+                },
+                error: (err) => {
+                    console.error('Error deleting old session', err);
+                    this.notificationService.showError('Failed to update session date');
+                    this.cancelEditingSession();
+                }
+            });
+        } else {
+            // Just update the existing entry
+            this.updateSessionEntry(this.planId, dateStr, words, log);
+        }
+    }
+
+    private updateSessionEntry(planId: number, dateStr: string, words: number, log: any) {
+        // Pass target_count to ensure actual_count is properly saved
+        const targetCount = log.target_count || log.target || null;
+        this.apiService.logProgress(planId, dateStr, words, log.notes || '', targetCount).subscribe({
             next: (response) => {
                 if (response.success) {
                     // Update the log in the array immediately for better UX
                     log.words = words;
+                    // Update date if it changed (parse in local timezone)
+                    if (this.editingSessionDate) {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        const newDateObj = new Date(year, month - 1, day);
+                        log.dateObj = newDateObj;
+                        log.rawDate = dateStr;
+                        log.date = newDateObj.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    }
                     this.editingSessionId = null;
                     this.editingSessionValue = 0;
+                    this.editingSessionDate = '';
                     this.notificationService.showSuccess('Session updated successfully');
 
                     // Force refresh all plan days data to ensure Schedule and Analytics are updated
@@ -846,11 +961,13 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     }, 100);
                 } else {
                     this.notificationService.showError('Failed to update session');
+                    this.cancelEditingSession();
                 }
             },
             error: (err) => {
                 console.error('Error updating session', err);
                 this.notificationService.showError('Failed to update session');
+                this.cancelEditingSession();
             }
         });
     }
@@ -859,12 +976,17 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         if (!this.planId) return;
 
         if (confirm(`Are you sure you want to delete this session from ${log.date}?`)) {
-            // Ensure date is in YYYY-MM-DD format
+            // Ensure date is in YYYY-MM-DD format (use local timezone)
             let dateStr = log.rawDate;
             if (!dateStr && log.dateObj) {
-                dateStr = log.dateObj.toISOString().split('T')[0];
+                dateStr = this.formatDateLocal(log.dateObj);
             } else if (dateStr && dateStr.includes('T')) {
-                dateStr = dateStr.split('T')[0];
+                // Parse ISO date and format in local timezone
+                const dateObj = new Date(dateStr);
+                dateStr = this.formatDateLocal(dateObj);
+            } else if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // Already in YYYY-MM-DD format, use as is
+                dateStr = dateStr;
             }
 
             if (!dateStr) {
@@ -873,7 +995,9 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             }
 
             // Set words to 0 to effectively delete the session
-            this.apiService.logProgress(this.planId, dateStr, 0, log.notes || '').subscribe({
+            // Pass target_count so backend knows to explicitly set actual_count to 0 (not preserve it)
+            const targetCount = log.target_count || log.target || null;
+            this.apiService.logProgress(this.planId, dateStr, 0, log.notes || '', targetCount).subscribe({
                 next: (response) => {
                     if (response.success) {
                         this.notificationService.showSuccess('Session deleted successfully');
@@ -903,7 +1027,19 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     }
 
     prepareEditSession(session: any) {
-        this.newSessionDate = session.date.split('T')[0];
+        // Format date in local timezone
+        if (session.date && typeof session.date === 'string') {
+            if (session.date.includes('T')) {
+                const dateObj = new Date(session.date);
+                this.newSessionDate = this.formatDateLocal(dateObj);
+            } else {
+                this.newSessionDate = session.date;
+            }
+        } else if (session.date instanceof Date) {
+            this.newSessionDate = this.formatDateLocal(session.date);
+        } else {
+            this.newSessionDate = this.formatDateLocal(new Date());
+        }
         this.newSessionWords = session.word_count;
         this.saveSuccess = false;
         // Scroll to top of progress tab smoothly
@@ -921,18 +1057,20 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             return;
         }
 
-        // Ensure date is in YYYY-MM-DD format
+        // Ensure date is in YYYY-MM-DD format (use local timezone)
         let dateStr = this.newSessionDate;
         if (dateStr && dateStr.includes('T')) {
-            dateStr = dateStr.split('T')[0];
+            // Parse ISO date and format in local timezone
+            const dateObj = new Date(dateStr);
+            dateStr = this.formatDateLocal(dateObj);
+        } else if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Already in YYYY-MM-DD format, use as is
+            dateStr = dateStr;
         }
 
-        // Validate date is not in the future
-        const selectedDate = new Date(dateStr + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (selectedDate > today) {
+        // Validate date is not in the future (compare as date strings in local timezone)
+        const todayStr = this.formatDateLocal(new Date());
+        if (dateStr > todayStr) {
             this.notificationService.showError('Cannot log progress for future dates');
             return;
         }
@@ -952,7 +1090,9 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     }, 0);
 
                     // Immediately add the new entry to the top of Recent Activity for instant feedback
-                    const dateObj = new Date(dateStr + 'T00:00:00');
+                    // Parse date in local timezone to avoid shifts
+                    const [year, month, day] = dateStr.split('-').map(Number);
+                    const dateObj = new Date(year, month - 1, day);
                     const newEntry = {
                         id: Date.now(), // Temporary ID until reload
                         date: dateObj.toLocaleDateString('en-US', {
@@ -1057,7 +1197,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         }).join(' ');
 
         // Actual Line (only show up to today)
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = this.formatDateLocal(new Date());
         const actualPoints = points.filter(p => p.date <= todayStr);
 
         this.chartData.actual = actualPoints.map((p, i) => {
@@ -1102,8 +1242,23 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         const note = this.planNotes[dateKey] || '';
 
         // Find the plan day to get actual_count
+        // Use local timezone formatting for consistent matching
         const planDay = this.allPlanDays.find(d => {
-            const dayDateKey = d.date.split('T')[0];
+            let dayDateKey: string;
+            if (typeof d.date === 'string') {
+                if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    dayDateKey = d.date;
+                } else if (d.date.includes('T')) {
+                    const dateObj = new Date(d.date);
+                    dayDateKey = this.formatDateLocal(dateObj);
+                } else {
+                    const dateObj = new Date(d.date);
+                    dayDateKey = this.formatDateLocal(dateObj);
+                }
+            } else {
+                const dateObj = new Date(d.date);
+                dayDateKey = this.formatDateLocal(dateObj);
+            }
             return dayDateKey === dateKey;
         });
         const actualCount = planDay?.actual_count || 0;
@@ -1161,7 +1316,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 return date;
             }
             if (date instanceof Date) {
-                return date.toISOString().split('T')[0];
+                return this.formatDateLocal(date);
             }
             // If it's an object, try to extract date
             if (typeof date === 'object' && date !== null) {
@@ -1244,11 +1399,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     }
 
     isToday(date: Date): boolean {
-        return date.toISOString().split('T')[0] === this.todayDate;
+        return this.formatDateLocal(date) === this.todayDate;
     }
 
     formatDateKey(date: Date): string {
-        return date.toISOString().split('T')[0];
+        return this.formatDateLocal(date);
     }
 
     onMouseEnterPoint(point: any, chart: 'cumulative' | 'daily') {
