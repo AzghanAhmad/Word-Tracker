@@ -148,12 +148,13 @@ export class ProfileComponent implements OnInit {
             }
         });
 
-        // Fetch detailed stats (Streak)
+        // Fetch detailed stats (Streak) - uses backend's login-based streak calculation
         this.apiService.getStats().subscribe({
             next: (response) => {
                 if (response.success && response.data) {
+                    // Use backend's currentStreak (login-based streak calculation)
                     this.currentStreak = response.data.currentStreak || 0;
-                    console.log('🔥 Streak loaded:', this.currentStreak);
+                    console.log('🔥 Profile page - Streak loaded from backend:', this.currentStreak);
                     this.cdr.detectChanges();
                 } else {
                     console.warn('⚠ Stats response not successful:', response);

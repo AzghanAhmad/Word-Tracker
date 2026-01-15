@@ -42,11 +42,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 // Use dateObj if available (use local timezone)
                 dateStr = this.formatDateLocal(day.dateObj);
             }
-
+            
             return {
                 date: dateStr,
-                count: day.actual_count || 0,
-                target: day.target_count || 0
+            count: day.actual_count || 0,
+            target: day.target_count || 0
             };
         });
     }
@@ -76,11 +76,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 // Use dateObj if available (use local timezone)
                 dateStr = this.formatDateLocal(day.dateObj);
             }
-
+            
             return {
                 date: dateStr,
-                count: day.actual_count || 0,
-                target: day.target_count || 0
+            count: day.actual_count || 0,
+            target: day.target_count || 0
             };
         });
     }
@@ -211,7 +211,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 if (response.success && response.data) {
                     // Process the plan data before assigning to avoid ExpressionChangedAfterItHasBeenCheckedError
                     const planData = { ...response.data };
-
+                    
                     // Ensure dates are strings, not objects (handle MySqlDateTime serialization)
                     if (planData.start_date && typeof planData.start_date === 'object') {
                         const sd = planData.start_date as any;
@@ -231,17 +231,17 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             planData.target_finish_date = `${tfd.Year}-${String(tfd.Month).padStart(2, '0')}-${String(tfd.Day).padStart(2, '0')}`;
                         }
                     }
-
+                    
                     // Assign the processed plan data
                     this.plan = planData;
-
+                    
                     this.activeView = (this.plan.display_view_type === 'Table' || this.plan.display_view_type === 'Calendar')
                         ? this.plan.display_view_type
                         : 'Graph';
-
+                    
                     // Use setTimeout to defer change detection after all modifications
                     setTimeout(() => {
-                        this.loadActivityLogs();
+                    this.loadActivityLogs();
                         // Defer calculateStats and isLoading to next tick to avoid change detection errors
                         setTimeout(() => {
                             this.calculateStats();
@@ -258,7 +258,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 if (found) {
                                     // Process the plan data before assigning
                                     const planData = { ...found };
-
+                                    
                                     // Ensure dates are strings, not objects
                                     if (planData.start_date && typeof planData.start_date === 'object') {
                                         const sd = planData.start_date as any;
@@ -272,12 +272,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                             planData.end_date = `${ed.Year}-${String(ed.Month).padStart(2, '0')}-${String(ed.Day).padStart(2, '0')}`;
                                         }
                                     }
-
+                                    
                                     this.plan = planData;
                                     this.activeView = (this.plan.display_view_type === 'Table' || this.plan.display_view_type === 'Calendar')
                                         ? this.plan.display_view_type
                                         : 'Graph';
-
+                                    
                                     // Use setTimeout to defer change detection
                                     setTimeout(() => {
                                         this.loadActivityLogs();
@@ -357,7 +357,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(year, month, i);
             const dateKey = this.formatDateLocal(date);
-
+            
             // Find matching plan day - handle both ISO format and YYYY-MM-DD format
             // Use local timezone formatting for consistent matching
             const planDay = this.allPlanDays.find(d => {
@@ -468,11 +468,11 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             }
                             
                             const dateObj = new Date(dateKey + 'T00:00:00');
-
+                            
                             // Use DB target_count directly from plan_days table
                             // The backend already calculates this based on the writing strategy
                             let dailyTarget = d.target_count || 0;
-
+                            
                             // Load notes into planNotes object (ensure it's always a string or undefined)
                             // Only set if notes exists and is a valid string (not an object)
                             if (d.notes !== null && d.notes !== undefined) {
@@ -480,8 +480,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                                 if (typeof d.notes === 'string') {
                                     // Only set if it's not empty (empty strings will show placeholder)
                                     if (d.notes.trim() !== '') {
-                                        this.planNotes[dateKey] = d.notes;
-                                    }
+                                this.planNotes[dateKey] = d.notes;
+                        }
                                     // If empty string, don't set (will show placeholder)
                                 } else {
                                     // If it's an object or other type, don't set it
@@ -491,15 +491,15 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             }
                             // If notes is null/undefined, don't set it (will show placeholder)
 
-                            return {
-                                ...d,
+                        return {
+                            ...d,
                                 date: dateKey, // Store normalized date
-                                dateObj: dateObj,
+                            dateObj: dateObj,
                                 target_count: dailyTarget, // Use actual database value
                                 actual_count: d.actual_count || 0,
                                 notes: d.notes || ''
-                            };
-                        }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
+                        };
+                    }).sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime());
 
                     console.log('✅ Processed allPlanDays:', this.allPlanDays.length, 'days');
 
@@ -518,31 +518,31 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     this.activityLogs = allDaysWithWork.map((d: any) => {
                         // Use the already processed date from allPlanDays
                         const dateObj = d.dateObj;
+                            
+                            let dayTarget = (d.target_count && d.target_count > 0) ? d.target_count : fallbackDailyTarget;
 
-                        let dayTarget = (d.target_count && d.target_count > 0) ? d.target_count : fallbackDailyTarget;
-
-                        if (this.allPlanDays.length > 1 && dayTarget >= totalTarget) {
-                            dayTarget = fallbackDailyTarget;
-                        }
+                            if (this.allPlanDays.length > 1 && dayTarget >= totalTarget) {
+                                dayTarget = fallbackDailyTarget;
+                            }
 
                         // Use the normalized dateKey from allPlanDays
                         const rawDateStr = d.date;
 
-                        return {
-                            id: d.id || dateObj.getTime(),
-                            date: dateObj.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                            }),
-                            words: d.actual_count || 0,
-                            target: dayTarget,
+                            return {
+                                id: d.id || dateObj.getTime(),
+                                date: dateObj.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                }),
+                                words: d.actual_count || 0,
+                                target: dayTarget,
                             target_count: d.target_count || dayTarget, // Store actual target_count from database
-                            dateObj: dateObj,
+                                dateObj: dateObj,
                             rawDate: rawDateStr,
-                            notes: d.notes || ''
-                        };
-                    })
+                                notes: d.notes || ''
+                            };
+                        })
                         .sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime()) // Newest first
                         .slice(0, 10); // Last 10 working days
 
@@ -588,7 +588,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     calculateStats() {
         if (!this.plan) return;
-
+        
         // All analytics calculations use backend data from allPlanDays
         // This function is called after loadActivityLogs() completes, ensuring data is available
 
@@ -669,7 +669,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         newExtendedStats.avgWordsPerDay = writingDays.length > 0
             ? Math.round(totalCompleted / writingDays.length)
             : 0;
-
+        
         // Ensure we have valid data for analytics
         if (this.allPlanDays.length === 0) {
             console.warn('No plan days data available for analytics calculations');
@@ -801,7 +801,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
         const isArchived = this.plan.status?.toLowerCase() === 'archived';
         const action = isArchived ? 'restore' : 'archive';
-        const confirmMessage = isArchived
+        const confirmMessage = isArchived 
             ? 'Are you sure you want to restore this plan?'
             : 'Are you sure you want to archive this plan? It will be moved to archived plans.';
 
@@ -870,15 +870,28 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     }
 
     cancelEditingSession() {
-        this.editingSessionId = null;
-        this.editingSessionValue = 0;
-        this.editingSessionDate = '';
+        // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+        setTimeout(() => {
+            this.editingSessionId = null;
+            this.editingSessionValue = 0;
+            this.editingSessionDate = '';
+            this.cdr.detectChanges();
+        }, 0);
     }
 
     saveSession(log: any) {
-        if (!this.planId) return;
+        if (!this.planId) {
+            this.notificationService.showError('Plan ID is missing');
+            return;
+        }
 
-        const words = Math.max(0, this.editingSessionValue || 0);
+        // Validate and normalize word count
+        const words = Math.max(0, Math.round(this.editingSessionValue || 0));
+        if (isNaN(words)) {
+            this.notificationService.showError('Invalid word count');
+            return;
+        }
+
         // Use the edited date if available, otherwise fall back to original date
         // Format in local timezone to match schedule page
         let dateStr = this.editingSessionDate || log.rawDate;
@@ -887,13 +900,24 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         } else if (dateStr && dateStr.includes('T')) {
             // Parse ISO date and format in local timezone
             const dateObj = new Date(dateStr);
+            if (isNaN(dateObj.getTime())) {
+                this.notificationService.showError('Invalid date format');
+                return;
+            }
             dateStr = this.formatDateLocal(dateObj);
-        } else if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            // Already in YYYY-MM-DD format, use as is
-            dateStr = dateStr;
+        } else if (dateStr && !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Try to parse and format if not in YYYY-MM-DD format
+            const dateObj = new Date(dateStr);
+            if (isNaN(dateObj.getTime())) {
+                this.notificationService.showError('Invalid date format');
+                return;
+            }
+            dateStr = this.formatDateLocal(dateObj);
         }
-
-        if (!dateStr) {
+        
+        // Final validation
+        if (!dateStr || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.error('Invalid date string:', dateStr);
             this.notificationService.showError('Invalid date for session');
             return;
         }
@@ -905,8 +929,22 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         // If date changed, delete old entry first
         if (dateChanged && originalDateStr) {
             // Get target_count from the original log entry to properly delete it
-            const targetCount = log.target_count || log.target || null;
-            this.apiService.logProgress(this.planId, originalDateStr, 0, log.notes || '', targetCount).subscribe({
+            let targetCount: number | undefined = undefined;
+            if (log.target_count !== undefined && log.target_count !== null && !isNaN(log.target_count)) {
+                targetCount = Math.round(log.target_count);
+            } else if (log.target !== undefined && log.target !== null && !isNaN(log.target)) {
+                targetCount = Math.round(log.target);
+            }
+            const notesValue = (log.notes !== undefined && log.notes !== null) ? String(log.notes) : '';
+            
+            console.log('🔄 Deleting old session entry:', { 
+                planId: this.planId, 
+                dateStr: originalDateStr, 
+                targetCount, 
+                notesValue 
+            });
+            
+            this.apiService.logProgress(this.planId, originalDateStr, 0, notesValue, targetCount).subscribe({
                 next: (deleteResponse) => {
                     if (deleteResponse.success) {
                         // Now create/update the new entry
@@ -929,13 +967,48 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     }
 
     private updateSessionEntry(planId: number, dateStr: string, words: number, log: any) {
-        // Pass target_count to ensure actual_count is properly saved
-        const targetCount = log.target_count || log.target || null;
-        this.apiService.logProgress(planId, dateStr, words, log.notes || '', targetCount).subscribe({
+        // Validate inputs before making API call
+        if (!dateStr || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            console.error('Invalid date format:', dateStr);
+            this.notificationService.showError('Invalid date format');
+            this.cancelEditingSession();
+            return;
+        }
+
+        // Ensure words is a valid number
+        const validWords = Math.max(0, Math.round(words || 0));
+        if (isNaN(validWords)) {
+            console.error('Invalid word count:', words);
+            this.notificationService.showError('Invalid word count');
+            this.cancelEditingSession();
+            return;
+        }
+
+        // Get target_count - ensure it's a valid number or undefined (not null for the API)
+        let targetCount: number | undefined = undefined;
+        if (log.target_count !== undefined && log.target_count !== null && !isNaN(log.target_count)) {
+            targetCount = Math.round(log.target_count);
+        } else if (log.target !== undefined && log.target !== null && !isNaN(log.target)) {
+            targetCount = Math.round(log.target);
+        }
+
+        // Ensure notes is a string (not undefined or null)
+        const notesValue = (log.notes !== undefined && log.notes !== null) ? String(log.notes) : '';
+
+        console.log('📝 Updating session entry:', { 
+            planId, 
+            dateStr, 
+            validWords, 
+            notesValue, 
+            targetCount,
+            log 
+        });
+
+        this.apiService.logProgress(planId, dateStr, validWords, notesValue, targetCount).subscribe({
             next: (response) => {
                 if (response.success) {
                     // Update the log in the array immediately for better UX
-                    log.words = words;
+                    log.words = validWords;
                     // Update date if it changed (parse in local timezone)
                     if (this.editingSessionDate) {
                         const [year, month, day] = dateStr.split('-').map(Number);
@@ -947,9 +1020,15 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             day: 'numeric'
                         });
                     }
-                    this.editingSessionId = null;
-                    this.editingSessionValue = 0;
-                    this.editingSessionDate = '';
+
+                    // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
+                    setTimeout(() => {
+                        this.editingSessionId = null;
+                        this.editingSessionValue = 0;
+                        this.editingSessionDate = '';
+                        this.cdr.detectChanges();
+                    }, 0);
+
                     this.notificationService.showSuccess('Session updated successfully');
 
                     // Force refresh all plan days data to ensure Schedule and Analytics are updated
@@ -960,20 +1039,43 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                         this.loadPlanDetails();
                     }, 100);
                 } else {
-                    this.notificationService.showError('Failed to update session');
+                    this.notificationService.showError(response.message || 'Failed to update session');
                     this.cancelEditingSession();
                 }
             },
             error: (err) => {
-                console.error('Error updating session', err);
-                this.notificationService.showError('Failed to update session');
+                console.error('❌ Error updating session:', err);
+                console.error('❌ Error details:', {
+                    status: err?.status,
+                    statusText: err?.statusText,
+                    error: err?.error,
+                    url: err?.url
+                });
+                
+                let errorMessage = 'Failed to update session';
+                if (err?.error?.message) {
+                    errorMessage = err.error.message;
+                } else if (err?.message) {
+                    errorMessage = err.message;
+                } else if (err?.status === 400) {
+                    errorMessage = 'Invalid request data. Please check the date and word count.';
+                } else if (err?.status === 401) {
+                    errorMessage = 'Authentication required. Please log in again.';
+                } else if (err?.status === 500) {
+                    errorMessage = 'Server error. Please try again later.';
+                }
+                
+                this.notificationService.showError(errorMessage);
                 this.cancelEditingSession();
             }
         });
     }
 
     deleteSession(log: any) {
-        if (!this.planId) return;
+        if (!this.planId) {
+            this.notificationService.showError('Plan ID is missing');
+            return;
+        }
 
         if (confirm(`Are you sure you want to delete this session from ${log.date}?`)) {
             // Ensure date is in YYYY-MM-DD format (use local timezone)
@@ -983,21 +1085,50 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             } else if (dateStr && dateStr.includes('T')) {
                 // Parse ISO date and format in local timezone
                 const dateObj = new Date(dateStr);
+                if (isNaN(dateObj.getTime())) {
+                    this.notificationService.showError('Invalid date format');
+                    return;
+                }
                 dateStr = this.formatDateLocal(dateObj);
-            } else if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                // Already in YYYY-MM-DD format, use as is
-                dateStr = dateStr;
+            } else if (dateStr && !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // Try to parse and format if not in YYYY-MM-DD format
+                const dateObj = new Date(dateStr);
+                if (isNaN(dateObj.getTime())) {
+                    this.notificationService.showError('Invalid date format');
+                    return;
+                }
+                dateStr = this.formatDateLocal(dateObj);
             }
-
-            if (!dateStr) {
+            
+            // Final validation
+            if (!dateStr || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                console.error('Invalid date string for delete:', dateStr);
                 this.notificationService.showError('Invalid date for session');
                 return;
             }
 
+            // Get target_count - ensure it's a valid number or undefined (not null for the API)
+            // We need target_count so backend knows to explicitly set actual_count to 0 (not preserve it)
+            let targetCount: number | undefined = undefined;
+            if (log.target_count !== undefined && log.target_count !== null && !isNaN(log.target_count)) {
+                targetCount = Math.round(log.target_count);
+            } else if (log.target !== undefined && log.target !== null && !isNaN(log.target)) {
+                targetCount = Math.round(log.target);
+            }
+
+            // Ensure notes is a string (not undefined or null)
+            const notesValue = (log.notes !== undefined && log.notes !== null) ? String(log.notes) : '';
+
+            console.log('🗑️ Deleting session:', { 
+                planId: this.planId, 
+                dateStr, 
+                targetCount, 
+                notesValue,
+                log 
+            });
+
             // Set words to 0 to effectively delete the session
-            // Pass target_count so backend knows to explicitly set actual_count to 0 (not preserve it)
-            const targetCount = log.target_count || log.target || null;
-            this.apiService.logProgress(this.planId, dateStr, 0, log.notes || '', targetCount).subscribe({
+            this.apiService.logProgress(this.planId, dateStr, 0, notesValue, targetCount).subscribe({
                 next: (response) => {
                     if (response.success) {
                         this.notificationService.showSuccess('Session deleted successfully');
@@ -1015,12 +1146,32 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                             this.loadPlanDetails();
                         }, 100);
                     } else {
-                        this.notificationService.showError('Failed to delete session');
+                        this.notificationService.showError(response.message || 'Failed to delete session');
                     }
                 },
                 error: (err) => {
-                    console.error('Error deleting session', err);
-                    this.notificationService.showError('Failed to delete session');
+                    console.error('❌ Error deleting session:', err);
+                    console.error('❌ Error details:', {
+                        status: err?.status,
+                        statusText: err?.statusText,
+                        error: err?.error,
+                        url: err?.url
+                    });
+                    
+                    let errorMessage = 'Failed to delete session';
+                    if (err?.error?.message) {
+                        errorMessage = err.error.message;
+                    } else if (err?.message) {
+                        errorMessage = err.message;
+                    } else if (err?.status === 400) {
+                        errorMessage = 'Invalid request data. Please check the date and word count.';
+                    } else if (err?.status === 401) {
+                        errorMessage = 'Authentication required. Please log in again.';
+                    } else if (err?.status === 500) {
+                        errorMessage = 'Server error. Please try again later.';
+                    }
+                    
+                    this.notificationService.showError(errorMessage);
                 }
             });
         }
@@ -1081,7 +1232,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                     this.notificationService.showSuccess('Progress recorded successfully');
                     // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
                     setTimeout(() => {
-                        this.saveSuccess = true;
+                    this.saveSuccess = true;
                         this.cdr.detectChanges();
                         setTimeout(() => {
                             this.saveSuccess = false;
@@ -1106,10 +1257,10 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                         rawDate: dateStr,
                         notes: ''
                     };
-
+                    
                     // Add the new entry to activityLogs array
                     this.activityLogs.push(newEntry);
-
+                    
                     // Sort by date descending (newest first) and keep only the most recent 10 entries
                     this.activityLogs.sort((a: any, b: any) => b.dateObj.getTime() - a.dateObj.getTime());
                     if (this.activityLogs.length > 10) {
@@ -1125,7 +1276,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                     // Also reload plan details to refresh stats, history, and ensure data is in sync
                     setTimeout(() => {
-                        this.loadPlanDetails();
+                    this.loadPlanDetails();
                     }, 100);
                 } else {
                     this.notificationService.showError('Failed to save progress');
@@ -1238,9 +1389,9 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     savePlanNoteToBackend(dateKey: string) {
         if (!this.planId) return;
-
+        
         const note = this.planNotes[dateKey] || '';
-
+        
         // Find the plan day to get actual_count
         // Use local timezone formatting for consistent matching
         const planDay = this.allPlanDays.find(d => {
@@ -1264,7 +1415,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         const actualCount = planDay?.actual_count || 0;
 
         console.log(`💾 Saving note for ${dateKey}: "${note}"`);
-
+        
         // Save note to backend
         this.apiService.logProgress(this.planId, dateKey, actualCount, note).subscribe({
             next: (response) => {
@@ -1291,7 +1442,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
     updateWritingStrategy(strategy: string) {
         if (!this.planId || !this.plan) return;
-
+        
         // Map frontend strategy names to backend values
         // Based on descriptions:
         // - "Weekdays Only": Monday-Friday only, weekends are rest days
@@ -1302,9 +1453,9 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             'The Usual': 'The Usual',          // All days (Mon-Sun) get word targets
             'Adaptive rest': 'None'            // Weekends are rest days (Mon-Fri only)
         };
-
+        
         const backendStrategy = strategyMap[strategy] || strategy;
-
+        
         // Helper function to ensure date is in YYYY-MM-DD format
         const formatDate = (date: any): string => {
             if (!date) return '';
@@ -1330,7 +1481,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             }
             return '';
         };
-
+        
         // Update plan with new weekend approach
         const updateData = {
             title: this.plan.title || this.plan.plan_name,
@@ -1367,12 +1518,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             })(),
             current_progress: this.plan.current_progress || this.plan.progress || 0
         };
-
+        
         this.isLoading = true;
         this.cdr.detectChanges();
-
+        
         console.log('Updating plan with data:', updateData);
-
+        
         this.apiService.updatePlan(this.planId, updateData).subscribe({
             next: (response) => {
                 if (response.success) {

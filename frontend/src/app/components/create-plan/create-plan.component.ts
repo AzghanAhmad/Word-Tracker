@@ -982,7 +982,6 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         this.daysLeft = Math.max(0, Math.ceil(diffToday / (1000 * 60 * 60 * 24)));
 
         this.planDays = [];
-        let cumulativeTarget = 0;
 
         // --- Weighted Distribution Logic ---
         const dayWeights: number[] = [];
@@ -1043,8 +1042,9 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         if (totalWeight === 0) totalWeight = 1;
 
-        let wordsRemaining = this.targetWordCount;
-        let weightsRemaining = totalWeight;
+        // First pass: Calculate unrounded daily targets using strategy formulas
+        const unroundedTargets: number[] = [];
+        let totalUnrounded = 0;
 
         for (let i = 0; i < this.totalDays; i++) {
             const current = new Date(start);
@@ -1095,23 +1095,102 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                         break;
                     case 'Steady':
                     default:
-                        dailyTarget = (wordsRemaining / weightsRemaining) * weight;
+                        // For Steady, use proportional distribution
+                        dailyTarget = (this.targetWordCount / totalWeight) * weight;
                         break;
                 }
-
-                dailyTarget = Math.round(dailyTarget);
-
-                // Ensure we don't exceed total count and handle last day rounding
-                if (i === this.totalDays - 1 || weightsRemaining <= weight) {
-                    dailyTarget = wordsRemaining;
-                } else {
-                    dailyTarget = Math.min(dailyTarget, wordsRemaining);
-                }
-
-                wordsRemaining -= dailyTarget;
-                weightsRemaining -= weight;
             }
 
+            unroundedTargets.push(dailyTarget);
+            totalUnrounded += dailyTarget;
+        }
+
+        // Calculate normalization factor to ensure total equals targetWordCount exactly
+        const normalizationFactor = totalUnrounded > 0 ? this.targetWordCount / totalUnrounded : 1;
+
+        // Second pass: Apply normalization and round
+        const roundedTargets: number[] = [];
+        let totalRounded = 0;
+
+        for (let i = 0; i < this.totalDays; i++) {
+            const weight = dayWeights[i];
+            let dailyTarget = 0;
+            
+            if (weight > 0) {
+                // Apply normalization factor to maintain strategy proportions
+                dailyTarget = unroundedTargets[i] * normalizationFactor;
+                // Round to nearest integer
+                dailyTarget = Math.round(dailyTarget);
+            }
+            
+            roundedTargets.push(dailyTarget);
+            totalRounded += dailyTarget;
+        }
+
+        // Calculate rounding difference and distribute it intelligently
+        let roundingDifference = this.targetWordCount - totalRounded;
+        
+        // Distribute the rounding difference across days with non-zero weights
+        // Prioritize days that are closer to the strategy's expected value
+        if (roundingDifference !== 0) {
+            // Create array of indices with non-zero weights, sorted by how close they are to their normalized value
+            const adjustableDays: { index: number, normalizedValue: number, currentRounded: number }[] = [];
+            
+            for (let i = 0; i < this.totalDays; i++) {
+                if (dayWeights[i] > 0) {
+                    const normalizedValue = unroundedTargets[i] * normalizationFactor;
+                    adjustableDays.push({
+                        index: i,
+                        normalizedValue: normalizedValue,
+                        currentRounded: roundedTargets[i]
+                    });
+                }
+            }
+            
+            // Sort by how much the rounded value deviates from the normalized value
+            // Days with larger fractional parts should get priority for adjustment
+            adjustableDays.sort((a, b) => {
+                const aDeviation = Math.abs(a.normalizedValue - a.currentRounded);
+                const bDeviation = Math.abs(b.normalizedValue - b.currentRounded);
+                return bDeviation - aDeviation; // Larger deviation first
+            });
+            
+            // Distribute the rounding difference
+            let remainingDiff = roundingDifference;
+            let adjustIndex = 0;
+            
+            while (remainingDiff !== 0 && adjustIndex < adjustableDays.length) {
+                const dayInfo = adjustableDays[adjustIndex];
+                const adjustment = remainingDiff > 0 ? 1 : -1;
+                
+                // Only adjust if it doesn't make the value negative
+                if (roundedTargets[dayInfo.index] + adjustment >= 0) {
+                    roundedTargets[dayInfo.index] += adjustment;
+                    remainingDiff -= adjustment;
+                }
+                
+                adjustIndex++;
+            }
+            
+            // If there's still a difference, apply it to the last day (safety net)
+            if (remainingDiff !== 0) {
+                // Find the last day with non-zero weight
+                for (let i = this.totalDays - 1; i >= 0; i--) {
+                    if (dayWeights[i] > 0) {
+                        roundedTargets[i] += remainingDiff;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Third pass: Build planDays array with final rounded targets
+        let cumulativeTarget = 0;
+        for (let i = 0; i < this.totalDays; i++) {
+            const current = new Date(start);
+            current.setDate(start.getDate() + i);
+            const dailyTarget = roundedTargets[i];
+            
             cumulativeTarget += dailyTarget;
 
             this.planDays.push({
