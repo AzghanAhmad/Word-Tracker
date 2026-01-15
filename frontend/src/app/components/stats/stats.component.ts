@@ -103,7 +103,9 @@ export class StatsComponent implements OnInit {
                     this.totalWords = data.totalWords || 0;
                     this.weeklyAvg = data.weeklyAvg || 0;
                     this.bestDay = data.bestDay || 0;
+                    // Use backend's currentStreak (login-based streak calculation)
                     this.currentStreak = data.currentStreak || 0;
+                    console.log('🔥 Stats page - Streak loaded from backend:', this.currentStreak);
 
                     // Process activity data - normalize date format and include target
                     let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => {
@@ -279,14 +281,10 @@ export class StatsComponent implements OnInit {
         this.monthlyData = monthlyData;
     }
 
-    calculateStreak(data: DayStat[]): number {
-        let streak = 0;
-        for (let i = data.length - 1; i >= 0; i--) {
-            if (data[i].count > 0) streak++;
-            else break;
-        }
-        return streak;
-    }
+    // NOTE: Streak calculation is now handled by the backend (login-based)
+    // This method is kept for reference but should not be used
+    // The backend calculates streak based on consecutive login days from user_logins table
+    // Both profile and stats pages use response.data.currentStreak from getStats() API
 
     // --- SVG Charts Logic ---
 

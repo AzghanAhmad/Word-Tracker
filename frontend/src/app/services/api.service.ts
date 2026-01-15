@@ -307,10 +307,25 @@ export class ApiService {
     }
 
     logProgress(planId: number, date: string, actualCount: number, notes: string, targetCount?: number): Observable<any> {
-        const payload: any = { date, actual_count: actualCount, notes };
-        if (targetCount !== undefined && targetCount !== null) {
-            payload.target_count = targetCount;
+        // Ensure actual_count is an integer (backend expects int)
+        const actual_count = Math.round(actualCount || 0);
+        
+        // Ensure notes is a string (null or undefined becomes empty string)
+        const notesValue = notes !== null && notes !== undefined ? notes : '';
+        
+        const payload: any = { 
+            date: date, 
+            actual_count: actual_count, 
+            notes: notesValue 
+        };
+        
+        // Only include target_count if it's a valid number
+        if (targetCount !== undefined && targetCount !== null && !isNaN(targetCount)) {
+            payload.target_count = Math.round(targetCount);
         }
+        
+        console.log('📤 Sending logProgress request:', { planId, payload });
+        
         return this.http.post(`${this.apiUrl}/plans/${planId}/days`, payload).pipe(
             tap(() => this._refreshSidebar.next())
         );
