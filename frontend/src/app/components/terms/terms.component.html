@@ -1,49 +1,345 @@
-<div class="legal-container">
-    <div class="header">
-        <h1>Terms of Service</h1>
-        <p>Last updated: December 8, 2026</p>
+<div class="terms-page">
+    <!-- Hero Section with Gradient -->
+    <div class="hero-section">
+        <div class="hero-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+            <div class="gradient-orb orb-3"></div>
+        </div>
+        <div class="hero-content">
+            <div class="badge">Legal Document</div>
+            <h1>ScribeCount AuthorFLOW</h1>
+            <h2>Terms and Conditions & Privacy Policy Addendum</h2>
+            <p class="last-updated"><i class="fas fa-calendar-alt"></i> Last updated: January 16, 2026</p>
+        </div>
     </div>
 
-    <div class="content">
-        <section>
-            <h2>1. Acceptance of Terms</h2>
-            <p>By accessing or using Word Tracker, you agree to be bound by these Terms of Service and all applicable
-                laws and regulations. If you do not agree with any of these terms, you are prohibited from using or
-                accessing this site.</p>
-        </section>
+    <!-- Main Content Container -->
+    <div class="content-wrapper">
+        <!-- Table of Contents Sidebar -->
+        <aside class="toc-sidebar">
+            <div class="toc-sticky">
+                <h3><i class="fas fa-list"></i> Table of Contents</h3>
+                <nav class="toc-nav">
+                    <a (click)="scrollToSection('section-1')" class="toc-link">1. What This Document Is</a>
+                    <a (click)="scrollToSection('section-2')" class="toc-link">2. Who Provides AuthorFLOW</a>
+                    <a (click)="scrollToSection('section-3')" class="toc-link">3. What AuthorFLOW Does</a>
+                    <a (click)="scrollToSection('section-4')" class="toc-link">4. Who Can Use AuthorFLOW</a>
+                    <a (click)="scrollToSection('section-5')" class="toc-link">5. Cost and Availability</a>
+                    <a (click)="scrollToSection('section-6')" class="toc-link">6. Account Responsibility</a>
+                    <a (click)="scrollToSection('section-7')" class="toc-link">7. User-Provided Data</a>
+                    <a (click)="scrollToSection('section-8')" class="toc-link">8. How We Use Your Data</a>
+                    <a (click)="scrollToSection('section-9')" class="toc-link">9. Analytics & Insights</a>
+                    <a (click)="scrollToSection('section-10')" class="toc-link">10. Acceptable Use</a>
+                    <a (click)="scrollToSection('section-11')" class="toc-link">11. Suspension/Termination</a>
+                    <a (click)="scrollToSection('section-12')" class="toc-link">12. Intellectual Property</a>
+                    <a (click)="scrollToSection('section-13')" class="toc-link">13. Service Availability</a>
+                    <a (click)="scrollToSection('liability')" class="toc-link toc-divider">Liability & Legal</a>
+                    <a (click)="scrollToSection('section-14')" class="toc-link">14. "As Is" Disclaimer</a>
+                    <a (click)="scrollToSection('section-15')" class="toc-link">15. Limitation of Liability</a>
+                    <a (click)="scrollToSection('section-16')" class="toc-link">16. Indemnification</a>
+                    <a (click)="scrollToSection('section-22')" class="toc-link">22. Changes to Addendum</a>
+                    <a (click)="scrollToSection('section-23')" class="toc-link">23. Governing Law</a>
+                    <a (click)="scrollToSection('section-24')" class="toc-link">24. Contact</a>
+                </nav>
+            </div>
+        </aside>
 
-        <section>
-            <h2>2. User License</h2>
-            <p>Permission is granted to temporarily download one copy of the materials (information or software) on Word
-                Tracker's website for personal, non-commercial transitory viewing only.</p>
-            <p>This is the grant of a license, not a transfer of title, and under this license you may not:</p>
-            <ul>
-                <li>modify or copy the materials;</li>
-                <li>use the materials for any commercial purpose;</li>
-                <li>attempt to decompile or reverse engineer any software contained on Word Tracker's website;</li>
-            </ul>
-        </section>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Section 1 -->
+            <section class="content-section" id="section-1">
+                <div class="section-icon">
+                    <i class="fas fa-file-contract"></i>
+                </div>
+                <h2>1. What This Document Is (And Is Not)</h2>
+                <p>This document explains the rules, rights, and responsibilities related to ScribeCount AuthorFLOW
+                    ("AuthorFLOW," "the Feature," or "the Service").</p>
+                <p>AuthorFLOW is a planning, productivity, and analytics feature that operates inside the ScribeCount
+                    dashboard.</p>
 
-        <section>
-            <h2>3. Disclaimer</h2>
-            <p>The materials on Word Tracker's website are provided on an 'as is' basis. Word Tracker makes no
-                warranties, expressed or implied, and hereby disclaims and negates all other warranties including,
-                without limitation, implied warranties or conditions of merchantability, fitness for a particular
-                purpose, or non-infringement of intellectual property or other violation of rights.</p>
-        </section>
+                <div class="info-box">
+                    <h4><i class="fas fa-info-circle"></i> This document:</h4>
+                    <ul>
+                        <li>Adds to ScribeCount's main Terms of Service and Privacy Policy</li>
+                        <li>Does not replace them</li>
+                        <li>Applies only to AuthorFLOW</li>
+                    </ul>
+                </div>
 
-        <section>
-            <h2>4. Limitations</h2>
-            <p>In no event shall Word Tracker or its suppliers be liable for any damages (including, without limitation,
-                damages for loss of data or profit, or due to business interruption) arising out of the use or inability
-                to use the materials on Word Tracker's website.</p>
-        </section>
+                <div class="highlight-box">
+                    <p><strong>Important:</strong> If there is ever a conflict, ScribeCount's master Terms of Service
+                        control.</p>
+                </div>
 
-        <section>
-            <h2>5. Revisions</h2>
-            <p>The materials appearing on Word Tracker's website could include technical, typographical, or photographic
-                errors. Word Tracker does not warrant that any of the materials on its website are accurate, complete or
-                current.</p>
-        </section>
+                <p><strong>By using AuthorFLOW, you agree to:</strong></p>
+                <ul class="check-list">
+                    <li><i class="fas fa-check-circle"></i> ScribeCount's main Terms of Service</li>
+                    <li><i class="fas fa-check-circle"></i> ScribeCount's Privacy Policy</li>
+                    <li><i class="fas fa-check-circle"></i> This AuthorFLOW Feature Addendum</li>
+                </ul>
+            </section>
+
+            <!-- Section 2 -->
+            <section class="content-section" id="section-2">
+                <div class="section-icon">
+                    <i class="fas fa-building"></i>
+                </div>
+                <h2>2. Who Provides AuthorFLOW</h2>
+                <div class="company-card">
+                    <h4>AuthorFLOW is provided by:</h4>
+                    <div class="company-details">
+                        <p><strong>ScribeCount, LLC</strong></p>
+                        <p><i class="fas fa-map-marker-alt"></i> 248 Nokomis Ave South, Venice FL 34285</p>
+                        <p><i class="fas fa-envelope"></i> <a
+                                href="mailto:support@scribecount.com">support@scribecount.com</a></p>
+                    </div>
+                </div>
+                <p class="note">AuthorFLOW is not a separate company or standalone product.</p>
+            </section>
+
+            <!-- Section 3 -->
+            <section class="content-section" id="section-3">
+                <div class="section-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h2>3. What AuthorFLOW Does</h2>
+
+                <div class="feature-grid">
+                    <div class="feature-item success">
+                        <i class="fas fa-check"></i>
+                        <h4>What We Do</h4>
+                        <ul>
+                            <li>Plan writing schedules and publishing timelines</li>
+                            <li>Track progress toward personal writing goals</li>
+                            <li>Visualize productivity trends over time</li>
+                            <li>Organize author workflows across projects</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-item warning">
+                        <i class="fas fa-times"></i>
+                        <h4>What We Don't Do</h4>
+                        <ul>
+                            <li>Guarantee writing speed, success, sales, rankings, or income</li>
+                            <li>Replace professional business, legal, or financial advice</li>
+                            <li>Control third-party platforms or retailers</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <p><strong>Remember:</strong> It is a planning and insight tool, not a promise of results.</p>
+                </div>
+            </section>
+
+            <!-- Section 4 -->
+            <section class="content-section" id="section-4">
+                <div class="section-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h2>4. Who Can Use AuthorFLOW</h2>
+                <p>To use AuthorFLOW, you must:</p>
+                <ul class="requirement-list">
+                    <li><span class="req-number">1</span> Have an active ScribeCount account</li>
+                    <li><span class="req-number">2</span> Be 16 years or older</li>
+                    <li><span class="req-number">3</span> Use the Feature for lawful purposes</li>
+                </ul>
+                <div class="info-box">
+                    <p><i class="fas fa-child"></i> <strong>Minors:</strong> May only use AuthorFLOW with parental or
+                        adult supervision.</p>
+                </div>
+            </section>
+
+            <!-- Section 5 -->
+            <section class="content-section" id="section-5">
+                <div class="section-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <h2>5. Cost and Availability</h2>
+
+                <div class="pricing-card">
+                    <div class="pricing-badge">Current Status</div>
+                    <h3>No Additional Charge</h3>
+                    <p>AuthorFLOW is currently included at no additional cost for active ScribeCount users.</p>
+                </div>
+
+                <h4>Future Changes</h4>
+                <p>ScribeCount may later:</p>
+                <ul class="arrow-list">
+                    <li><i class="fas fa-arrow-right"></i> Introduce paid tiers or premium features</li>
+                    <li><i class="fas fa-arrow-right"></i> Limit usage by plan level</li>
+                    <li><i class="fas fa-arrow-right"></i> Change or remove functionality</li>
+                </ul>
+                <p class="note">If pricing or access changes occur, ScribeCount will provide reasonable notice.</p>
+            </section>
+
+            <!-- Sections 6-13 (Condensed for brevity) -->
+            <section class="content-section" id="section-6">
+                <div class="section-icon"><i class="fas fa-shield-alt"></i></div>
+                <h2>6. Account Responsibility</h2>
+                <p>You are responsible for:</p>
+                <ul class="check-list">
+                    <li><i class="fas fa-check-circle"></i> All activity under your ScribeCount account</li>
+                    <li><i class="fas fa-check-circle"></i> Keeping your login credentials secure</li>
+                    <li><i class="fas fa-check-circle"></i> Ensuring the accuracy of information you enter</li>
+                </ul>
+                <div class="warning-box">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>If you believe your account has been compromised, you must notify ScribeCount immediately.</p>
+                </div>
+            </section>
+
+            <section class="content-section" id="section-7">
+                <div class="section-icon"><i class="fas fa-database"></i></div>
+                <h2>7. User-Provided Data and Content</h2>
+                <h4>What You May Enter</h4>
+                <ul class="data-list">
+                    <li><i class="fas fa-pen"></i> Writing goals</li>
+                    <li><i class="fas fa-sort-numeric-up"></i> Word counts</li>
+                    <li><i class="fas fa-calendar"></i> Schedules and deadlines</li>
+                    <li><i class="fas fa-sticky-note"></i> Project notes</li>
+                    <li><i class="fas fa-chart-line"></i> Productivity data</li>
+                </ul>
+                <p class="note">This information is referred to as "User Content."</p>
+            </section>
+
+            <section class="content-section" id="section-8">
+                <div class="section-icon"><i class="fas fa-lock"></i></div>
+                <h2>8. How ScribeCount Uses Your AuthorFLOW Data</h2>
+                <p>By using AuthorFLOW, you grant ScribeCount permission to:</p>
+                <div class="permission-grid">
+                    <div class="permission-item">
+                        <i class="fas fa-server"></i>
+                        <p>Store your data</p>
+                    </div>
+                    <div class="permission-item">
+                        <i class="fas fa-cogs"></i>
+                        <p>Process it for calculations, charts, and insights</p>
+                    </div>
+                    <div class="permission-item">
+                        <i class="fas fa-desktop"></i>
+                        <p>Display it back to you inside the dashboard</p>
+                    </div>
+                </div>
+                <div class="highlight-box">
+                    <p><strong>Important:</strong> ScribeCount does not claim ownership of your writing, ideas, or
+                        creative content.</p>
+                </div>
+            </section>
+
+            <!-- Remaining sections with similar styling -->
+            <section class="content-section" id="section-9">
+                <div class="section-icon"><i class="fas fa-chart-bar"></i></div>
+                <h2>9. Analytics, Insights, and Accuracy Disclaimer</h2>
+                <p>AuthorFLOW generates estimates, visualizations, trends, and productivity insights based on data you
+                    provide.</p>
+                <div class="warning-box">
+                    <i class="fas fa-info-circle"></i>
+                    <p>ScribeCount does not guarantee that the data is error-free, projections will be accurate, or
+                        planned schedules will be achievable. You remain responsible for decisions made using
+                        AuthorFLOW.</p>
+                </div>
+            </section>
+
+            <section class="content-section" id="section-10">
+                <div class="section-icon"><i class="fas fa-ban"></i></div>
+                <h2>10. Acceptable Use</h2>
+                <p><strong>You may not:</strong></p>
+                <ul class="prohibited-list">
+                    <li><i class="fas fa-times-circle"></i> Use AuthorFLOW to break the law</li>
+                    <li><i class="fas fa-times-circle"></i> Attempt to reverse engineer or scrape the system</li>
+                    <li><i class="fas fa-times-circle"></i> Resell or sublicense access</li>
+                    <li><i class="fas fa-times-circle"></i> Interfere with system performance or security</li>
+                    <li><i class="fas fa-times-circle"></i> Upload malicious or misleading data</li>
+                </ul>
+            </section>
+
+            <section class="content-section" id="section-11">
+                <div class="section-icon"><i class="fas fa-user-slash"></i></div>
+                <h2>11. Suspension or Termination</h2>
+                <p>ScribeCount may suspend or terminate AuthorFLOW access if you violate these Terms, abuse the Service,
+                    or attempt to exploit system limitations.</p>
+                <p class="note">Termination does not entitle you to compensation.</p>
+            </section>
+
+            <section class="content-section" id="section-12">
+                <div class="section-icon"><i class="fas fa-copyright"></i></div>
+                <h2>12. Intellectual Property</h2>
+                <p>All software, code, designs, workflows, analytics models, and interfaces related to AuthorFLOW belong
+                    to ScribeCount or its licensors.</p>
+                <p class="note">You may not copy or reuse them without written permission.</p>
+            </section>
+
+            <section class="content-section" id="section-13">
+                <div class="section-icon"><i class="fas fa-server"></i></div>
+                <h2>13. Service Availability and Changes</h2>
+                <p>AuthorFLOW may be unavailable due to maintenance, updates, infrastructure issues, or events outside
+                    ScribeCount's control.</p>
+                <div class="info-box">
+                    <p>ScribeCount may change or discontinue AuthorFLOW at any time.</p>
+                </div>
+            </section>
+
+            <!-- Liability Section Divider -->
+            <div class="section-divider" id="liability">
+                <div class="divider-content">
+                    <i class="fas fa-balance-scale"></i>
+                    <h2>LIABILITY AND LEGAL PROTECTIONS</h2>
+                </div>
+            </div>
+
+            <section class="content-section" id="section-14">
+                <div class="section-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h2>14. "As Is" Disclaimer</h2>
+                <div class="disclaimer-box">
+                    <p>AuthorFLOW is provided "as is" and "as available."</p>
+                    <p>ScribeCount does not guarantee continuous availability, error-free performance, or compatibility
+                        with all devices.</p>
+                </div>
+            </section>
+
+            <section class="content-section" id="section-15">
+                <div class="section-icon"><i class="fas fa-shield-alt"></i></div>
+                <h2>15. Limitation of Liability</h2>
+                <p>To the maximum extent allowed by law, ScribeCount is not liable for lost productivity, missed
+                    deadlines, lost income or opportunities, or data interpretation errors.</p>
+                <p class="note">If liability cannot be excluded, it is limited to the amount paid to ScribeCount in the
+                    prior 12 months (if any).</p>
+            </section>
+
+            <section class="content-section" id="section-16">
+                <div class="section-icon"><i class="fas fa-handshake"></i></div>
+                <h2>16. Indemnification</h2>
+                <p>You agree to protect ScribeCount from claims arising from your misuse of AuthorFLOW, your violation
+                    of these Terms, or content you submit.</p>
+            </section>
+
+            <section class="content-section" id="section-22">
+                <div class="section-icon"><i class="fas fa-sync-alt"></i></div>
+                <h2>22. Changes to This Addendum</h2>
+                <p>ScribeCount may update this document. Continued use of AuthorFLOW means you accept the updated terms.
+                </p>
+            </section>
+
+            <section class="content-section" id="section-23">
+                <div class="section-icon"><i class="fas fa-gavel"></i></div>
+                <h2>23. Governing Law</h2>
+                <p>These Terms are governed by the laws applicable to ScribeCount's principal place of business, subject
+                    to consumer protection laws in your jurisdiction.</p>
+            </section>
+
+            <!-- Contact Section -->
+            <section class="content-section contact-section" id="section-24">
+                <div class="section-icon"><i class="fas fa-envelope"></i></div>
+                <h2>24. Contact</h2>
+                <div class="contact-card">
+                    <h4>Questions about AuthorFLOW or privacy?</h4>
+                    <a href="mailto:support@scribecount.com" class="contact-button">
+                        <i class="fas fa-paper-plane"></i> support@scribecount.com
+                    </a>
+                </div>
+            </section>
+        </main>
     </div>
 </div>

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -9,25 +9,35 @@ import { NotificationService } from '../../services/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="contact-container">
-      <div class="contact-header">
-        <h1>Contact Support</h1>
-        <p>Have a question or need technical assistance? We're here to help.</p>
+    <div class="contact-page">
+      <!-- Hero Section with Gradient -->
+      <div class="hero-section">
+        <div class="hero-background">
+          <div class="gradient-orb orb-1"></div>
+          <div class="gradient-orb orb-2"></div>
+        </div>
+        <div class="hero-content">
+          <div class="badge"><i class="fas fa-headset"></i> Get in Touch</div>
+          <h1>Contact ScribeCount Support</h1>
+          <p>Have a question or need assistance with AuthorFLOW? We're here to help.</p>
+        </div>
       </div>
+
+      <div class="contact-container">
 
       <div class="contact-grid">
         <div class="contact-info">
           <div class="info-card">
             <i class="fas fa-envelope"></i>
             <h3>Email Us</h3>
-            <p>support&#64;wordtracker.com</p>
+            <p>support&#64;scribecount.com</p>
             <span>We usually respond within 24 hours.</span>
           </div>
           <div class="info-card">
-            <i class="fas fa-comments"></i>
-            <h3>Community Forum</h3>
-            <p>Join the discussion</p>
-            <a href="#" class="link">Visit Forum</a>
+            <i class="fas fa-map-marker-alt"></i>
+            <h3>Our Location</h3>
+            <p>ScribeCount, LLC</p>
+            <span>248 Nokomis Ave South<br>Venice, FL 34285</span>
           </div>
         </div>
 
@@ -78,12 +88,114 @@ import { NotificationService } from '../../services/notification.service';
         </form>
       </div>
     </div>
+    </div>
   `,
   styles: [`
+    .contact-page {
+      min-height: 100vh;
+      background: #f9fafb;
+    }
+    
+    .hero-section {
+      position: relative;
+      background: linear-gradient(135deg, #1C2E4A 0%, #0f172a 100%);
+      padding: 4rem 2rem;
+      text-align: center;
+      color: white;
+      overflow: hidden;
+      margin-bottom: 3rem;
+    }
+    
+    .hero-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      opacity: 0.2;
+    }
+    
+    .gradient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      animation: float 20s infinite ease-in-out;
+    }
+    
+    .orb-1 {
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(255,255,255,0.4), transparent);
+      top: -225px;
+      left: -100px;
+    }
+    
+    .orb-2 {
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(255,255,255,0.3), transparent);
+      bottom: -175px;
+      right: -75px;
+      animation-delay: 10s;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(30px, -30px); }
+    }
+    
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 700px;
+      margin: 0 auto;
+      animation: fadeInUp 0.8s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1.5rem;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 50px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .hero-content h1 {
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 800;
+      margin-bottom: 1rem;
+      color: #ffffff;
+    }
+    
+    .hero-content p {
+      font-size: clamp(1rem, 2.5vw, 1.125rem);
+      opacity: 0.95;
+      line-height: 1.6;
+      color: #ffffff;
+    }
+    
     .contact-container {
       max-width: 1000px;
       margin: 0 auto;
-      padding: 4rem 2rem;
+      padding: 0 2rem 4rem;
     }
     .contact-header {
       text-align: center;
@@ -198,14 +310,88 @@ import { NotificationService } from '../../services/notification.service';
         font-size: 0.875rem;
         margin-top: 0.25rem;
     }
+    // Responsive Design
+    @media (max-width: 1024px) {
+      .contact-container {
+        max-width: 900px;
+      }
+    }
+    
     @media (max-width: 768px) {
+      .hero-section {
+        padding: 3rem 1.5rem;
+      }
+      
+      .hero-content h1 {
+        font-size: 2rem;
+      }
+      
+      .contact-container {
+        padding: 0 1.5rem 3rem;
+      }
+      
       .contact-grid {
         grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+      
+      .info-card {
+        padding: 1.5rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .hero-section {
+        padding: 2rem 1rem;
+      }
+      
+      .badge {
+        font-size: 0.75rem;
+        padding: 0.4rem 1rem;
+      }
+      
+      .hero-content h1 {
+        font-size: 1.75rem;
+      }
+      
+      .hero-content p {
+        font-size: 0.938rem;
+      }
+      
+      .contact-container {
+        padding: 0 0.75rem 2rem;
+      }
+      
+      .contact-grid {
+        gap: 1.5rem;
+      }
+      
+      .info-card {
+        padding: 1.25rem;
+      }
+      
+      .contact-form {
+        padding: 1.5rem;
+      }
+      
+      .form-group label {
+        font-size: 0.875rem;
+      }
+      
+      .form-input,
+      .form-textarea {
+        font-size: 0.938rem;
+        padding: 0.75rem;
+      }
+      
+      .btn-submit {
+        font-size: 1rem;
+        padding: 0.875rem 1.5rem;
       }
     }
   `]
 })
-export class ContactComponent {
+export class ContactComponent implements OnInit {
   contactForm = {
     name: '',
     email: '',
@@ -218,21 +404,25 @@ export class ContactComponent {
   constructor(
     private apiService: ApiService,
     private notificationService: NotificationService
-  ) {}
+  ) { }
+
+  ngOnInit(): void {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
 
   onSubmit(form: any) {
     if (form.valid && !this.isSubmitting) {
       this.isSubmitting = true;
-      
+
       // Map subject to feedback type
       const feedbackType = this.contactForm.subject || 'general';
-      
+
       // Include name in message if provided
       let fullMessage = this.contactForm.message;
       if (this.contactForm.name) {
         fullMessage = `From: ${this.contactForm.name}\n\n${fullMessage}`;
       }
-      
+
       // Submit feedback to backend
       this.apiService.submitFeedback(
         feedbackType,
@@ -243,7 +433,7 @@ export class ContactComponent {
           if (response.success) {
             this.submitted = true;
             this.notificationService.showSuccess(response.message || 'Thank you for your feedback!');
-            
+
             // Reset form after 3 seconds
             setTimeout(() => {
               this.submitted = false;

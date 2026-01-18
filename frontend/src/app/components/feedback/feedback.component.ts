@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -11,17 +11,22 @@ import { NotificationService } from '../../services/notification.service';
     templateUrl: './feedback.component.html',
     styleUrls: ['./feedback.component.scss']
 })
-export class FeedbackComponent {
+export class FeedbackComponent implements OnInit {
     feedbackType: string = 'general';
     email: string = '';
     message: string = '';
     isSubmitting: boolean = false;
+    submitted: boolean = false;
 
     constructor(
         private apiService: ApiService,
         private notificationService: NotificationService,
         private cdr: ChangeDetectorRef
     ) { }
+
+    ngOnInit(): void {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }
 
     onSubmit(event: Event) {
         event.preventDefault();
@@ -39,12 +44,17 @@ export class FeedbackComponent {
         this.apiService.submitFeedback(this.feedbackType, emailValue, this.message.trim()).subscribe({
             next: (response) => {
                 if (response.success) {
+                    this.submitted = true;
                     this.notificationService.showSuccess(response.message || 'Thank you for your feedback! We appreciate your input.');
-                    // Reset form
-                    this.feedbackType = 'general';
-                    this.email = '';
-                    this.message = '';
-                    (event.target as HTMLFormElement).reset();
+                    // Reset form after showing success message
+                    setTimeout(() => {
+                        this.feedbackType = 'general';
+                        this.email = '';
+                        this.message = '';
+                        this.submitted = false;
+                        (event.target as HTMLFormElement).reset();
+                        this.cdr.detectChanges();
+                    }, 5000);
                 } else {
                     this.notificationService.showError(response.message || 'Failed to submit feedback. Please try again.');
                 }
