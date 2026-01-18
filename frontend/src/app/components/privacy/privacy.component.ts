@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -8,4 +8,8 @@ import { CommonModule } from '@angular/common';
     templateUrl: './privacy.component.html',
     styleUrls: ['./privacy.component.scss']
 })
-export class PrivacyComponent { }
+export class PrivacyComponent implements OnInit {
+    ngOnInit(): void {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+}

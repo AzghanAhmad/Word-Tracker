@@ -1,42 +1,130 @@
-<div class="feedback-container">
-    <div class="header">
-        <h1>We Value Your Feedback</h1>
-        <p>Help us improve Word Tracker by sharing your thoughts or reporting issues.</p>
+<div class="feedback-page">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="hero-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+        </div>
+        <div class="hero-content">
+            <div class="badge"><i class="fas fa-comments"></i> Share Your Thoughts</div>
+            <h1>We Value Your Feedback</h1>
+            <p>Help us improve ScribeCount AuthorFLOW by sharing your thoughts, reporting issues, or suggesting new
+                features.</p>
+        </div>
     </div>
 
-    <div class="form-card">
-        <form (submit)="onSubmit($event)">
-            <div class="form-group">
-                <label for="type">Feedback Type</label>
-                <select id="type" class="form-select" [(ngModel)]="feedbackType" name="type" [disabled]="isSubmitting">
-                    <option value="general">General Feedback</option>
-                    <option value="bug">Report a Bug</option>
-                    <option value="feature">Feature Request</option>
-                    <option value="other">Other</option>
-                </select>
+    <!-- Main Content -->
+    <div class="content-container">
+        <!-- Feature Cards -->
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="card-icon blue">
+                    <i class="fas fa-lightbulb"></i>
+                </div>
+                <h3>Share Ideas</h3>
+                <p>Suggest features that would make your writing journey better</p>
             </div>
 
-            <div class="form-group">
-                <label for="email">Email (Optional)</label>
-                <input type="email" id="email" class="form-input" placeholder="your@email.com" 
-                       [(ngModel)]="email" name="email" [disabled]="isSubmitting">
-                <span class="hint">Leave this if you'd like us to reply.</span>
+            <div class="feature-card">
+                <div class="card-icon orange">
+                    <i class="fas fa-bug"></i>
+                </div>
+                <h3>Report Issues</h3>
+                <p>Let us know if something isn't working as expected</p>
             </div>
 
-            <div class="form-group">
-                <label for="message">Message</label>
-                <textarea id="message" rows="6" class="form-textarea" placeholder="Tell us what you think..."
-                    [(ngModel)]="message" name="message" required [disabled]="isSubmitting"></textarea>
+            <div class="feature-card">
+                <div class="card-icon green">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <h3>General Feedback</h3>
+                <p>Tell us what you love or what could be improved</p>
+            </div>
+        </div>
+
+        <!-- Feedback Form -->
+        <div class="form-section">
+            <div class="form-header">
+                <h2>Send Us Your Feedback</h2>
+                <p>We read every message and use your feedback to make ScribeCount better</p>
             </div>
 
-            <div class="actions">
-                <button type="submit" class="submit-btn" [disabled]="isSubmitting">
-                    <span *ngIf="!isSubmitting">Send Feedback</span>
-                    <span *ngIf="isSubmitting">
-                        <i class="fas fa-spinner fa-spin"></i> Sending...
-                    </span>
-                </button>
+            <form (submit)="onSubmit($event)" class="feedback-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="type">
+                            <i class="fas fa-tag"></i> Feedback Type
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="type" class="form-select" [(ngModel)]="feedbackType" name="type"
+                                [disabled]="isSubmitting">
+                                <option value="general">💬 General Feedback</option>
+                                <option value="bug">🐛 Report a Bug</option>
+                                <option value="feature">✨ Feature Request</option>
+                                <option value="other">📝 Other</option>
+                            </select>
+                            <i class="fas fa-chevron-down select-icon"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">
+                            <i class="fas fa-envelope"></i> Email <span class="optional">(Optional)</span>
+                        </label>
+                        <input type="email" id="email" class="form-input" placeholder="your@email.com"
+                            [(ngModel)]="email" name="email" [disabled]="isSubmitting">
+                        <span class="hint">We'll use this if we need to follow up with you</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="message">
+                        <i class="fas fa-comment-dots"></i> Your Message
+                    </label>
+                    <textarea id="message" rows="6" class="form-textarea" placeholder="Tell us what's on your mind..."
+                        [(ngModel)]="message" name="message" required [disabled]="isSubmitting"></textarea>
+                    <div class="char-count">{{ message?.length || 0 }} characters</div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn" [disabled]="isSubmitting || !message">
+                        <span *ngIf="!isSubmitting">
+                            <i class="fas fa-paper-plane"></i> Send Feedback
+                        </span>
+                        <span *ngIf="isSubmitting" class="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Sending...
+                        </span>
+                    </button>
+                </div>
+
+                <div class="success-message" *ngIf="submitted">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <h4>Thank You!</h4>
+                        <p>Your feedback has been sent successfully. We appreciate you taking the time to help us
+                            improve!</p>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Why Feedback Matters -->
+        <div class="info-section">
+            <h3><i class="fas fa-info-circle"></i> Why Your Feedback Matters</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <i class="fas fa-users"></i>
+                    <p><strong>Community-Driven:</strong> We build features based on what you need</p>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-rocket"></i>
+                    <p><strong>Continuous Improvement:</strong> Your input helps us prioritize updates</p>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-handshake"></i>
+                    <p><strong>Better Together:</strong> We're partners in your writing success</p>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>
