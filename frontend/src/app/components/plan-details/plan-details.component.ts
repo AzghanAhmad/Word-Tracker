@@ -872,8 +872,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     cancelEditingSession() {
         // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
         setTimeout(() => {
-            this.editingSessionId = null;
-            this.editingSessionValue = 0;
+        this.editingSessionId = null;
+        this.editingSessionValue = 0;
             this.editingSessionDate = '';
             this.cdr.detectChanges();
         }, 0);
@@ -911,7 +911,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             if (isNaN(dateObj.getTime())) {
                 this.notificationService.showError('Invalid date format');
                 return;
-            }
+        }
             dateStr = this.formatDateLocal(dateObj);
         }
         
@@ -1023,8 +1023,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                     // Use setTimeout to avoid ExpressionChangedAfterItHasBeenCheckedError
                     setTimeout(() => {
-                        this.editingSessionId = null;
-                        this.editingSessionValue = 0;
+                    this.editingSessionId = null;
+                    this.editingSessionValue = 0;
                         this.editingSessionDate = '';
                         this.cdr.detectChanges();
                     }, 0);
@@ -1036,7 +1036,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                     // Also reload plan details to update progress percentage
                     setTimeout(() => {
-                        this.loadPlanDetails();
+                    this.loadPlanDetails();
                     }, 100);
                 } else {
                     this.notificationService.showError(response.message || 'Failed to update session');
@@ -1096,7 +1096,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
                 if (isNaN(dateObj.getTime())) {
                     this.notificationService.showError('Invalid date format');
                     return;
-                }
+            }
                 dateStr = this.formatDateLocal(dateObj);
             }
             
@@ -1143,7 +1143,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
 
                         // Also reload plan details to update progress percentage
                         setTimeout(() => {
-                            this.loadPlanDetails();
+                        this.loadPlanDetails();
                         }, 100);
                     } else {
                         this.notificationService.showError(response.message || 'Failed to delete session');
