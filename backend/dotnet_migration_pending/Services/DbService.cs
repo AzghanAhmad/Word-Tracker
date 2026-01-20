@@ -1444,6 +1444,125 @@ public class DbService : IDbService
             return "[]";
         }
     }
+    public string GetCalendarPlansJson(int userId)
+    {
+        _lastError = string.Empty;
+        try
+        {
+            Console.WriteLine($"📋 Fetching calendar plans with daily logs for user {userId}");
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+
+            // 1. Fetch all active plans
+            var plans = new List<Dictionary<string, object?>>();
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT p.*
+                    FROM plans p 
+                    WHERE p.user_id=@u 
+                    AND (p.status IS NULL OR LOWER(p.status) != 'archived')
+                    ORDER BY p.id DESC";
+                cmd.Parameters.AddWithValue("@u", userId);
+                
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var dict = new Dictionary<string, object?>();
+                    for (var i = 0; i < reader.FieldCount; i++)
+                    {
+                        var fieldName = reader.GetName(i);
+                        if (reader.IsDBNull(i))
+                        {
+                            dict[fieldName] = null;
+                            continue;
+                        }
+                        
+                        var val = reader.GetValue(i);
+                        
+                        // Handle date/time conversion
+                        if (val is DateTime dt)
+                        {
+                             dict[fieldName] = dt.Year > 1 ? dt.ToString("yyyy-MM-dd") : null;
+                        }
+                        else if (val is DateOnly d)
+                        {
+                            dict[fieldName] = d.Year > 1 ? d.ToString("yyyy-MM-dd") : null;
+                        }
+                        else
+                        {
+                             dict[fieldName] = val;
+                        }
+                    }
+                    // Initialize empty days list
+                    dict["days"] = new List<Dictionary<string, object>>();
+                    plans.Add(dict);
+                }
+            }
+            
+            if (plans.Count == 0)
+            {
+                 return "[]";
+            }
+            
+            // 2. Fetch all daily logs for these plans in one query
+            // We use the IN clause with the plan IDs
+            var planIds = plans.Select(p => Convert.ToInt32(p["id"])).ToList();
+            if (planIds.Count > 0)
+            {
+                var planIdString = string.Join(",", planIds);
+                using (var daysCmd = conn.CreateCommand())
+                {
+                    daysCmd.CommandText = $@"
+                        SELECT plan_id, date, target_count, actual_count, notes
+                        FROM plan_days
+                        WHERE plan_id IN ({planIdString})
+                        ORDER BY date ASC";
+                        
+                    using var reader = daysCmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        int planId = reader.GetInt32(0);
+                        
+                        string dateStr = "";
+                        if (!reader.IsDBNull(1))
+                        {
+                             var dateVal = reader.GetValue(1);
+                             if (dateVal is DateTime dt) dateStr = dt.ToString("yyyy-MM-dd");
+                             else if (dateVal is DateOnly doxy) dateStr = doxy.ToString("yyyy-MM-dd");
+                             else dateStr = dateVal.ToString();
+                        }
+                        
+                        var dayDict = new Dictionary<string, object>
+                        {
+                            ["plan_id"] = planId,
+                            ["date"] = dateStr,
+                            ["target_count"] = reader.IsDBNull(2) ? 0 : reader.GetInt32(2),
+                            ["actual_count"] = reader.IsDBNull(3) ? 0 : reader.GetInt32(3),
+                            ["notes"] = reader.IsDBNull(4) ? null : reader.GetString(4)
+                        };
+                        
+                        // Find the matching plan and add the day
+                        var plan = plans.FirstOrDefault(p => Convert.ToInt32(p["id"]) == planId);
+                        if (plan != null)
+                        {
+                            var daysList = (List<Dictionary<string, object>>)plan["days"];
+                            daysList.Add(dayDict);
+                        }
+                    }
+                }
+            }
+            
+            Console.WriteLine($"✓ Retrieved {plans.Count} calendar plans with embedded logs");
+            return JsonSerializer.Serialize(plans);
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Error: {ex.Message}";
+            Console.WriteLine($"✗ Error fetching calendar plans: {ex.Message}");
+            return "[]";
+        }
+    }
 
     public bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null, bool skipProgressRecalculation = false)
     {
@@ -3796,6 +3915,22 @@ public class DbService : IDbService
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
             
+            // Get user's registration date to start charts from that date
+            DateTime registrationDate = DateTime.Today.AddDays(-364); // Default to last 365 days
+            using (var regCmd = conn.CreateCommand())
+            {
+                regCmd.CommandText = "SELECT created_at FROM users WHERE id = @u";
+                regCmd.Parameters.AddWithValue("@u", userId);
+                var regResult = regCmd.ExecuteScalar();
+                if (regResult != null && regResult != DBNull.Value)
+                {
+                    registrationDate = Convert.ToDateTime(regResult).Date;
+                    Console.WriteLine($"📅 User {userId} registered on: {registrationDate:yyyy-MM-dd}");
+                }
+            }
+            int daysSinceRegistration = (int)(DateTime.Today - registrationDate).TotalDays;
+            if (daysSinceRegistration < 0) daysSinceRegistration = 0;
+
             // Get all plan_days for user's plans, aggregated by date (both actual_count and target_count)
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
@@ -3806,10 +3941,11 @@ public class DbService : IDbService
                 FROM plan_days pd
                 INNER JOIN plans p ON pd.plan_id = p.id
                 WHERE p.user_id = @u
-                    AND pd.date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)
+                    AND pd.date >= @regDate
                 GROUP BY pd.date
                 ORDER BY pd.date ASC";
             cmd.Parameters.AddWithValue("@u", userId);
+            cmd.Parameters.AddWithValue("@regDate", registrationDate);
             
             using var reader = cmd.ExecuteReader();
             var dailyStats = new Dictionary<string, (int actual, int target)>();
@@ -3843,8 +3979,8 @@ public class DbService : IDbService
             int bestDay = 0;
             int currentStreak = 0;
             
-            // Build all days data for last 365 days
-            for (int i = 364; i >= 0; i--)
+            // Build all days data from registration date to today
+            for (int i = daysSinceRegistration; i >= 0; i--)
             {
                 var date = today.AddDays(-i);
                 var dateKey = date.ToString("yyyy-MM-dd");
@@ -3917,9 +4053,10 @@ public class DbService : IDbService
                         SELECT DISTINCT login_date
                         FROM user_logins
                         WHERE user_id = @u
-                            AND login_date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)
+                            AND login_date >= @regDate
                         ORDER BY login_date ASC";
                     loginCmd.Parameters.AddWithValue("@u", userId);
+                    loginCmd.Parameters.AddWithValue("@regDate", registrationDate);
                     using var loginReader = loginCmd.ExecuteReader();
                     while (loginReader.Read())
                     {
@@ -3946,10 +4083,10 @@ public class DbService : IDbService
             // - Login is tracked automatically via LoginTrackingMiddleware on every authenticated request
             Console.WriteLine($"📊 Calculating streak: Found {loginDates.Count} login dates");
             
-            // Build a set of all dates from the last 365 days to check for consecutive logins
+            // Build a set of all dates from registration to today to check for consecutive logins
             // Reuse existing 'today' variable defined earlier in the method
             var allDates = new List<string>();
-            for (int i = 364; i >= 0; i--)
+            for (int i = daysSinceRegistration; i >= 0; i--)
             {
                 var date = today.AddDays(-i);
                 allDates.Add(date.ToString("yyyy-MM-dd"));

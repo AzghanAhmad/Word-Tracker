@@ -1,5 +1,6 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-calendar-day',
@@ -24,26 +25,32 @@ import { CommonModule } from '@angular/common';
             <span class="total-label">Planned</span>
             <span class="total-words">{{ getTotalPlannedWords() | number }} words</span>
           </div>
+          
           <div class="total-box actual-box" *ngIf="getTotalActualWords() > 0">
-            <span class="total-label">Actual</span>
+            <span class="total-label">Progress</span>
             <span class="total-words">{{ getTotalActualWords() | number }} words</span>
+          </div>
+
+          <!-- Missed Badge for past dates if progress < planned -->
+          <div class="total-box missed-box" *ngIf="isPastDate() && getTotalActualWords() < getTotalPlannedWords()">
+            <span class="total-label">Missed</span>
+            <span class="total-words">{{ (getTotalPlannedWords() - getTotalActualWords()) | number }} words</span>
           </div>
         </div>
         
         <!-- Progress vs Plan Mode: Show individual plan pills -->
         <div *ngIf="viewMode === 'progress-vs-plan' && plans && plans.length > 0" class="plans-container">
           <div *ngFor="let plan of plans; trackBy: trackByPlanId" class="plan-pill" 
-               [style.background-color]="plan.dashboard_color || plan.color_code || '#273853'">
+               [style.background-color]="plan.dashboard_color || plan.color_code || '#273853'"
+               [class.pill-completed]="plan.actualProgress >= (plan.dailyTarget || 0) && (plan.dailyTarget || 0) > 0"
+               [class.pill-missed]="isPastDate() && (!plan.actualProgress || plan.actualProgress < (plan.dailyTarget || 0))"
+               (click)="onPlanClick($event, plan)">
              <div class="pill-color"></div>
              <span class="name">{{ plan.title || plan.plan_name }}</span>
              <span class="plan-stats">
-               <!-- Show actual words logged if available, otherwise show target -->
-               <span class="actual-count" *ngIf="plan.actualProgress && plan.actualProgress > 0">
-                 {{ plan.actualProgress | number }} words logged
-               </span>
-               <span class="target-count" *ngIf="(!plan.actualProgress || plan.actualProgress === 0) && plan.dailyTarget && plan.dailyTarget > 0">
-                 {{ plan.dailyTarget | number }} words
-               </span>
+               <span class="actual-count">{{ (plan.actualProgress || 0) | number }}</span>
+               <span class="separator" *ngIf="plan.dailyTarget > 0">/</span>
+               <span class="target-count" *ngIf="plan.dailyTarget > 0">{{ plan.dailyTarget | number }}</span>
              </span>
           </div>
         </div>
@@ -61,7 +68,7 @@ import { CommonModule } from '@angular/common';
       position: relative;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid transparent;
+      border: 1px solid #f1f5f9;
 
       &:hover {
         background-color: #f8fafc;
@@ -72,6 +79,7 @@ import { CommonModule } from '@angular/common';
 
       &.other-month {
         background-color: #fafbfc;
+        opacity: 0.5;
         
         .day-number {
           color: #cbd5e1;
@@ -80,12 +88,13 @@ import { CommonModule } from '@angular/common';
 
       &.today {
         background-color: #f0f9ff;
+        border: 2px solid #0ea5e9;
         .day-number {
           background: #0ea5e9;
           color: white;
-          width: 26px;
-          height: 26px;
-          border-radius: 8px;
+          width: 24px;
+          height: 24px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -96,7 +105,7 @@ import { CommonModule } from '@angular/common';
 
       &.selected {
         background-color: #f8fafc;
-        box-shadow: inset 0 0 0 2px #0ea5e9;
+        border: 2px solid #0ea5e9;
         z-index: 20;
       }
     }
@@ -108,198 +117,154 @@ import { CommonModule } from '@angular/common';
     }
 
     .day-number {
-      font-size: 0.875rem;
+      font-size: 0.825rem;
       font-weight: 600;
-      color: #334155;
-      transition: all 0.2s;
+      color: #64748b;
     }
 
     .content-area {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-    }
-
-    /* Daily Mode Styles */
-    .daily-mode-wrapper {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: auto;
-    }
-
-    .stats-row {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        background: #f1f5f9;
-        border-radius: 8px;
-        padding: 6px 8px;
-    }
-
-    .stat-group {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-
-        .label {
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: #64748b;
-        }
-
-        .val {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        &.success .val {
-            color: #059669;
-        }
+      gap: 4px;
     }
 
     .deadline-badge {
         background: #ef4444;
         color: white;
         text-align: center;
-        font-size: 0.6rem;
+        font-size: 0.55rem;
         font-weight: 800;
-        padding: 2px 6px;
-        border-radius: 6px;
+        padding: 2px 4px;
+        border-radius: 4px;
         letter-spacing: 0.05em;
-        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+        margin-bottom: 4px;
     }
 
-    /* Daily Total Container for Daily Total Mode */
     .daily-total-container {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 4px;
         margin-top: auto;
     }
 
-    /* Total Box for Daily Total Mode */
     .total-box {
-        background: #273853;
-        color: #ffffff;
-        padding: 8px 12px;
-        border-radius: 6px;
+        padding: 4px 8px;
+        border-radius: 4px;
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 0.75rem;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.7rem;
+        transition: all 0.2s;
+
+        &:hover {
+          filter: brightness(0.95);
+        }
     }
 
     .planned-box {
-        /* Uses same color as .total-box */
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #dbeafe;
     }
 
     .actual-box {
-        /* Uses same color as .total-box */
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #dcfce7;
+    }
+
+    .missed-box {
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fee2e2;
     }
 
     .total-label {
         font-weight: 600;
-        font-size: 0.7rem;
-        opacity: 0.9;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
     }
 
     .total-words {
         font-weight: 700;
-        font-size: 0.85rem;
     }
 
     /* Plan Pills */
     .plans-container {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
 
     .plan-pill {
         display: flex;
         align-items: center;
-        gap: 8px;
-        background: var(--pill-bg, #273853);
-        padding: 6px 10px;
+        gap: 6px;
+        padding: 4px 8px;
         border-radius: 6px;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: #ffffff;
-        transition: transform 0.1s, box-shadow 0.1s;
-        min-height: 28px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-
-        &:hover {
-            transform: translateX(2px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-        }
+        background: #111827 !important; // Match the black pill in the image
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        margin-bottom: 2px;
         
-        .pill-color {
-            width: 4px;
-            height: 100%;
-            border-radius: 2px;
-            flex-shrink: 0;
-            background: rgba(255, 255, 255, 0.3);
-        }
-
         .name {
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: #ffffff;
-            font-weight: 600;
-            min-width: 0;
+            font-weight: 700;
+            color: #22d3ee; // Cyan title as in image
         }
 
         .plan-stats {
             flex-shrink: 0;
-            font-size: 0.7rem;
-            white-space: nowrap;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            color: #ffffff;
+
+            .separator {
+                color: #f59e0b; // Orange separator as in image
+                font-weight: 800;
+                margin: 0 2px;
+            }
+
+            .target-count {
+                opacity: 0.9;
+            }
         }
 
-        .target-count {
-            font-weight: 600;
-            color: #ffffff;
+        &.pill-completed {
+          border-left: 3px solid #10b981;
         }
 
-        .actual-count {
-            font-weight: 600;
-            color: #ffffff;
+        &.pill-missed {
+          border-left: 3px solid #ef4444;
         }
     }
 
     @media (max-width: 640px) {
       .day-cell {
         min-height: 100px;
-        padding: 6px;
+        padding: 4px;
       }
       
-      .day-number {
-        font-size: 0.75rem;
-      }
-
-      .stats-row {
-          padding: 4px;
-      }
-      
-      .stat-group {
-          .label { font-size: 0.55rem; }
-          .val { font-size: 0.65rem; }
-      }
-
-      .plan-pill {
+      .total-box {
           padding: 2px 4px;
-          gap: 4px;
-          .pill-color { width: 6px; height: 6px; }
+          .total-label { display: none; }
+          .total-words { font-size: 0.65rem; }
       }
     }
   `]
 })
 export class CalendarDayComponent {
+  private router = inject(Router);
+
+  @Input() date: Date = new Date();
   @Input() dayNumber: number = 1;
   @Input() isCurrentMonth: boolean = true;
   @Input() isToday: boolean = false;
@@ -310,7 +275,23 @@ export class CalendarDayComponent {
   @Input() isDeadline: boolean = false;
   @Input() plans: any[] = [];
   @Input() viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
-  
+
+  onPlanClick(event: MouseEvent, plan: any) {
+    event.stopPropagation();
+    const planId = plan.id || plan.plan_id;
+    if (planId) {
+      this.router.navigate(['/plans', planId]);
+    }
+  }
+
+  isPastDate(): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cellDate = new Date(this.date);
+    cellDate.setHours(0, 0, 0, 0);
+    return cellDate.getTime() < today.getTime();
+  }
+
   // Debug: log when plans change
   ngOnChanges(changes: SimpleChanges) {
     if (changes['plans'] && this.isCurrentMonth) {
@@ -320,20 +301,20 @@ export class CalendarDayComponent {
       }
     }
   }
-  
+
   trackByPlanId(index: number, plan: any): any {
     return plan.id || index;
   }
-  
+
   getTotalWords(): number {
     if (!this.plans || this.plans.length === 0) {
       return 0;
     }
-    
+
     // Sum up all words (actual progress if available, otherwise target)
     return this.plans.reduce((total, plan) => {
-      const words = (plan.actualProgress && plan.actualProgress > 0) 
-        ? plan.actualProgress 
+      const words = (plan.actualProgress && plan.actualProgress > 0)
+        ? plan.actualProgress
         : (plan.dailyTarget || 0);
       return total + words;
     }, 0);
@@ -343,7 +324,7 @@ export class CalendarDayComponent {
     if (!this.plans || this.plans.length === 0) {
       return 0;
     }
-    
+
     // Sum up all actual words across all plans
     return this.plans.reduce((total, plan) => {
       return total + (plan.actualProgress || 0);
@@ -354,7 +335,7 @@ export class CalendarDayComponent {
     if (!this.plans || this.plans.length === 0) {
       return 0;
     }
-    
+
     // Sum up all planned/target words across all plans
     return this.plans.reduce((total, plan) => {
       return total + (plan.dailyTarget || 0);

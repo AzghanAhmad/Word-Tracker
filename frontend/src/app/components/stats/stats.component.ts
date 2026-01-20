@@ -6,6 +6,7 @@ import { ContentLoaderComponent } from '../content-loader/content-loader.compone
 import { OutputStatsChartComponent } from './output-stats-chart/output-stats-chart.component';
 import { DailyStatsChartComponent } from './daily-stats-chart/daily-stats-chart.component';
 import { filter } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 
 interface DayStat {
     date: string;
@@ -93,23 +94,41 @@ export class StatsComponent implements OnInit {
         this.isLoading = true;
         this.cdr.detectChanges();
 
-        this.apiService.getStats().subscribe({
-            next: (response) => {
-                console.log('Stats response:', response);
-                if (response.success && response.data) {
-                    const data = response.data;
+        forkJoin({
+            stats: this.apiService.getStats(),
+            plans: this.apiService.getPlans()
+        }).subscribe({
+            next: (response: any) => {
+                const statsResponse = response.stats;
+                const plansResponse = response.plans;
+
+                if (statsResponse.success && statsResponse.data) {
+                    const data = statsResponse.data;
 
                     // Set metrics
                     this.totalWords = data.totalWords || 0;
                     this.weeklyAvg = data.weeklyAvg || 0;
                     this.bestDay = data.bestDay || 0;
-                    // Use backend's currentStreak (login-based streak calculation)
                     this.currentStreak = data.currentStreak || 0;
                     console.log('🔥 Stats page - Streak loaded from backend:', this.currentStreak);
 
-                    // Process activity data - normalize date format and include target
+                    // Determine earliest plan date
+                    let earliestPlanDateVal: Date | null = null;
+                    if (plansResponse.success && plansResponse.data && Array.isArray(plansResponse.data)) {
+                        plansResponse.data.forEach((p: any) => {
+                            if (p.start_date) {
+                                const pd = new Date(p.start_date);
+                                if (!isNaN(pd.getTime())) {
+                                    if (!earliestPlanDateVal || pd < earliestPlanDateVal) {
+                                        earliestPlanDateVal = pd;
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Process activity data
                     let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => {
-                        // Normalize date to YYYY-MM-DD format
                         let dateStr: string;
                         if (typeof d.date === 'string') {
                             if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -129,14 +148,10 @@ export class StatsComponent implements OnInit {
                             }
                         } else {
                             const dateObj = new Date(d.date);
-                            if (!isNaN(dateObj.getTime())) {
-                                const y = dateObj.getFullYear();
-                                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-                                const day = String(dateObj.getDate()).padStart(2, '0');
-                                dateStr = `${y}-${m}-${day}`;
-                            } else {
-                                dateStr = String(d.date);
-                            }
+                            const y = dateObj.getFullYear();
+                            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const day = String(dateObj.getDate()).padStart(2, '0');
+                            dateStr = `${y}-${m}-${day}`;
                         }
                         return {
                             date: dateStr,
@@ -145,27 +160,37 @@ export class StatsComponent implements OnInit {
                         };
                     });
 
-                    // Calculate initial offset (Total Words - Sum of Fetched Period)
-                    const fetchedTotal = allDaysData.reduce((sum, d) => sum + d.count, 0);
-                    this.initialChartCount = Math.max(0, this.totalWords - fetchedTotal);
-
                     // Sort strict by date
                     allDaysData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-                    // Use ALL data points (start from the very first recorded day, active or not)
-                    if (allDaysData.length > 0) {
+                    // Chart GENERATION: Start from earliestPlanDate if it exists and is earlier than first log
+                    if (allDaysData.length > 0 || earliestPlanDateVal) {
                         const filledData: DayStat[] = [];
 
-                        // Parse start date safely as local date
-                        const startParts = allDaysData[0].date.split('-');
-                        const startDate = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]));
-                        const endDate = new Date(); // Today
+                        let startDate: Date;
+                        const firstLogDate = allDaysData.length > 0 ? new Date(allDaysData[0].date) : new Date();
 
-                        // Normalize to midnight
+                        // Use earliest plan date if available. 
+                        // If plan date is OLDER (earlier) than first log, we start there (extending back).
+                        // If plan date is NEWER (later) than first log, we still start at first log (to not hide data).
+                        if (earliestPlanDateVal && earliestPlanDateVal < firstLogDate) {
+                            startDate = new Date(earliestPlanDateVal);
+                        } else {
+                            // Default to first log date, or if no logs, use plan date, or fallback
+                            if (allDaysData.length > 0) {
+                                startDate = new Date(firstLogDate);
+                            } else if (earliestPlanDateVal) {
+                                startDate = new Date(earliestPlanDateVal);
+                            } else {
+                                startDate = new Date();
+                                startDate.setDate(startDate.getDate() - 30);
+                            }
+                        }
+
+                        const endDate = new Date(); // Today
                         startDate.setHours(0, 0, 0, 0);
                         endDate.setHours(0, 0, 0, 0);
 
-                        // Helper for YYYY-MM-DD in local time
                         const toLocalISOString = (date: Date) => {
                             const y = date.getFullYear();
                             const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -173,13 +198,11 @@ export class StatsComponent implements OnInit {
                             return `${y}-${m}-${d}`;
                         };
 
-                        // Safe map creation - store both count and target
                         const dataMap = new Map<string, { count: number, target: number }>();
                         allDaysData.forEach(d => {
                             dataMap.set(d.date, { count: d.count, target: d.target || 0 });
                         });
 
-                        // Iterate day by day from Start to Today
                         const current = new Date(startDate);
                         while (current <= endDate) {
                             const dateStr = toLocalISOString(current);
@@ -192,32 +215,51 @@ export class StatsComponent implements OnInit {
                             current.setDate(current.getDate() + 1);
                         }
                         this.allDaysDataForChart = filledData;
+
+                        // Reset initial count to 0 because we are showing the full history from the start
+                        this.initialChartCount = 0;
                     } else {
                         this.allDaysDataForChart = [];
                     }
 
-                    // Last 14 days for bar chart - use the last 14 days from allDaysData
-                    // Sort by date descending and take last 14
-                    const sortedAllDays = [...allDaysData].sort((a, b) => 
-                        new Date(b.date).getTime() - new Date(a.date).getTime()
-                    );
-                    this.activityData = sortedAllDays.slice(0, 14).reverse().map((d: DayStat) => ({
-                        date: d.date,
-                        count: d.count || 0,
-                        target: d.target || 0
-                    }));
+                    // Last 14 days logic
+                    const activityMap = new Map<string, DayStat>();
+                    allDaysData.forEach(d => activityMap.set(d.date, d));
 
-                    // Prepare Charts - use allDaysData (already sorted by date ascending)
-                    this.prepareLineChart(allDaysData);
+                    const last14Days: DayStat[] = [];
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const formatDateKey = (date: Date) => {
+                        const y = date.getFullYear();
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const d = String(date.getDate()).padStart(2, '0');
+                        return `${y}-${m}-${d}`;
+                    };
+
+                    for (let i = 13; i >= 0; i--) {
+                        const d = new Date(today);
+                        d.setDate(today.getDate() - i);
+                        const dateKey = formatDateKey(d);
+                        const dayData = activityMap.get(dateKey);
+
+                        last14Days.push({
+                            date: dateKey,
+                            count: dayData ? dayData.count : 0,
+                            target: dayData ? (dayData.target || 0) : 0
+                        });
+                    }
+                    this.activityData = last14Days;
+
+                    this.prepareLineChart(this.allDaysDataForChart);
                     this.prepareHeatmap(allDaysData);
                 } else {
-                    // Fallback to empty data
                     this.resetToDefaults();
                 }
                 this.isLoading = false;
                 this.cdr.detectChanges();
             },
-            error: (err) => {
+            error: (err: any) => {
                 console.error('Error loading stats:', err);
                 this.resetToDefaults();
                 this.isLoading = false;
@@ -266,7 +308,7 @@ export class StatsComponent implements OnInit {
         // Generate all days of current month with data
         const monthlyData: DayStat[] = [];
         const current = new Date(firstDayOfMonth);
-        
+
         while (current <= lastDayOfMonth) {
             const dateStr = toLocalISOString(current);
             const dayData = dataMap.get(dateStr) || { count: 0, target: 0 };
@@ -388,7 +430,7 @@ export class StatsComponent implements OnInit {
         // Get first and last day of current month
         const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
         const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-        
+
         // Get the day of week for the first day (0 = Sunday, 6 = Saturday)
         const firstDayOfWeek = firstDayOfMonth.getDay();
         const daysInMonth = lastDayOfMonth.getDate();
@@ -424,7 +466,7 @@ export class StatsComponent implements OnInit {
         let monthTotal = 0;
         let maxDayCount = 0;
         const monthDays: ActivityDay[] = [];
-        
+
         // Collect all day counts first to find max - process ALL days of the month (1 to daysInMonth)
         for (let day = 1; day <= daysInMonth; day++) {
             const currentDate = new Date(currentYear, currentMonth, day);
@@ -449,7 +491,7 @@ export class StatsComponent implements OnInit {
             const currentDate = new Date(currentYear, currentMonth, day);
             const dateKey = toLocalISOString(currentDate);
             const dayCount = dataMap.get(dateKey) || 0;
-            
+
             // Calculate level based on day's word count relative to max day count (percentage-based)
             let level: 0 | 1 | 2 | 3 | 4 = 0;
             if (dayCount > 0 && maxDayCount > 0) {
@@ -463,7 +505,7 @@ export class StatsComponent implements OnInit {
                     level = 4;  // 60-100% of max
                 }
             }
-            
+
             monthDays.push({
                 date: currentDate,
                 count: dayCount,
@@ -533,10 +575,17 @@ export class StatsComponent implements OnInit {
         return date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear();
     }
 
+    isToday(date: Date): boolean {
+        const today = new Date();
+        return date.getDate() === today.getDate() &&
+            date.getMonth() === today.getMonth() &&
+            date.getFullYear() === today.getFullYear();
+    }
+
     showHeatmapTooltip(event: MouseEvent, day: ActivityDay) {
         const rect = (event.target as HTMLElement).getBoundingClientRect();
         const containerRect = (event.target as HTMLElement).closest('.heatmap-card')?.getBoundingClientRect();
-        
+
         if (containerRect) {
             this.heatmapTooltip = {
                 visible: true,

@@ -9,6 +9,7 @@ public interface IDbService
     bool UpdatePlan(int planId, int userId, string title, int totalWordCount, string startDate, string endDate, string algorithmType, string? description, bool isPrivate, int startingPoint, string? measurementUnit, bool isDailyTarget, bool fixedDeadline, string? targetFinishDate, string? strategyIntensity, string? weekendApproach, int reserveDays, string displayViewType, string weekStartDay, string groupingType, string dashboardColor, bool showHistoricalData, string progressTrackingType, string? activityType, string? contentType, string? status, int? currentProgress);
     string GetPlansJson(int userId);
     string? GetPlanJson(int id, int userId);
+    string GetCalendarPlansJson(int userId);
     string GetPlanDaysJson(int planId, int userId);
     bool LogPlanProgress(int planId, int userId, string date, int actualCount, string? notes, int? targetCount = null, bool skipProgressRecalculation = false);
     bool DeletePlan(int id, int userId);

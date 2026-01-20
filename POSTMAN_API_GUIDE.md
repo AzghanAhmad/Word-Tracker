@@ -29,9 +29,7 @@ cd backend/dotnet_migration_pending
 dotnet run
 ```
 
-The API should be available at: `http://localhost:5200` (or check the configured PORT)
-
-**Note:** All API endpoints use the `/api` prefix (e.g., `/api/auth/register`)
+The API should be available at: `http://localhost:5000`
 
 ### 3. Test the API
 
@@ -43,45 +41,45 @@ Start with the **Authentication** folder:
 ## 📚 API Endpoints Overview
 
 ### 🔐 Authentication
-- **POST** `/api/auth/register` - Register new user (email required, username optional)
-- **POST** `/api/auth/login` - Login and get JWT token
-- **POST** `/api/auth/forgot-password` - Request password reset
-- **POST** `/api/auth/forgot-username` - Request username reminder
+- **POST** `/auth/register` - Register new user
+- **POST** `/auth/login` - Login and get JWT token
+- **POST** `/auth/forgot-password` - Request password reset
+- **POST** `/auth/forgot-username` - Request username reminder
 
 ### 📝 Plans (Writing Plans)
-- **POST** `/api/plans` - Create new writing plan
-- **GET** `/api/plans` - Get all plans
-- **GET** `/api/plans?id={id}` - Get specific plan
-- **GET** `/api/plans/{id}/days` - Get plan activity logs
-- **POST** `/api/plans/{id}/days` - Log daily progress
-- **PUT** `/api/plans/{id}` - Update plan
-- **PATCH** `/api/plans/{id}/archive` - Archive/unarchive plan
-- **GET** `/api/plans/archived` - Get archived plans
-- **DELETE** `/api/plans?id={id}` - Delete plan
+- **POST** `/plans` - Create new writing plan
+- **GET** `/plans` - Get all plans
+- **GET** `/plans?id={id}` - Get specific plan
+- **GET** `/plans/{id}/days` - Get plan activity logs
+- **POST** `/plans/{id}/days` - Log daily progress
+- **PUT** `/plans/{id}` - Update plan
+- **POST** `/plans/{id}/archive` - Archive/unarchive plan
+- **GET** `/plans/archived` - Get archived plans
+- **DELETE** `/plans?id={id}` - Delete plan
 
 ### 📊 Dashboard
-- **GET** `/api/dashboard/stats` - Get dashboard overview data
+- **GET** `/dashboard` - Get dashboard overview data
 
 ### 📈 Stats
-- **GET** `/api/stats` - Get user statistics and analytics
+- **GET** `/stats` - Get user statistics and analytics
 
 ### 💬 Feedback
-- **POST** `/api/feedback` - Submit feedback (no auth required)
+- **POST** `/feedback` - Submit feedback (no auth required)
 
 ### 🏆 Challenges
-- **GET** `/api/challenges` - Get all writing challenges
-- **POST** `/api/challenges/{id}/join` - Join a challenge
+- **GET** `/challenges` - Get all writing challenges
+- **POST** `/challenges/{id}/join` - Join a challenge
 
 ### ✅ Checklists
-- **GET** `/api/checklists` - Get user checklists
-- **POST** `/api/checklists` - Create new checklist
+- **GET** `/checklists` - Get user checklists
+- **POST** `/checklists` - Create new checklist
 
 ### 👤 User
-- **GET** `/api/user/profile` - Get user profile
-- **PUT** `/api/user/profile` - Update user profile
+- **GET** `/user/profile` - Get user profile
+- **PUT** `/user/profile` - Update user profile
 
 ### 📧 Newsletter
-- **POST** `/api/newsletter/subscribe` - Subscribe to newsletter
+- **POST** `/newsletter/subscribe` - Subscribe to newsletter
 
 ## 🔑 Authentication Flow
 
@@ -104,21 +102,10 @@ If you need to set a token manually:
 
 ### Register a New User
 
-**Note:** Email is required, username is optional. If username is not provided, it will be auto-generated from the email.
-
 ```json
-POST /api/auth/register
+POST /auth/register
 {
-  "email": "test@example.com",
-  "password": "SecurePass123!",
-  "username": "testuser"
-}
-```
-
-**Minimal Request (username auto-generated):**
-```json
-POST /api/auth/register
-{
+  "username": "testuser",
   "email": "test@example.com",
   "password": "SecurePass123!"
 }
@@ -128,22 +115,24 @@ POST /api/auth/register
 ```json
 {
   "success": true,
-  "message": "User registered successfully"
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "userId": 1,
+  "username": "testuser"
 }
 ```
 
 ### Create a Writing Plan
 
 ```json
-POST /api/plans
+POST /plans
 Authorization: Bearer {{auth_token}}
 
 {
   "title": "My Novel Project",
-  "total_word_count": 50000,
-  "start_date": "2026-01-01",
-  "end_date": "2026-03-31",
-  "algorithm_type": "average",
+  "targetWords": 50000,
+  "startDate": "2026-01-01",
+  "endDate": "2026-03-31",
+  "dailyGoal": 500,
   "description": "Writing my first novel"
 }
 ```
@@ -160,14 +149,13 @@ Authorization: Bearer {{auth_token}}
 ### Log Daily Progress
 
 ```json
-POST /api/plans/1/days
+POST /plans/1/days
 Authorization: Bearer {{auth_token}}
 
 {
   "date": "2026-01-17",
-  "actual_count": 750,
-  "notes": "Great writing session today!",
-  "target_count": 500
+  "wordsWritten": 750,
+  "notes": "Great writing session today!"
 }
 ```
 
@@ -182,7 +170,7 @@ Authorization: Bearer {{auth_token}}
 ### Submit Feedback (No Auth Required)
 
 ```json
-POST /api/feedback
+POST /feedback
 
 {
   "type": "general",
@@ -203,7 +191,7 @@ POST /api/feedback
 
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
-| `base_url` | API base URL | `http://localhost:5200` |
+| `base_url` | API base URL | `http://localhost:5000` |
 | `auth_token` | JWT authentication token | (auto-set on login) |
 | `user_id` | Current user ID | (auto-set on login) |
 
@@ -252,8 +240,8 @@ To test against different servers:
 - Re-login if necessary
 
 ### 404 Not Found
-- Verify backend is running on `http://localhost:5200` (or check PORT env variable)
-- Check the endpoint URL includes the `/api` prefix (e.g., `/api/auth/register`)
+- Verify backend is running on `http://localhost:5000`
+- Check the endpoint URL is correct
 - Ensure you're using the correct HTTP method
 
 ### CORS Errors

@@ -9,86 +9,191 @@
     </div>
 
     <div class="content-container">
-        <!-- Quick Links Grid -->
+        <!-- Quick Topics Grid -->
         <div class="topics-grid">
-            <div class="topic-card" (click)="scrollTo('getting-started')">
+            <div class="topic-card" (click)="scrollTo('writing-strategies')">
                 <div class="icon-box blue">
-                    <i class="fas fa-rocket"></i>
+                    <i class="fas fa-pen-fancy"></i>
                 </div>
-                <h3>Getting Started</h3>
-                <p>Learn the basics of setting up your first plan.</p>
+                <h3>Writing Strategies</h3>
+                <p>Understand how Steady, Rising, and Random targets work.</p>
             </div>
 
-            <div class="topic-card" (click)="scrollTo('tracking')">
+            <div class="topic-card" (click)="scrollTo('tracking-logs')">
                 <div class="icon-box purple">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fas fa-history"></i>
                 </div>
-                <h3>Tracking Progress</h3>
-                <p>How to log words, edit history, and view stats.</p>
+                <h3>Logs & History</h3>
+                <p>Learn how to manage your daily word counts and edits.</p>
             </div>
 
-            <div class="topic-card" (click)="scrollTo('account')">
+            <div class="topic-card" (click)="scrollTo('stats-insights')">
                 <div class="icon-box green">
-                    <i class="fas fa-user-cog"></i>
+                    <i class="fas fa-chart-pie"></i>
                 </div>
-                <h3>Account Settings</h3>
-                <p>Manage your profile, password, and preferences.</p>
+                <h3>Stats & Insights</h3>
+                <p>How to interpret your growth and writing patterns.</p>
             </div>
 
-            <div class="topic-card" (click)="scrollTo('community')">
+            <div class="topic-card" (click)="scrollTo('challenges')">
                 <div class="icon-box orange">
-                    <i class="fas fa-users"></i>
+                    <i class="fas fa-trophy"></i>
                 </div>
-                <h3>Community</h3>
-                <p>Join challenges and connect with other writers.</p>
+                <h3>Challenges</h3>
+                <p>Connect with authors and participate in group goals.</p>
             </div>
         </div>
 
-        <!-- FAQ Section -->
-        <div class="faq-section" id="getting-started">
-            <h2>Frequently Asked Questions</h2>
+        <!-- Detailed Guide Section -->
+        <div class="guide-section" id="writing-strategies">
+            <div class="section-title">
+                <i class="fas fa-book-reader"></i>
+                <h2>Comprehensive User Guide</h2>
+            </div>
+
+            <div class="guide-card">
+                <h3>🖋️ Creating Your Perfect Plan</h3>
+                <p>The foundation of AuthorFLOW is the <strong>Writing Plan</strong>. When you create a plan, you're not
+                    just setting a goal; you're designing your workflow.</p>
+                <ul>
+                    <li><strong>Goal Types:</strong> Choose between "Word Count" for draft goals or "Time" for research
+                        and editing phases.</li>
+                    <li><strong>Flexible Days:</strong> You can exclude weekends or specific weekdays if you know you
+                        won't be writing then.</li>
+                    <li><strong>Strategy Recalculation:</strong> If you miss a day, AuthorFLOW automatically adjusts
+                        your future daily targets to keep you on track without feeling overwhelmed.</li>
+                </ul>
+            </div>
+
+            <div class="guide-card" id="tracking-logs">
+                <h3>📊 Mastery of Strategies</h3>
+                <p>Choosing the right strategy is key to avoiding burnout:</p>
+                <div class="strategy-list">
+                    <div class="strategy-item">
+                        <strong>Steady:</strong> The classic approach. Your remaining goal is divided equally by
+                        remaining days. Best for consistent daily habits.
+                    </div>
+                    <div class="strategy-item">
+                        <strong>Rising (Mountain):</strong> Starts small (e.g., 200 words) and peaks in the middle of
+                        your plan. Great for building momentum.
+                    </div>
+                    <div class="strategy-item">
+                        <strong>Random (Chaos):</strong> Targets vary by up to 30% each day. Keeps things interesting
+                        for authors who hate routine.
+                    </div>
+                </div>
+            </div>
+
+            <div class="guide-card" id="stats-insights">
+                <h3>📈 Understanding Your Insights</h3>
+                <p>The "Stats" page provides deep-level analytics on your writing behavior:</p>
+                <ul>
+                    <li><strong>Overall Growth:</strong> A chronological view of your total output since you joined
+                        ScribeCount.</li>
+                    <li><strong>Daily Activity:</strong> See your most productive days of the week. Do you write more on
+                        Tuesdays? Now you'll know.</li>
+                    <li><strong>Monthly Heatmap:</strong> A visual grid of your consistency. Focus on keeping the "green
+                        streak" alive!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Expanded FAQ Section -->
+        <div class="faq-section" id="faq">
+            <div class="section-title">
+                <i class="fas fa-question-circle"></i>
+                <h2>Frequently Asked Questions</h2>
+            </div>
 
             <div class="faq-category">
                 <h3>🚀 Getting Started</h3>
                 <div class="faq-item">
                     <div class="question" (click)="toggleFaq(0)">
-                        <span>How do I create a new writing plan?</span>
+                        <span>Can I have multiple projects active at once?</span>
                         <i class="fas" [class.fa-chevron-down]="!faqs[0]" [class.fa-chevron-up]="faqs[0]"></i>
                     </div>
                     <div class="answer" *ngIf="faqs[0]">
-                        <p>To create a plan, navigate to the "Create A Plan" page from the sidebar. Enter your project
-                            name, target word count (or time goal), and select your start and end dates. You can also
-                            choose a logging strategy (Steady, Rising, etc.) to customize your daily targets.</p>
+                        <p>Yes! AuthorFLOW supports unlimited active projects. You can manage a novel draft, a
+                            screenplay, and a blog series all from the same dashboard.</p>
                     </div>
                 </div>
 
                 <div class="faq-item">
                     <div class="question" (click)="toggleFaq(1)">
-                        <span>What is the difference between specific strategies?</span>
+                        <span>How do I delete or archive a finished plan?</span>
                         <i class="fas" [class.fa-chevron-down]="!faqs[1]" [class.fa-chevron-up]="faqs[1]"></i>
                     </div>
                     <div class="answer" *ngIf="faqs[1]">
-                        <p><strong>Steady:</strong> Distributes your goal evenly across all days.<br>
-                            <strong>Rising:</strong> Starts with a lower daily goal and increases gradually.<br>
-                            <strong>Random:</strong> Varies the daily goal to keep things unpredictable.<br>
-                            <strong>Whichever:</strong> Allows you to write however much you want, recalculating daily.
-                        </p>
+                        <p>Go to the Plan Detail page. In the header, you'll find "Archive" and "Delete" buttons.
+                            Archiving keeps your history but hides the plan from the main dashboard, while Deleting
+                            removes it permanently.</p>
                     </div>
                 </div>
             </div>
 
             <div class="faq-category" id="tracking">
-                <h3>📊 Tracking & Logs</h3>
+                <h3>✏️ Tracking & Editing</h3>
                 <div class="faq-item">
                     <div class="question" (click)="toggleFaq(2)">
-                        <span>How do I edit a previous day's log?</span>
+                        <span>What happens if I write more than my daily target?</span>
                         <i class="fas" [class.fa-chevron-down]="!faqs[2]" [class.fa-chevron-up]="faqs[2]"></i>
                     </div>
                     <div class="answer" *ngIf="faqs[2]">
-                        <p>Go to your Plan Detail page (click on a plan name). In the Calendar view below the chart,
-                            click on any past date. A popup will appear allowing you to edit the word count for that
-                            specific day.</p>
+                        <p>Congratulations! Your future daily targets will automatically decrease slightly to maintain
+                            your original deadline, or you can finish the project ahead of schedule.</p>
                     </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="question" (click)="toggleFaq(3)">
+                        <span>Can I sync my word count from Scrivener or MS Word?</span>
+                        <i class="fas" [class.fa-chevron-down]="!faqs[3]" [class.fa-chevron-up]="faqs[3]"></i>
+                    </div>
+                    <div class="answer" *ngIf="faqs[3]">
+                        <p>Currently, word counts must be entered manually. We found this manual "check-in" helps
+                            authors stay more mindful of their progress. Automatic sync features for major writing
+                            software are in our long-term roadmap!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-category" id="challenges">
+                <h3>🏆 Community & Challenges</h3>
+                <div class="faq-item">
+                    <div class="question" (click)="toggleFaq(4)">
+                        <span>How do Group Challenges work?</span>
+                        <i class="fas" [class.fa-chevron-down]="!faqs[4]" [class.fa-chevron-up]="faqs[4]"></i>
+                    </div>
+                    <div class="answer" *ngIf="faqs[4]">
+                        <p>Challenges are shared goals. When you join a challenge, your daily logs for matching projects
+                            automatically contribute to the group total. You can see how you rank against other
+                            participants on the leaderboard.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pro Tips Section -->
+        <div class="pro-tips-section">
+            <div class="section-title">
+                <i class="fas fa-lightbulb"></i>
+                <h2>AuthorFLOW Pro Tips</h2>
+            </div>
+            <div class="tips-grid">
+                <div class="tip-card">
+                    <i class="fas fa-check-circle"></i>
+                    <p><strong>Use the "Whichever" strategy</strong> for projects where you don't have a strict deadline
+                        but want to track every word you write over time.</p>
+                </div>
+                <div class="tip-card">
+                    <i class="fas fa-check-circle"></i>
+                    <p><strong>Color Code your projects</strong> (e.g., Red for First Drafts, Blue for Edits) to keep
+                        your Dashboard visually organized.</p>
+                </div>
+                <div class="tip-card">
+                    <i class="fas fa-check-circle"></i>
+                    <p><strong>Visit the Stats page weekly</strong> to identify your "Golden Hour"—the time of day when
+                        you are most productive.</p>
                 </div>
             </div>
         </div>
@@ -96,10 +201,10 @@
         <!-- Contact Support -->
         <div class="contact-banner">
             <div class="contact-content">
-                <h2>Still need help?</h2>
-                <p>Our support team is available to assist you with any technical issues or questions.</p>
-                <a routerLink="/contact" class="btn-contact"
-                    style="text-decoration: none; display: inline-block;">Contact Support</a>
+                <h2>Still have questions?</h2>
+                <p>Our support team is passionate about helping writers succeed. We usually respond within 24 hours.</p>
+                <a routerLink="/contact" class="btn-contact" style="text-decoration: none; display: inline-block;">Get
+                    In Touch</a>
             </div>
             <div class="contact-image">
                 <i class="fas fa-headset"></i>

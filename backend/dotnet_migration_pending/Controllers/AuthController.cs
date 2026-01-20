@@ -15,7 +15,7 @@ public class AuthController : ControllerBase
         _db = db;
     }
 
-    public record RegisterRequest(string? username, string email, string password);
+    public record RegisterRequest(string username, string email, string password);
     public record LoginRequest(string email, string password);
     public record ForgotPasswordRequest(string email);
     public record ForgotUsernameRequest(string email);
@@ -25,23 +25,12 @@ public class AuthController : ControllerBase
     {
         try
         {
-            Console.WriteLine($"📝 Register request received: username={req.username ?? "null"}, email={req.email}");
+            Console.WriteLine($"📝 Register request received: username={req.username}, email={req.email}");
             
-            if (string.IsNullOrWhiteSpace(req.email) || string.IsNullOrWhiteSpace(req.password))
+            if (string.IsNullOrWhiteSpace(req.username) || string.IsNullOrWhiteSpace(req.email) || string.IsNullOrWhiteSpace(req.password))
             {
                 Console.WriteLine("✗ Missing required fields");
-                return BadRequest(new { success = false, message = "Email and password are required" });
-            }
-            
-            // Auto-generate username from email if not provided
-            var username = req.username?.Trim();
-            if (string.IsNullOrWhiteSpace(username))
-            {
-                // Extract username part from email (before @) and append random suffix for uniqueness
-                var emailPrefix = req.email.Split('@')[0];
-                var randomSuffix = new Random().Next(1000, 9999);
-                username = $"{emailPrefix}_{randomSuffix}";
-                Console.WriteLine($"📝 Auto-generated username from email: {username}");
+                return BadRequest(new { success = false, message = "Missing required fields" });
             }
             
             if (req.password.Length < 6)
@@ -57,7 +46,7 @@ public class AuthController : ControllerBase
             }
             
             var hash = _auth.HashPassword(req.password);
-            var ok = _db.CreateUser(username, req.email, hash);
+            var ok = _db.CreateUser(req.username, req.email, hash);
             
             if (!ok)
             {
@@ -71,7 +60,7 @@ public class AuthController : ControllerBase
                 });
             }
             
-            Console.WriteLine($"✅ User registered successfully: {username} ({req.email})");
+            Console.WriteLine($"✅ User registered successfully: {req.username}");
             return Ok(new { success = true, message = "User registered successfully" });
         }
         catch (Exception ex)

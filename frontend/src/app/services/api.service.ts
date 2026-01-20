@@ -198,6 +198,15 @@ export class ApiService {
         return this.http.get(`${this.apiUrl}/plans`);
     }
 
+    getCalendarPlans(): Observable<any> {
+        if (this.useMock) {
+            // Mock data - just reuse getPlans but we'd strictly need mock plan days too
+            // For now, assuming mock isn't priority
+            return of({ success: true, data: this.mockDataService.getPlans() });
+        }
+        return this.http.get(`${this.apiUrl}/plans/calendar`);
+    }
+
     getPlan(id: number): Observable<any> {
         if (this.useMock) {
             return of({ success: true, data: this.mockDataService.getPlan(id) });
@@ -309,23 +318,23 @@ export class ApiService {
     logProgress(planId: number, date: string, actualCount: number, notes: string, targetCount?: number): Observable<any> {
         // Ensure actual_count is an integer (backend expects int)
         const actual_count = Math.round(actualCount || 0);
-        
+
         // Ensure notes is a string (null or undefined becomes empty string)
         const notesValue = notes !== null && notes !== undefined ? notes : '';
-        
-        const payload: any = { 
-            date: date, 
-            actual_count: actual_count, 
-            notes: notesValue 
+
+        const payload: any = {
+            date: date,
+            actual_count: actual_count,
+            notes: notesValue
         };
-        
+
         // Only include target_count if it's a valid number
         if (targetCount !== undefined && targetCount !== null && !isNaN(targetCount)) {
             payload.target_count = Math.round(targetCount);
         }
-        
+
         console.log('📤 Sending logProgress request:', { planId, payload });
-        
+
         return this.http.post(`${this.apiUrl}/plans/${planId}/days`, payload).pipe(
             tap(() => this._refreshSidebar.next())
         );
