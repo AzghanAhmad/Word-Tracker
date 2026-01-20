@@ -31,6 +31,7 @@ export interface CalendarCell {
            <!-- Content Cells -->
            <app-calendar-day
             *ngFor="let cell of cells"
+            [date]="cell.date"
             [dayNumber]="cell.dayNumber"
             [isCurrentMonth]="cell.isCurrentMonth"
             [isToday]="cell.isToday"
@@ -263,7 +264,7 @@ export class CalendarGridComponent implements OnChanges {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    
+
     // Return actual words from dailyLogs (works for both daily-total and progress-vs-plan modes)
     // This ensures immediate display of actual words even before plan days are fully fetched
     const actual = this.dailyLogs && this.dailyLogs[dateStr] ? this.dailyLogs[dateStr] : 0;
@@ -281,12 +282,12 @@ export class CalendarGridComponent implements OnChanges {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    
+
     // Return plans for this date - works for both daily-total and progress-vs-plan modes
     if (!this.plansByDate || typeof this.plansByDate !== 'object') {
       return [];
     }
-    
+
     const plans = this.plansByDate[dateStr] || [];
     return plans;
   }
@@ -302,13 +303,13 @@ export class CalendarGridComponent implements OnChanges {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
-    
+
     // For daily-total mode, we'll show plans individually, so return 0 for target
     // The plans will be shown via getPlansForDate instead
     if (this.viewMode === 'daily-total') {
       return 0;
     }
-    
+
     return this.targets[dateStr] || 0;
   }
 

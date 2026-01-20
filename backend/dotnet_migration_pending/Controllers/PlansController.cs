@@ -207,9 +207,22 @@ public class PlansController : ControllerBase
             var userId = UserId();
             Console.WriteLine($"📅 Fetching plan days for plan {id}, user {userId}");
             var daysJson = _db.GetPlanDaysJson(id, userId);
-            var daysData = System.Text.Json.JsonSerializer.Deserialize<object[]>(daysJson);
-            Console.WriteLine($"✅ Retrieved {daysData?.Length ?? 0} plan days");
-            return Ok(new { success = true, data = daysData });
+            
+            // Deserialize generically to object first to inspect
+            var rawList = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(daysJson);
+            
+            // Re-map to ensure keys are lowercase snake_case explicitly
+            var cleanList = rawList?.Select(d => new Dictionary<string, object>
+            {
+                ["id"] = d.ContainsKey("id") ? d["id"] : 0,
+                ["date"] = d.ContainsKey("date") ? d["date"] : "",
+                ["target_count"] = d.ContainsKey("target_count") ? d["target_count"] : 0,
+                ["actual_count"] = d.ContainsKey("actual_count") ? d["actual_count"] : 0,
+                ["notes"] = d.ContainsKey("notes") ? d["notes"] : null
+            }).ToList();
+
+            Console.WriteLine($"✅ Retrieved {cleanList?.Count ?? 0} plan days (Cleaned)");
+            return Ok(new { success = true, data = cleanList });
         }
         catch (Exception ex)
         {
@@ -594,6 +607,36 @@ public class PlansController : ControllerBase
         catch
         {
             return StatusCode(500, new { success = false, message = "An error occurred while deleting the plan" });
+        }
+    }
+    
+
+    /// <summary>
+    /// Gets all plans for the authenticated user, including their daily logs
+    /// Optimized for calendar view to avoid N+1 requests
+    /// GET /plans/calendar
+    /// </summary>
+    [Authorize]
+    [HttpGet("calendar")]
+    public IActionResult GetCalendarPlans()
+    {
+        try
+        {
+            var userId = UserId();
+            Console.WriteLine($"📅 Fetching calendar plans for user {userId}");
+            
+            var plansJson = _db.GetCalendarPlansJson(userId);
+            
+            // Deserialize generically
+            var plansData = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(plansJson);
+            
+            Console.WriteLine($"✅ Retrieved {plansData?.Count ?? 0} calendar plans");
+            return Ok(new { success = true, data = plansData });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error fetching calendar plans: {ex.Message}");
+            return StatusCode(500, new { success = false, message = ex.Message });
         }
     }
 }

@@ -34,10 +34,8 @@
         </div>
 
         <div class="header-actions">
-            <button (click)="navigateToEdit()" class="btn-config">
-                <i class="fas fa-cog"></i> <span class="btn-text">Project Configuration</span>
-            </button>
-            <button (click)="archivePlan()" class="btn-archive" 
+            <!-- Project Configuration moved to Configuration tab -->
+            <button (click)="archivePlan()" class="btn-archive"
                 [style.background-color]="plan.status?.toLowerCase() === 'archived' ? 'var(--primary-accent)' : '#6b7280'">
                 <i class="fas" [class.fa-box-open]="plan.status?.toLowerCase() === 'archived'"
                     [class.fa-archive]="plan.status?.toLowerCase() !== 'archived'"></i>
@@ -49,25 +47,34 @@
         </div>
     </div>
 
-    <!-- Global Navigation Tabs -->
+    <!-- Global Navigation Tabs: Merged Plan/Config, Schedule, Progress/Stats -->
     <div class="tab-navigation">
-        <div class="tab-item" [class.active]="activeTab === 'plan'" (click)="onTabChange('plan')"><i
-                class="fas fa-cog"></i> Plan</div>
-        <div class="tab-item" [class.active]="activeTab === 'schedule'" (click)="onTabChange('schedule')"><i
-                class="fas fa-calendar-alt"></i> Schedule</div>
-        <div class="tab-item" [class.active]="activeTab === 'progress'" (click)="onTabChange('progress')"><i
-                class="fas fa-pen-nib"></i> Progress</div>
-        <div class="tab-item" [class.active]="activeTab === 'stats'" (click)="onTabChange('stats')"><i
-                class="fas fa-chart-bar"></i> Analytics</div>
+        <div class="tab-item" [class.active]="activeTab === 'overview'" (click)="onTabChange('overview')">
+            <i class="fas fa-info-circle"></i> Overview
+        </div>
+        <div class="tab-item" [class.active]="activeTab === 'configuration'" (click)="onTabChange('configuration')">
+            <i class="fas fa-cog"></i> Configuration
+        </div>
+        <div class="tab-item" [class.active]="activeTab === 'schedule'" (click)="onTabChange('schedule')">
+            <i class="fas fa-calendar-alt"></i> Schedule
+        </div>
+        <div class="tab-item" [class.active]="activeTab === 'progress'" (click)="onTabChange('progress')">
+            <i class="fas fa-chart-line"></i> Progress
+        </div>
     </div>
 
     <!-- Tab Content -->
     <div class="tab-content" [ngSwitch]="activeTab">
 
-        <!-- Page 1: PLAN -->
-        <div class="plan-tab" *ngSwitchCase="'plan'">
+        <!-- Page 1: OVERVIEW -->
+        <div class="plan-tab" *ngSwitchCase="'overview'">
             <div class="project-section">
-                <h3><i class="fas fa-info-circle"></i> Project Overview</h3>
+                <div class="section-header">
+                    <h3><i class="fas fa-info-circle"></i> Project Overview</h3>
+                    <button (click)="navigateToEdit()" class="btn-config btn-inline">
+                        <i class="fas fa-edit"></i> Edit Plan
+                    </button>
+                </div>
                 <div class="info-grid">
                     <div class="info-block">
                         <label>Title</label>
@@ -88,8 +95,55 @@
                 </div>
             </div>
 
+            <!-- Summary stats inside Overview -->
+            <div class="project-section quick-stats-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-tachometer-alt"></i> Quick Stats</h3>
+                </div>
+                <div class="metrics-grid mini-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon-box goal">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="label">Total Goal</span>
+                            <span class="value">{{ plan.target_amount | number }}</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box completed">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="label">Completed</span>
+                            <div class="value-row">
+                                <span class="value">{{ plan.completed_amount | number }}</span>
+                                <span class="percentage-badge">{{ extendedStats.completionRate }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box time">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="label">Days Left</span>
+                            <span class="value">{{ stats.daysRemaining }}d</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page 2: CONFIGURATION -->
+        <div class="plan-tab" *ngSwitchCase="'configuration'">
             <div class="project-section">
-                <h3><i class="fas fa-bullseye"></i> Goal Configuration</h3>
+                <div class="section-header">
+                    <h3><i class="fas fa-bullseye"></i> Goal Configuration</h3>
+                    <button (click)="navigateToEdit()" class="btn-config btn-inline">
+                        <i class="fas fa-edit"></i> Edit Configuration
+                    </button>
+                </div>
                 <div class="info-grid">
                     <div class="info-block">
                         <label>Total {{ getUnitLabel(0) | titlecase }} Goal</label>
@@ -110,7 +164,9 @@
             </div>
 
             <div class="project-section">
-                <h3><i class="fas fa-calendar-check"></i> Writing Strategy</h3>
+                <div class="section-header">
+                    <h3><i class="fas fa-calendar-check"></i> Writing Strategy</h3>
+                </div>
                 <div class="info-block">
                     <label>Progress Distribution Strategy</label>
                     <div class="strategy-grid">
@@ -211,7 +267,8 @@
                                 <div style="display: flex; flex-direction: column;">
                                     <span
                                         style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Goal</span>
-                                    <span class="calendar-word-count" style="font-weight: 700; color: var(--primary-accent);">{{ day.target | number
+                                    <span class="calendar-word-count"
+                                        style="font-weight: 700; color: var(--primary-accent);">{{ day.target | number
                                         }}
                                         {{ getUnitLabel(day.target) }}</span>
                                 </div>
@@ -219,7 +276,8 @@
                                     style="display: flex; flex-direction: column; margin-top: 0.25rem;">
                                     <span
                                         style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Actual</span>
-                                    <span class="calendar-word-count" style="font-weight: 700; color: #10b981;">{{ day.actual | number }}
+                                    <span class="calendar-word-count" style="font-weight: 700; color: #10b981;">{{
+                                        day.actual | number }}
                                         {{ getUnitLabel(day.actual) }}</span>
                                 </div>
                             </div>
@@ -228,11 +286,12 @@
                                 <i class="fas fa-mug-hot"></i>
                                 <span>Rest day</span>
                             </div>
-                            <div *ngIf="!day.isWritingDay && day.month === 'current' && day.actual > 0" 
+                            <div *ngIf="!day.isWritingDay && day.month === 'current' && day.actual > 0"
                                 style="display: flex; flex-direction: column; margin-top: 0.25rem;">
                                 <span
                                     style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Actual</span>
-                                <span class="calendar-word-count" style="font-weight: 700; color: #10b981;">{{ day.actual | number }} {{
+                                <span class="calendar-word-count" style="font-weight: 700; color: #10b981;">{{
+                                    day.actual | number }} {{
                                     getUnitLabel(day.actual) }}</span>
                             </div>
 
@@ -292,8 +351,37 @@
         </div>
 
 
-        <!-- Page 3: PROGRESS -->
+        <!-- Page 4: PROGRESS (Recording + Deep Analytics) -->
         <div class="progress-tab" *ngSwitchCase="'progress'">
+            <!-- Status Indicators moved from stats -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon"><i class="fas fa-calendar-day"></i></div>
+                    <div class="metric-info">
+                        <span class="label">Days Active</span>
+                        <span class="value">{{ extendedStats.daysSinceStart }}</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon"><i class="fas fa-clock"></i></div>
+                    <div class="metric-info">
+                        <span class="label">Time Remaining</span>
+                        <span class="value">{{ stats.daysRemaining }}d</span>
+                    </div>
+                </div>
+                <div class="metric-card status-card">
+                    <div class="metric-icon" [style.color]="extendedStats.statusColor">
+                        <i class="fas" [class.fa-check-circle]="extendedStats.statusLabel === 'On Track'"
+                            [class.fa-exclamation-circle]="extendedStats.statusLabel !== 'On Track'"></i>
+                    </div>
+                    <div class="metric-info">
+                        <span class="label">Current Status</span>
+                        <span class="value" [style.color]="extendedStats.statusColor">{{ extendedStats.statusLabel
+                            }}</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="progress-main-grid">
                 <!-- Main Log Card -->
                 <div class="entry-card">
@@ -335,43 +423,44 @@
                             <p>No writing sessions recorded yet. Start your habit today!</p>
                         </div>
 
-                        <div *ngFor="let session of activityLogs.slice(0, 7)" class="history-item">
+                        <div *ngFor="let session of activityLogs" class="history-item">
                             <div class="session-info">
                                 <div *ngIf="editingSessionId !== session.id">
-                                <span class="session-date">{{ session.dateObj | date:'MMM d' }}</span>
-                                    <span class="session-words">{{ session.words | number }} {{ getUnitLabel(session.words) }}</span>
+                                    <span class="session-date">{{ session.dateObj | date:'MMM d' }}</span>
+                                    <span class="session-words">{{ session.words | number }} {{
+                                        getUnitLabel(session.words) }}</span>
                                 </div>
                                 <div *ngIf="editingSessionId === session.id" class="edit-session-form">
                                     <div class="edit-form-row">
                                         <input type="date" [(ngModel)]="editingSessionDate" class="date-input"
-                                            (keyup.enter)="saveSession(session)" (keyup.escape)="cancelEditingSession()">
+                                            (keyup.enter)="saveSession(session)"
+                                            (keyup.escape)="cancelEditingSession()">
                                     </div>
                                     <div class="edit-form-row">
                                         <div class="words-input-wrapper">
-                                            <input type="number" [(ngModel)]="editingSessionValue" class="words-input" min="0"
-                                                (keyup.enter)="saveSession(session)" (keyup.escape)="cancelEditingSession()">
+                                            <input type="number" [(ngModel)]="editingSessionValue" class="words-input"
+                                                min="0" (keyup.enter)="saveSession(session)"
+                                                (keyup.escape)="cancelEditingSession()">
                                             <span class="unit-label">{{ getUnitLabel(0) }}</span>
                                         </div>
                                     </div>
                                     <div class="edit-form-actions">
-                                        <button class="btn-save"
-                                            (click)="saveSession(session)" title="Save changes">
+                                        <button class="btn-save" (click)="saveSession(session)" title="Save changes">
                                             <i class="fas fa-check"></i> Save
                                         </button>
-                                        <button class="btn-delete"
-                                            (click)="cancelEditingSession()" title="Cancel editing">
+                                        <button class="btn-delete" (click)="cancelEditingSession()"
+                                            title="Cancel editing">
                                             <i class="fas fa-times"></i> Cancel
                                         </button>
                                     </div>
                                 </div>
                             </div>
                             <div class="action-buttons" *ngIf="editingSessionId !== session.id">
-                                <button class="btn-edit"
-                                    (click)="startEditingSession(session)" title="Edit this session">
+                                <button class="btn-edit" (click)="startEditingSession(session)"
+                                    title="Edit this session">
                                     <i class="fas fa-pen"></i> Edit
                                 </button>
-                                <button class="btn-delete"
-                                    (click)="deleteSession(session)" title="Delete this session">
+                                <button class="btn-delete" (click)="deleteSession(session)" title="Delete this session">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
@@ -380,65 +469,22 @@
                 </div>
             </div>
 
-        </div>
-
-        <!-- Page 4: STATS (Deep Analytics) -->
-        <div class="stats-tab" *ngSwitchCase="'stats'">
-            <div class="stats-container">
-                <!-- Top Metrics Row -->
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fas fa-calendar-day"></i></div>
-                        <div class="metric-info">
-                            <span class="label">Days Active</span>
-                            <span class="value">{{ extendedStats.daysSinceStart }}</span>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fas fa-clock"></i></div>
-                        <div class="metric-info">
-                            <span class="label">Time Remaining</span>
-                            <span class="value">{{ stats.daysRemaining }}d</span>
-                        </div>
-                    </div>
-                    <div class="metric-card status-card">
-                        <div class="metric-icon" [style.color]="extendedStats.statusColor">
-                            <i class="fas" [class.fa-check-circle]="extendedStats.statusLabel.includes('On')"
-                                [class.fa-exclamation-circle]="!extendedStats.statusLabel.includes('On')"></i>
-                        </div>
-                        <div class="metric-info">
-                            <span class="label">Current Status</span>
-                            <span class="value" [style.color]="extendedStats.statusColor">{{ extendedStats.statusLabel
-                                }}</span>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fas fa-trophy"></i></div>
-                        <div class="metric-info">
-                            <span class="label">Best Session</span>
-                            <span class="value">{{ extendedStats.bestDay | number }} {{
-                                getUnitLabel(extendedStats.bestDay) }}</span>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
-                        <div class="metric-info">
-                            <span class="label">Daily Average</span>
-                            <span class="value">{{ extendedStats.avgWordsPerDay | number }} {{
-                                getUnitLabel(extendedStats.avgWordsPerDay) }}</span>
-                        </div>
-                    </div>
+            <!-- Detailed Analytics merged into Progress -->
+            <div class="deep-analytics-section"
+                style="margin-top: 3.5rem; padding-top: 2rem; border-top: 1px dashed #e2e8f0;">
+                <div class="section-header">
+                    <h3><i class="fas fa-chart-line"></i> Deep Performance Analytics</h3>
+                    <p>Milestone tracking and historical analysis</p>
                 </div>
 
-                <!-- Main Charts Column -->
-                <div class="charts-column">
+                <div class="charts-column" style="margin-top: 2rem;">
                     <!-- Cumulative Growth Chart -->
                     <div class="chart-card-clean">
                         <div class="chart-header">
                             <div class="header-left">
                                 <h3>Plan Cumulative Growth</h3>
-                                <p class="chart-subtitle">Your journey towards the {{ plan.target_amount | number }}
-                                    {{ getUnitLabel(plan.target_amount) }} goal</p>
+                                <p class="chart-subtitle">Your journey towards the {{ plan.target_amount | number }} {{
+                                    getUnitLabel(plan.target_amount) }} goal</p>
                             </div>
                             <div class="chart-legend">
                                 <div class="legend-item goal"><span></span> Planned Goal</div>
@@ -453,75 +499,61 @@
                         </div>
                     </div>
 
-                    <!-- Daily Performance Chart -->
-                    <div class="chart-card-clean">
-                        <div class="chart-header">
-                            <div class="header-left">
-                                <h3>Daily Progress vs. Target</h3>
-                                <p class="chart-subtitle">How your daily performance stacks up against your target</p>
-                            </div>
-                            <div class="chart-legend">
-                                <span class="dot" style="background: var(--primary-accent)"></span>
-                                Planned Target
-                                <span class="dot" style="background: #10b981; margin-left: 1rem;"></span>
-                                Actual Progress
+                    <div class="metrics-grid" style="margin-top: 2rem;">
+                        <div class="metric-card">
+                            <div class="metric-icon"><i class="fas fa-trophy"></i></div>
+                            <div class="metric-info">
+                                <span class="label">Best Session</span>
+                                <span class="value">{{ extendedStats.bestDay | number }} {{
+                                    getUnitLabel(extendedStats.bestDay) }}</span>
                             </div>
                         </div>
-                        <div class="chart-body">
-                            <app-daily-stats-chart [data]="dailyChartData" mode="bar" [color]="'var(--primary-accent)'"
-                                [useSlicing]="false" [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
-                            </app-daily-stats-chart>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Donut Stats Row -->
-                <div class="donut-row">
-                    <div class="donut-card">
-                        <div class="donut-container">
-                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10"></circle>
-                                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--primary-accent)"
-                                    stroke-width="10"
-                                    [attr.stroke-dasharray]="(extendedStats.completionRate * 2.82) + ', 282'"></circle>
-                            </svg>
-                            <div class="donut-text">{{ extendedStats.completionRate }}%</div>
-                        </div>
-                        <h4>Total Progress</h4>
-                        <p>Completion of your project goal</p>
-                    </div>
-
-                    <div class="donut-card">
-                        <div class="donut-container">
-                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10"></circle>
-                                <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" stroke-width="10"
-                                    [attr.stroke-dasharray]="(extendedStats.dailyTargetMet * 2.82) + ', 282'"></circle>
-                            </svg>
-                            <div class="donut-text">{{ extendedStats.dailyTargetMet }}%</div>
-                        </div>
-                        <h4>Target Accuracy</h4>
-                        <p>Consistency in meeting daily goals</p>
-                    </div>
-
-                    <div class="donut-card">
-                        <div class="donut-container">
-                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10"></circle>
-                                <circle cx="50" cy="50" r="45" fill="none" [attr.stroke]="extendedStats.statusColor"
-                                    stroke-width="10" stroke-dasharray="282, 282"></circle>
-                            </svg>
-                            <div class="donut-text">
-                                <i class="fas" [class.fa-check]="extendedStats.statusLabel === 'On Track'"
-                                    [class.fa-exclamation]="extendedStats.statusLabel !== 'On Track'"></i>
+                        <div class="metric-card">
+                            <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="metric-info">
+                                <span class="label">Daily Average</span>
+                                <span class="value">{{ extendedStats.avgWordsPerDay | number }} {{
+                                    getUnitLabel(extendedStats.avgWordsPerDay) }}</span>
                             </div>
                         </div>
-                        <h4 [style.color]="extendedStats.statusColor">{{ extendedStats.statusLabel }}</h4>
-                        <p>Current standing vs. mapped path</p>
+                    </div>
+
+                    <div class="donut-row" style="margin-top: 2.5rem;">
+                        <div class="donut-card">
+                            <div class="donut-container">
+                                <svg width="100" height="100" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10">
+                                    </circle>
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="var(--primary-accent)"
+                                        stroke-width="10"
+                                        [attr.stroke-dasharray]="(extendedStats.completionRate * 2.82) + ', 282'">
+                                    </circle>
+                                </svg>
+                                <div class="donut-text">{{ extendedStats.completionRate }}%</div>
+                            </div>
+                            <h4>Total Progress</h4>
+                            <p>Completion of your project goal</p>
+                        </div>
+
+                        <div class="donut-card">
+                            <div class="donut-container">
+                                <svg width="100" height="100" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10">
+                                    </circle>
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" stroke-width="10"
+                                        [attr.stroke-dasharray]="(extendedStats.dailyTargetMet * 2.82) + ', 282'">
+                                    </circle>
+                                </svg>
+                                <div class="donut-text">{{ extendedStats.dailyTargetMet }}%</div>
+                            </div>
+                            <h4>Target Accuracy</h4>
+                            <p>Consistency in meeting daily goals</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <app-content-loader *ngIf="isLoading"></app-content-loader>
+<app-content-loader *ngIf="isLoading"></app-content-loader>

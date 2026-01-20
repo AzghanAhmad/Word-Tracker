@@ -90,25 +90,20 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
 
     private processData() {
         // Data should already be sorted and filtered (last 14 days from today) by parent component
-        // Just ensure it's sorted by date ascending for proper display
         const sortedData = [...this.data].sort((a, b) => {
             const dateA = new Date(a.date).getTime();
             const dateB = new Date(b.date).getTime();
             return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
         });
 
-        // For bar chart, use all data (already filtered to last 14 days by parent)
-        // For line chart, use slicing
         const limit = this.mode === 'bar' ? undefined : -30;
         const displayedData = (this.useSlicing && limit) ? sortedData.slice(limit) : sortedData;
 
-        // Map dates to labels - ensure proper date formatting
         const labels = displayedData.map(d => {
             if (!d.date) return 'Unknown';
 
             let date: Date;
             if (typeof d.date === 'string' && d.date.includes('-')) {
-                // Parse YYYY-MM-DD format correctly (local time, not UTC)
                 const parts = d.date.split('-');
                 date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
             } else {
@@ -116,8 +111,6 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
             }
 
             if (isNaN(date.getTime())) return 'Invalid Date';
-
-            // Format date consistently for both bar and line charts
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
 
@@ -132,8 +125,8 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
         const ctx = this.chartCanvas.nativeElement.getContext('2d');
         if (!ctx) return;
 
-        const chartData = displayedData || this.data; // Use processed data for accurate tooltips
-        const chartLabels = labels; // Store labels for callback access
+        const chartData = displayedData || this.data;
+        const chartLabels = labels;
 
         const config: ChartConfiguration = {
             type: this.mode,
@@ -143,18 +136,41 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                     {
                         label: 'Planned Target',
                         data: targets,
-                        backgroundColor: this.getComputedColor(this.color),
+                        backgroundColor: '#f1f5f9',
+                        borderColor: '#e2e8f0',
+                        borderWidth: 1,
                         borderRadius: 4,
                         barPercentage: 0.8,
-                        categoryPercentage: 0.8
+                        categoryPercentage: 0.9
                     },
                     {
                         label: 'Actual Progress',
                         data: actuals,
-                        backgroundColor: '#10b981', // Success green for actuals
+                        backgroundColor: (context: any) => {
+                            const index = context.dataIndex;
+                            const dayData = chartData[index];
+                            if (dayData && dayData.date) {
+                                let date: Date;
+                                if (typeof dayData.date === 'string' && dayData.date.includes('-')) {
+                                    const parts = dayData.date.split('-');
+                                    date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                                } else {
+                                    date = new Date(dayData.date);
+                                }
+
+                                const today = new Date();
+                                if (date.getDate() === today.getDate() &&
+                                    date.getMonth() === today.getMonth() &&
+                                    date.getFullYear() === today.getFullYear()) {
+                                    return '#0ea5e9';
+                                }
+                            }
+                            return '#10b981';
+                        },
                         borderRadius: 4,
                         barPercentage: 0.8,
-                        categoryPercentage: 0.8
+                        categoryPercentage: 0.9,
+                        minBarLength: 3
                     }
                 ] : [
                     {
@@ -209,7 +225,6 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                                 const datasetLabel = context.dataset.label || '';
                                 const index = context.dataIndex;
 
-                                // Get target if available
                                 if (chartData && index < chartData.length) {
                                     const dayData = chartData[index];
                                     const target = dayData.target || 0;
@@ -248,11 +263,9 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                                 weight: 600
                             },
                             maxRotation: 45,
-                            autoSkip: false, // Don't auto-skip for bar chart to ensure all dates show
-                            maxTicksLimit: this.mode === 'bar' ? 14 : 15, // Show all 14 dates for bar chart
+                            autoSkip: false,
+                            maxTicksLimit: this.mode === 'bar' ? 14 : 15,
                             callback: (value: any, index: number, ticks: any[]) => {
-                                // For bar chart, show all labels (dates should match bars exactly)
-                                // For line chart, show every nth label
                                 if (this.mode === 'bar') {
                                     const numValue = typeof value === 'number' ? value : Number(value);
                                     if (numValue >= 0 && numValue < chartLabels.length) {
@@ -299,7 +312,31 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                         }
                     }
                 }
-            }
+            },
+            plugins: this.mode === 'bar' ? [{
+                id: 'barLabels',
+                afterDatasetsDraw: (chart: any) => {
+                    const { ctx, data } = chart;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.font = 'bold 9px "Outfit", sans-serif';
+
+                    const dataset = data.datasets[1]; // Actual Progress
+                    if (dataset && dataset.label === 'Actual Progress') {
+                        const meta = chart.getDatasetMeta(1);
+                        meta.data.forEach((bar: any, index: number) => {
+                            const value = dataset.data[index] as number;
+                            if (value > 0) {
+                                const displayValue = value >= 1000 ? (value / 1000).toFixed(1) + 'k' : value.toString();
+                                ctx.fillStyle = index === meta.data.length - 1 ? '#0ea5e9' : '#10b981';
+                                ctx.fillText(displayValue, bar.x, bar.y - 5);
+                            }
+                        });
+                    }
+                    ctx.restore();
+                }
+            }] : []
         };
 
         this.chart = new Chart(ctx, config);
@@ -307,7 +344,6 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
 
     private getGradient(ctx: CanvasRenderingContext2D, color: string) {
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        // Add transparency to the resolved color
         gradient.addColorStop(0, `${color}26`);
         gradient.addColorStop(1, `${color}03`);
         return gradient;

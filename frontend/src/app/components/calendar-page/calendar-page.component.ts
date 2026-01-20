@@ -30,10 +30,10 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
   isLoading: boolean = false;
 
   // View State
-  viewMode: 'daily-total' | 'progress-vs-plan' = 'daily-total';
+  viewMode: 'daily-total' | 'progress-vs-plan' = 'progress-vs-plan';
   calendarView: 'weekly' | 'monthly' | 'yearly' = 'monthly';
   timeFilter: 'future' | 'all' = 'all';
-  
+
   // Debug flag
   debugMode = false;
   private routeSubscription?: Subscription;
@@ -286,7 +286,8 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
                 dateKey = this.formatDateKey(dateObj);
               }
               // Sum up actual_count if multiple entries exist for the same date
-              logs[dateKey] = (logs[dateKey] || 0) + (d.actual_count || 0);
+              const actualCount = d.actual_count || d.actualCount || 0;
+              logs[dateKey] = (logs[dateKey] || 0) + actualCount;
             });
             // Create a new object reference to trigger change detection
             this.dailyLogs = { ...logs };
@@ -307,149 +308,86 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
 
     // Otherwise, fetch all plans for calendar view
     // Otherwise, fetch all plans for calendar view
-    this.apiService.getPlans().subscribe({
+    // Otherwise, fetch all plans for calendar view with optimized endpoint
+    this.apiService.getCalendarPlans().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.allPlans = response.data;
-          console.log('Calendar Page - Loaded', response.data.length, 'plans');
-          
-          // Debug: Log first plan's structure
-          if (response.data.length > 0) {
-            const firstPlan = response.data[0];
-            console.log('Calendar Page - Sample plan structure:', {
-              id: firstPlan.id,
-              title: firstPlan.title || firstPlan.plan_name,
-              start_date: firstPlan.start_date,
-              end_date: firstPlan.end_date,
-              start_date_type: typeof firstPlan.start_date,
-              end_date_type: typeof firstPlan.end_date,
-              total_word_count: firstPlan.total_word_count,
-              target_amount: firstPlan.target_amount,
-              weekend_approach: firstPlan.weekend_approach
-            });
-          }
-          
-          // Generate targets from all plans
-          this.targets = this.generateTargetsFromPlans(response.data);
-          this.deadlines = this.generateDeadlinesFromPlans(response.data);
-          this.plansByDate = this.generatePlansByDate(response.data);
-          console.log('Calendar Page - Generated plansByDate with', Object.keys(this.plansByDate).length, 'dates');
+          const plans = response.data;
+          this.allPlans = plans;
+          console.log('Calendar Page - Loaded', plans.length, 'plans with daily logs');
 
-          // FETCH ACTUAL STATS for global view - get all plan days from all plans
-          // Fetch plan days from all plans to get actual word counts
+          if (plans.length > 0) {
+            console.log('[DEBUG] First plan details:', plans[0]);
+            if (plans[0].days) {
+              console.log(`[DEBUG] First plan has ${plans[0].days.length} embedded days`);
+              if (plans[0].days.length > 0) console.log('[DEBUG] Sample day:', plans[0].days[0]);
+            } else {
+              console.warn('[DEBUG] First plan has NO days property!');
+            }
+          }
+
+          this.targets = this.generateTargetsFromPlans(plans);
+          this.deadlines = this.generateDeadlinesFromPlans(plans);
+
+          let plansByDate = this.generatePlansByDate(plans);
           const allLogs: { [key: string]: number } = {};
-          const planProgressByDate: { [planId: number]: { [dateKey: string]: number } } = {};
-          let plansProcessed = 0;
-          const totalPlans = response.data.length;
 
-          if (totalPlans === 0) {
-            this.dailyLogs = {};
-            this.isLoading = false;
-            this.cdr.detectChanges();
-            return;
-          }
+          plans.forEach((plan: any) => {
+            if (plan.days && Array.isArray(plan.days)) {
+              plan.days.forEach((day: any) => {
+                let dateKey: string | null = null;
 
-          // Fetch plan days for each plan
-          response.data.forEach((plan: any) => {
-            if (plan.id) {
-              planProgressByDate[plan.id] = {};
-              
-              this.apiService.getPlanDays(plan.id).subscribe({
-                next: (daysResponse) => {
-                  if (daysResponse.success && daysResponse.data) {
-                    daysResponse.data.forEach((d: any) => {
-                      // Normalize date to YYYY-MM-DD format
-                      let dateKey: string;
-                      if (typeof d.date === 'string') {
-                        if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                          dateKey = d.date;
-                        } else if (d.date.includes('T')) {
-                          dateKey = d.date.split('T')[0];
-                        } else {
-                          const dateObj = new Date(d.date);
-                          dateKey = this.formatDateKey(dateObj);
-                        }
-                      } else {
-                        const dateObj = new Date(d.date);
-                        dateKey = this.formatDateKey(dateObj);
-                      }
-                      
-                      const actualCount = d.actual_count || 0;
-                      
-                      // Store progress for this specific plan (for progress-vs-plan mode)
-                      planProgressByDate[plan.id][dateKey] = actualCount;
-                      
-                      // Sum up actual_count across all plans for the same date (for daily-total mode)
-                      allLogs[dateKey] = (allLogs[dateKey] || 0) + actualCount;
-                    });
+                if (day.date) {
+                  if (typeof day.date === 'string') {
+                    if (day.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      dateKey = day.date;
+                    } else if (day.date.includes('T')) {
+                      dateKey = day.date.split('T')[0];
+                    }
                   }
-                  
-                  plansProcessed++;
-                  if (plansProcessed === totalPlans) {
-                    // Update plansByDate with actual progress for each plan
-                    const updatedPlansByDate: { [key: string]: any[] } = {};
-                    Object.keys(this.plansByDate).forEach(dateKey => {
-                      updatedPlansByDate[dateKey] = (this.plansByDate[dateKey] || []).map((planItem: any) => {
-                        const updatedPlan = { ...planItem };
-                        if (planItem.id && planProgressByDate[planItem.id]) {
-                          updatedPlan.actualProgress = planProgressByDate[planItem.id][dateKey] || 0;
-                        }
-                        return updatedPlan;
-                      });
-                    });
-                    
-                    // Create new object references to trigger change detection
-                    this.dailyLogs = { ...allLogs };
-                    this.plansByDate = updatedPlansByDate;
-                    console.log('Global daily logs loaded from all plans:', this.dailyLogs);
-                    console.log('Total dates with words:', Object.keys(this.dailyLogs).length);
-                    console.log('Plans by date keys:', Object.keys(this.plansByDate).length);
-                    console.log('Sample plansByDate:', Object.keys(this.plansByDate).slice(0, 5).map(k => ({ date: k, count: this.plansByDate[k].length })));
-                    this.isLoading = false;
-                    this.cdr.detectChanges();
+                  if (!dateKey) {
+                    try { dateKey = new Date(day.date).toISOString().split('T')[0]; } catch (e) { }
                   }
-                },
-                error: (err) => {
-                  console.error(`Error loading plan days for plan ${plan.id}:`, err);
-                  plansProcessed++;
-                  if (plansProcessed === totalPlans) {
-                    this.dailyLogs = { ...allLogs };
-                    this.plansByDate = { ...this.plansByDate };
-                    this.isLoading = false;
-                    this.cdr.detectChanges();
+                }
+
+                if (dateKey) {
+                  const actualCount = (day.actual_count !== undefined) ? day.actual_count : (day.actualCount || 0);
+                  allLogs[dateKey] = (allLogs[dateKey] || 0) + actualCount;
+
+                  if (plansByDate[dateKey]) {
+                    const planInDate = plansByDate[dateKey].find((p: any) => p.id === plan.id);
+                    if (planInDate) {
+                      planInDate.actualProgress = actualCount;
+                    }
                   }
                 }
               });
-            } else {
-              plansProcessed++;
-              if (plansProcessed === totalPlans) {
-                this.dailyLogs = { ...allLogs };
-                this.plansByDate = { ...this.plansByDate };
-                this.isLoading = false;
-                this.cdr.detectChanges();
-              }
             }
           });
 
-        } else {
-          this.targets = {};
-          this.deadlines = {};
-          this.plansByDate = {};
-          this.allPlans = [];
+          this.plansByDate = plansByDate;
+          this.dailyLogs = allLogs;
           this.isLoading = false;
           this.cdr.detectChanges();
+
+        } else {
+          this.resetData();
         }
       },
       error: (error) => {
-        console.error('Error fetching plans for calendar:', error);
-        this.targets = {};
-        this.deadlines = {};
-        this.plansByDate = {};
-        this.allPlans = [];
-        this.isLoading = false;
-        this.cdr.detectChanges();
+        console.error('Error fetching calendar plans:', error);
+        this.resetData();
       }
     });
+  }
+
+  private resetData() {
+    this.targets = {};
+    this.deadlines = {};
+    this.plansByDate = {};
+    this.allPlans = [];
+    this.isLoading = false;
+    this.cdr.detectChanges();
   }
 
   /**
@@ -560,11 +498,11 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
       // Parse dates - handle multiple formats
       let startDate: Date;
       let endDate: Date;
-      
+
       // Helper function to parse date from various formats
       const parseDate = (dateValue: any): Date | null => {
         if (!dateValue) return null;
-        
+
         // Handle JSON string containing MySqlDateTime object
         if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
           try {
@@ -576,7 +514,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
             // If JSON parse fails, continue to other formats
           }
         }
-        
+
         // Handle string dates (YYYY-MM-DD format from backend)
         if (typeof dateValue === 'string') {
           const dateStr = dateValue.split('T')[0]; // Remove time if present
@@ -584,22 +522,22 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
             return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
           }
         }
-        
+
         // Handle MySqlDateTime-like objects (already parsed)
         if (dateValue && typeof dateValue === 'object') {
           if (dateValue.Year && dateValue.Month && dateValue.Day) {
             return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
           }
         }
-        
+
         // Try standard Date parsing as fallback
         const parsed = new Date(dateValue);
         return isNaN(parsed.getTime()) ? null : parsed;
       };
-      
+
       startDate = parseDate(plan.start_date);
       endDate = parseDate(plan.end_date);
-      
+
       // Validate dates
       if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
         console.warn('generatePlansByDate: Invalid dates for plan', plan.id, plan.title || plan.plan_name, {
@@ -610,39 +548,39 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
         });
         return;
       }
-      
+
       console.log('generatePlansByDate: Processing plan', plan.id, plan.title || plan.plan_name, {
         start: this.formatDateKey(startDate),
         end: this.formatDateKey(endDate),
         total_words: plan.total_word_count || plan.target_amount
       });
-      
+
       const weekendApproach = plan.weekend_approach || 'The Usual';
-      
+
       // Calculate writing days count based on weekend approach
       let writingDaysCount = 0;
       const calcDate = new Date(startDate);
       const calcEndDate = new Date(endDate);
-      
+
       while (calcDate <= calcEndDate) {
         const isWeekend = calcDate.getDay() === 0 || calcDate.getDay() === 6;
         let isWritingDay = true;
-        
+
         if (weekendApproach === 'Weekdays Only') {
           isWritingDay = !isWeekend;
         } else if (weekendApproach === 'None' || weekendApproach === 'Rest Days') {
           isWritingDay = !isWeekend;
         }
-        
+
         if (isWritingDay) {
           writingDaysCount++;
         }
-        
+
         calcDate.setDate(calcDate.getDate() + 1);
       }
-      
+
       if (writingDaysCount === 0) writingDaysCount = 1;
-      
+
       const totalWords = plan.total_word_count || plan.target_amount || 0;
       const dailyTarget = Math.ceil(totalWords / writingDaysCount);
       let wordsRemaining = totalWords;
@@ -651,35 +589,35 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
       // Add plan to each day in its date range, respecting writing strategy
       const currentDate = new Date(startDate);
       const endDateObj = new Date(endDate);
-      
+
       while (currentDate <= endDateObj) {
         const dateKey = this.formatDateKey(currentDate);
         const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
         let isWritingDay = true;
-        
+
         if (weekendApproach === 'Weekdays Only') {
           isWritingDay = !isWeekend;
         } else if (weekendApproach === 'None' || weekendApproach === 'Rest Days') {
           isWritingDay = !isWeekend;
         }
-        
+
         if (!plansByDate[dateKey]) {
           plansByDate[dateKey] = [];
         }
-        
+
         let dayTarget = 0;
         if (isWritingDay && daysRemaining > 0) {
           dayTarget = Math.round(wordsRemaining / daysRemaining);
           wordsRemaining -= dayTarget;
           daysRemaining--;
         }
-        
+
         plansByDate[dateKey].push({
           ...plan,
           dailyTarget: dayTarget,
           actualProgress: 0 // Will be updated when plan days are fetched
         });
-        
+
         // Move to next day
         currentDate.setDate(currentDate.getDate() + 1);
       }

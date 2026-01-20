@@ -30,9 +30,13 @@
         <!-- Overall Growth (Line Chart) -->
         <div class="chart-card line-chart-card">
             <div class="card-header">
-                <h3>Overall Growth</h3>
+                <div class="title-group">
+                    <h3>Overall Growth</h3>
+                    <p class="subtitle">Tracks cumulative progress starting from your first plan</p>
+                </div>
                 <div class="chart-legend">
-                    <span class="dot"></span> Cumulative Word Count
+                    <span class="dot progress-dot"></span> Your Progress
+                    <span class="dot target-dot"></span> Planned Target
                 </div>
             </div>
             <app-output-stats-chart [data]="allDaysDataForChart"
@@ -43,9 +47,13 @@
             <!-- Last 14 Days (Bar Chart) -->
             <div class="chart-card">
                 <div class="card-header">
-                    <h3>Daily Activity</h3>
+                    <div class="title-group">
+                        <h3>Daily Activity</h3>
+                        <p class="subtitle">Last 14 days performance</p>
+                    </div>
                     <div class="chart-legend">
-                        <span class="dot"></span> Words per day
+                        <span class="dot actual-dot"></span> Actual
+                        <span class="dot target-dot"></span> Target
                     </div>
                 </div>
                 <app-daily-stats-chart [data]="activityData" mode="bar"></app-daily-stats-chart>
@@ -54,7 +62,10 @@
             <!-- Contribution Heatmap -->
             <div class="chart-card heatmap-card">
                 <div class="card-header">
-                    <h3>Monthly Frequency</h3>
+                    <div class="title-group">
+                        <h3>Monthly Frequency</h3>
+                        <p class="subtitle">Your daily consistency this month</p>
+                    </div>
                 </div>
                 <div class="heatmap-container">
                     <div class="heatmap-weekdays">
@@ -70,14 +81,19 @@
                         <div class="week-row" *ngFor="let week of heatmapGrid">
                             <div class="day-cell" *ngFor="let day of week" [attr.data-level]="day.level"
                                 [class.empty-day]="isDayOutsideCurrentMonth(day.date)"
+                                [class.is-today]="isToday(day.date)"
                                 [title]="getFormattedDate(day.date) + ': ' + day.count + ' words'"
                                 (mouseenter)="showHeatmapTooltip($event, day)" (mouseleave)="hideHeatmapTooltip()">
+                                <span class="day-number" *ngIf="!isDayOutsideCurrentMonth(day.date)">{{
+                                    day.date.getDate() }}</span>
+                                <span class="day-count" *ngIf="day.count > 0 && !isDayOutsideCurrentMonth(day.date)">{{
+                                    day.count | number:'1.0-1' }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="legend">
-                    <span>Less</span>
+                    <span class="legend-label">Activity: Low</span>
                     <div class="levels">
                         <div class="day-cell" data-level="0"></div>
                         <div class="day-cell" data-level="1"></div>
@@ -85,13 +101,13 @@
                         <div class="day-cell" data-level="3"></div>
                         <div class="day-cell" data-level="4"></div>
                     </div>
-                    <span>More</span>
+                    <span class="legend-label">High</span>
                 </div>
                 <!-- Tooltip -->
                 <div class="heatmap-tooltip" *ngIf="heatmapTooltip.visible" [style.left.px]="heatmapTooltip.x"
                     [style.top.px]="heatmapTooltip.y">
                     <div class="tooltip-date">{{ heatmapTooltip.date }}</div>
-                    <div class="tooltip-count">{{ heatmapTooltip.count }} words</div>
+                    <div class="tooltip-count">{{ heatmapTooltip.count | number }} words</div>
                 </div>
             </div>
         </div>

@@ -10,7 +10,7 @@ import { RouterLink } from '@angular/router';
   styleUrls: ['./help.component.scss']
 })
 export class HelpComponent implements OnInit {
-  faqs: boolean[] = [false, false, false, false]; // Track open/close state of FAQs
+  faqs: boolean[] = new Array(20).fill(false); // Track open/close state of many FAQs
 
   ngOnInit(): void {
     window.scrollTo({ top: 0, behavior: 'instant' });
