@@ -272,11 +272,13 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
             response.data.forEach((d: any) => {
               // Normalize date to YYYY-MM-DD format
               let dateKey: string;
+
               if (typeof d.date === 'string') {
                 if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
                   dateKey = d.date;
                 } else if (d.date.includes('T')) {
-                  dateKey = d.date.split('T')[0];
+                  const dateObj = new Date(d.date);
+                  dateKey = this.formatDateKey(dateObj);
                 } else {
                   const dateObj = new Date(d.date);
                   dateKey = this.formatDateKey(dateObj);
@@ -342,7 +344,11 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
                     if (day.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
                       dateKey = day.date;
                     } else if (day.date.includes('T')) {
-                      dateKey = day.date.split('T')[0];
+                      const dateObj = new Date(day.date);
+                      dateKey = this.formatDateKey(dateObj);
+                    } else {
+                      const dateObj = new Date(day.date);
+                      dateKey = this.formatDateKey(dateObj);
                     }
                   }
                   if (!dateKey) {
@@ -433,7 +439,12 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
   /**
    * Formats date as YYYY-MM-DD for use as key
    */
+  /**
+   * Formats date as YYYY-MM-DD for use as key
+   */
   private formatDateKey(date: Date): string {
+    // UPDATED: Use local time instead of UTC to match PlanDetailsComponent logic
+    // This ensures that the dates displayed in Calendar match exactly with Plan Details
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -515,11 +526,17 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           }
         }
 
-        // Handle string dates (YYYY-MM-DD format from backend)
+        // Handle string dates
         if (typeof dateValue === 'string') {
-          const dateStr = dateValue.split('T')[0]; // Remove time if present
-          if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+          // If YYYY-MM-DD, strict local
+          if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const parts = dateValue.split('-');
+            return new Date(+parts[0], +parts[1] - 1, +parts[2]);
+          }
+          // If ISO or other, parse normally (handles local timezone if ISO)
+          const date = new Date(dateValue);
+          if (!isNaN(date.getTime())) {
+            return date;
           }
         }
 

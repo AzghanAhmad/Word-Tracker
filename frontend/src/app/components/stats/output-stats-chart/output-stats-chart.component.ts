@@ -25,6 +25,13 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
     @Input() showActualProgress: boolean = true; // Control whether to show actual progress line
     @Input() unit: string = 'word';
     @Input() pluralUnit: string = 'words';
+    @Input() smoothPath: boolean = false; // Smooth the target line for 'Path' look
+    /** When true, do not add a "Start" (day-before) point; first point = first date in data */
+    @Input() skipStartPoint: boolean = false;
+    /** Number of x-axis ticks to show (e.g. 15–30), evenly distributed */
+    @Input() xAxisTickCount: number = 22;
+    /** Key dates from plans (start/end dates) to prioritize showing on x-axis */
+    @Input() planDates: string[] = [];
 
     @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
     private chart?: Chart;
@@ -36,7 +43,8 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if ((changes['data'] || changes['color'] || changes['showActualProgress']) && this.chart) {
+        if ((changes['data'] || changes['color'] || changes['showActualProgress'] ||
+            changes['skipStartPoint'] || changes['xAxisTickCount'] || changes['planDates']) && this.chart) {
             this.updateChart();
         }
     }
@@ -103,8 +111,9 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
             return cumulativeTarget;
         });
 
-        // Add "Start" point (Day before first log represented as 0)
-        if (sortedData.length > 0 && sortedData[0].date) {
+
+        // Optionally add "Start" point (day before first date); skip when skipStartPoint (e.g. Overall Growth)
+        if (!this.skipStartPoint && sortedData.length > 0 && sortedData[0].date) {
             let firstDate: Date;
             if (sortedData[0].date.includes('-')) {
                 const parts = sortedData[0].date.split('-');
@@ -121,6 +130,7 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
             }
         }
 
+
         return { labels, progressData, targetData };
     }
 
@@ -132,19 +142,23 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
         const baseColor = this.getComputedColor(this.color || '#1C2E4A');
         const chartData = this.data; // Store reference for callbacks
 
-        const datasets: any[] = [
-            {
+        const datasets: any[] = [];
+
+        // Only add target dataset if it has non-zero values (to avoid invisible flat line at 0)
+        const hasNonZeroTarget = targetData.some(v => v > 0);
+        if (hasNonZeroTarget) {
+            datasets.push({
                 label: 'Planned Target',
                 data: targetData,
-                borderColor: '#94a3b8',
+                borderColor: baseColor,
                 borderWidth: 2,
                 borderDash: [5, 5],
                 pointRadius: 0, // Hide points for target line
                 pointHoverRadius: 0,
                 fill: false,
-                tension: 0, // Straight lines for target usually
-            }
-        ];
+                tension: this.smoothPath ? 0.3 : 0, // Conditionally smooth path
+            });
+        }
 
         // Add actual progress dataset only if showActualProgress is true
         if (this.showActualProgress) {
@@ -187,6 +201,7 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                     },
                     tooltip: {
                         enabled: true,
+                        position: 'nearest',
                         backgroundColor: '#fff',
                         titleColor: '#1e293b',
                         bodyColor: '#64748b',
@@ -195,6 +210,8 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                         padding: 12,
                         boxPadding: 6,
                         usePointStyle: true,
+                        caretSize: 0,
+                        caretPadding: 4,
                         callbacks: {
                             title: (context) => {
                                 return context[0].label;
@@ -222,17 +239,73 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                                 size: 10,
                                 weight: 600
                             },
-                            maxTicksLimit: 15, // Show more dates on x-axis
-                            maxRotation: 45, // Allow rotation for better readability
-                            autoSkip: true,
-                            callback: function (value, index, ticks) {
-                                // Show every nth label to avoid crowding
-                                const step = Math.max(1, Math.floor(ticks.length / 12));
-                                if (index % step === 0 || index === ticks.length - 1) {
-                                    const numValue = typeof value === 'number' ? value : Number(value);
-                                    return this.getLabelForValue(numValue);
+                            maxTicksLimit: 30,
+                            maxRotation: 45,
+                            autoSkip: false,
+                            callback: (value, index, ticks) => {
+                                const labels = this.chart?.data?.labels as string[] | undefined;
+                                if (!labels || !labels.length) return '';
+
+                                const totalTicks = labels.length;
+                                const label = labels[index] as string;
+                                const K = Math.min(30, Math.max(15, Math.min(this.xAxisTickCount, totalTicks)));
+                                const indicesToShow = new Set<number>();
+
+                                // First, include indices that correspond to plan dates (start/end dates)
+                                if (this.planDates && this.planDates.length > 0) {
+                                    this.planDates.forEach(planDate => {
+                                        const planIndex = labels.findIndex(l => l === planDate);
+                                        if (planIndex >= 0) {
+                                            indicesToShow.add(planIndex);
+                                        }
+                                    });
                                 }
-                                return '';
+
+                                // Then fill remaining slots with evenly spaced dates
+                                if (totalTicks <= K || K <= 1) {
+                                    for (let i = 0; i < totalTicks; i++) indicesToShow.add(i);
+                                } else {
+                                    // Always include first and last if not already included
+                                    indicesToShow.add(0);
+                                    indicesToShow.add(totalTicks - 1);
+
+                                    // Add evenly spaced indices for remaining slots
+                                    const remainingSlots = K - indicesToShow.size;
+                                    if (remainingSlots > 0) {
+                                        for (let i = 0; i < remainingSlots; i++) {
+                                            const idx = Math.round(((i + 1) / (remainingSlots + 1)) * (totalTicks - 1));
+                                            indicesToShow.add(idx);
+                                        }
+                                    }
+                                }
+
+                                if (!indicesToShow.has(index)) return null;
+
+                                // Handle special labels like "Start"
+                                if (label === 'Start' || !label.includes('-')) {
+                                    return label;
+                                }
+
+                                // Parse and format the date from YYYY-MM-DD format
+                                const parts = label.split('-');
+                                if (parts.length >= 3) {
+                                    const year = parseInt(parts[0], 10);
+                                    const month = parseInt(parts[1], 10) - 1;
+                                    const day = parseInt(parts[2], 10);
+                                    const date = new Date(year, month, day);
+                                    if (!isNaN(date.getTime())) {
+                                        // For long ranges, show month and year; for short ranges, include day
+                                        const totalDays = totalTicks;
+                                        if (totalDays > 90) { // More than 3 months
+                                            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                                        } else {
+                                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                        }
+                                    }
+                                }
+
+                                // Fallback
+                                return label;
                             }
                         },
                         border: {
@@ -263,7 +336,8 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                 },
                 interaction: {
                     intersect: false,
-                    mode: 'index'
+                    mode: 'index',
+                    axis: 'x'
                 },
                 animation: {
                     duration: 1200,
@@ -279,20 +353,49 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
         const { labels, progressData, targetData } = this.processData();
         if (this.chart) {
             const baseColor = this.getComputedColor(this.color || '#1C2E4A');
+            const hasNonZeroTarget = targetData.some(v => v > 0);
 
             this.chart.data.labels = labels;
-            this.chart.data.datasets[0].data = targetData;
 
-            // Update or add/remove actual progress dataset based on showActualProgress
+            // Handle target dataset (may or may not exist)
+            const targetDatasetIndex = this.chart.data.datasets.findIndex(ds => ds.label === 'Planned Target');
+            if (hasNonZeroTarget) {
+                if (targetDatasetIndex === -1) {
+                    // Add target dataset
+                    this.chart.data.datasets.unshift({
+                        label: 'Planned Target',
+                        data: targetData,
+                        borderColor: baseColor,
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false,
+                        tension: this.smoothPath ? 0.3 : 0,
+                    });
+                } else {
+                    // Update existing target dataset
+                    this.chart.data.datasets[targetDatasetIndex].data = targetData;
+                    this.chart.data.datasets[targetDatasetIndex].borderColor = baseColor;
+                }
+            } else {
+                // Remove target dataset if it exists
+                if (targetDatasetIndex !== -1) {
+                    this.chart.data.datasets.splice(targetDatasetIndex, 1);
+                }
+            }
+
+            // Handle progress dataset
+            const progressDatasetIndex = this.chart.data.datasets.findIndex(ds => ds.label === 'Your Progress');
             if (this.showActualProgress) {
-                if (this.chart.data.datasets.length === 1) {
-                    // Add progress dataset if it doesn't exist
-                    const ctx = this.chartCanvas.nativeElement.getContext('2d');
-                    if (ctx) {
-                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                        gradient.addColorStop(0, `${baseColor}26`);
-                        gradient.addColorStop(1, `${baseColor}03`);
+                const ctx = this.chartCanvas.nativeElement.getContext('2d');
+                if (ctx) {
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, `${baseColor}26`);
+                    gradient.addColorStop(1, `${baseColor}03`);
 
+                    if (progressDatasetIndex === -1) {
+                        // Add progress dataset
                         this.chart.data.datasets.push({
                             label: 'Your Progress',
                             data: progressData,
@@ -310,27 +413,20 @@ export class OutputStatsChartComponent implements AfterViewInit, OnChanges, OnDe
                             tension: 0.3,
                             fill: true,
                         } as any);
-                    }
-                } else {
-                    // Update existing progress dataset
-                    const progressDataset = this.chart.data.datasets[1] as any;
-                    progressDataset.data = progressData;
-                    progressDataset.borderColor = baseColor;
-                    progressDataset.pointBorderColor = baseColor;
-                    progressDataset.pointHoverBackgroundColor = baseColor;
-
-                    const ctx = this.chartCanvas.nativeElement.getContext('2d');
-                    if (ctx) {
-                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                        gradient.addColorStop(0, `${baseColor}26`);
-                        gradient.addColorStop(1, `${baseColor}03`);
+                    } else {
+                        // Update existing progress dataset
+                        const progressDataset = this.chart.data.datasets[progressDatasetIndex] as any;
+                        progressDataset.data = progressData;
+                        progressDataset.borderColor = baseColor;
+                        progressDataset.pointBorderColor = baseColor;
+                        progressDataset.pointHoverBackgroundColor = baseColor;
                         progressDataset.backgroundColor = gradient;
                     }
                 }
             } else {
                 // Remove progress dataset if it exists
-                if (this.chart.data.datasets.length > 1) {
-                    this.chart.data.datasets = [this.chart.data.datasets[0]];
+                if (progressDatasetIndex !== -1) {
+                    this.chart.data.datasets.splice(progressDatasetIndex, 1);
                 }
             }
 

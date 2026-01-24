@@ -27,7 +27,7 @@
             </div>
 
             <div class="items-grid" *ngIf="archivedPlans.length > 0">
-                <div class="item-card" *ngFor="let plan of archivedPlans">
+                <div class="item-card" *ngFor="let plan of paginatedPlans">
                     <div class="card-header">
                         <h3>{{ plan.title || plan.plan_name || 'Untitled Plan' }}</h3>
                         <div class="card-actions">
@@ -42,11 +42,38 @@
                     <div class="card-body">
                         <div class="description" *ngIf="plan.description" [innerHTML]="plan.description"></div>
                         <div class="meta">
-                            <span *ngIf="getDateString(plan.created_at)"><i class="fas fa-calendar-alt"></i> {{ getDateString(plan.created_at) | date:'mediumDate' }}</span>
+                            <span *ngIf="getDateString(plan.created_at)"><i class="fas fa-calendar-alt"></i> {{
+                                getDateString(plan.created_at) | date:'mediumDate' }}</span>
                             <span><i class="fas fa-feather-alt"></i> {{ plan.total_word_count | number }} words</span>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Pagination for Plans -->
+            <div class="pagination-container" *ngIf="totalPlansPages > 1"
+                style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem; padding: 1rem;">
+                <button class="page-btn prev" [disabled]="plansPage === 1" (click)="setPage(plansPage - 1, 'plans')"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;">
+                    Previous
+                </button>
+                <div class="page-numbers" style="display: flex; gap: 0.5rem;">
+                    <ng-container *ngFor="let page of getPages(totalPlansPages, plansPage)">
+                        <button *ngIf="page !== '...'" class="page-num" [class.active]="plansPage === page"
+                            (click)="setPage(page, 'plans')"
+                            [style.background]="plansPage === page ? '#1C2E4A' : 'white'"
+                            [style.color]="plansPage === page ? 'white' : '#1e293b'"
+                            style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;">
+                            {{ page }}
+                        </button>
+                        <span *ngIf="page === '...'" class="page-dots">...</span>
+                    </ng-container>
+                </div>
+                <button class="page-btn next" [disabled]="plansPage === totalPlansPages"
+                    (click)="setPage(plansPage + 1, 'plans')"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;">
+                    Next
+                </button>
             </div>
         </div>
 
@@ -59,7 +86,7 @@
             </div>
 
             <div class="items-grid" *ngIf="archivedChecklists.length > 0">
-                <div class="item-card" *ngFor="let checklist of archivedChecklists">
+                <div class="item-card" *ngFor="let checklist of paginatedChecklists">
                     <div class="card-header">
                         <h3>{{ checklist.name || checklist.title || 'Untitled Checklist' }}</h3>
                         <div class="card-actions">
@@ -75,13 +102,41 @@
                     </div>
                     <div class="card-body">
                         <div class="meta">
-                            <span *ngIf="getDateString(checklist.created_at)"><i class="fas fa-calendar-alt"></i> {{ getDateString(checklist.created_at) | date:'mediumDate' }}</span>
+                            <span *ngIf="getDateString(checklist.created_at)"><i class="fas fa-calendar-alt"></i> {{
+                                getDateString(checklist.created_at) | date:'mediumDate' }}</span>
                             <span *ngIf="checklist.item_count !== undefined"><i class="fas fa-list-ul"></i> {{
                                 checklist.item_count }}
                                 items</span>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Pagination for Checklists -->
+            <div class="pagination-container" *ngIf="totalChecklistsPages > 1"
+                style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem; padding: 1rem;">
+                <button class="page-btn prev" [disabled]="checklistsPage === 1"
+                    (click)="setPage(checklistsPage - 1, 'checklists')"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;">
+                    Previous
+                </button>
+                <div class="page-numbers" style="display: flex; gap: 0.5rem;">
+                    <ng-container *ngFor="let page of getPages(totalChecklistsPages, checklistsPage)">
+                        <button *ngIf="page !== '...'" class="page-num" [class.active]="checklistsPage === page"
+                            (click)="setPage(page, 'checklists')"
+                            [style.background]="checklistsPage === page ? '#1C2E4A' : 'white'"
+                            [style.color]="checklistsPage === page ? 'white' : '#1e293b'"
+                            style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;">
+                            {{ page }}
+                        </button>
+                        <span *ngIf="page === '...'" class="page-dots">...</span>
+                    </ng-container>
+                </div>
+                <button class="page-btn next" [disabled]="checklistsPage === totalChecklistsPages"
+                    (click)="setPage(checklistsPage + 1, 'checklists')"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;">
+                    Next
+                </button>
             </div>
         </div>
 
@@ -94,7 +149,7 @@
             </div>
 
             <div class="items-grid" *ngIf="archivedProjects.length > 0">
-                <div class="item-card" *ngFor="let project of archivedProjects">
+                <div class="item-card" *ngFor="let project of paginatedProjects">
                     <div class="card-header">
                         <h3>{{ project.name || 'Untitled Organization Plan' }}</h3>
                         <div class="card-actions">
@@ -112,11 +167,39 @@
                         <p class="subtitle" *ngIf="project.subtitle">{{ project.subtitle }}</p>
                         <div class="description" *ngIf="project.description" [innerHTML]="project.description"></div>
                         <div class="meta">
-                            <span *ngIf="getDateString(project.created_at)"><i class="fas fa-calendar-alt"></i> {{ getDateString(project.created_at) | date:'mediumDate' }}</span>
+                            <span *ngIf="getDateString(project.created_at)"><i class="fas fa-calendar-alt"></i> {{
+                                getDateString(project.created_at) | date:'mediumDate' }}</span>
                             <span *ngIf="project.is_private"><i class="fas fa-lock"></i> Private</span>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Pagination for Projects -->
+            <div class="pagination-container" *ngIf="totalProjectsPages > 1"
+                style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 2rem; padding: 1rem;">
+                <button class="page-btn prev" [disabled]="projectsPage === 1"
+                    (click)="setPage(projectsPage - 1, 'projects')"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;">
+                    Previous
+                </button>
+                <div class="page-numbers" style="display: flex; gap: 0.5rem;">
+                    <ng-container *ngFor="let page of getPages(totalProjectsPages, projectsPage)">
+                        <button *ngIf="page !== '...'" class="page-num" [class.active]="projectsPage === page"
+                            (click)="setPage(page, 'projects')"
+                            [style.background]="projectsPage === page ? '#1C2E4A' : 'white'"
+                            [style.color]="projectsPage === page ? 'white' : '#1e293b'"
+                            style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;">
+                            {{ page }}
+                        </button>
+                        <span *ngIf="page === '...'" class="page-dots">...</span>
+                    </ng-container>
+                </div>
+                <button class="page-btn next" [disabled]="projectsPage === totalProjectsPages"
+                    (click)="setPage(projectsPage + 1, 'projects')"
+                    style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer;">
+                    Next
+                </button>
             </div>
         </div>
     </div>

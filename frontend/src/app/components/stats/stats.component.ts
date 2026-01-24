@@ -41,6 +41,7 @@ export class StatsComponent implements OnInit {
     monthlyData: DayStat[] = []; // Current month daily data
     allDaysDataForChart: DayStat[] = [];
     initialChartCount: number = 0;
+    planMilestoneDates: string[] = []; // Key dates from plans for x-axis
     heatmapGrid: ActivityDay[][] = []; // Weeks x Days
 
     // Line Chart (Cumulative)
@@ -112,20 +113,24 @@ export class StatsComponent implements OnInit {
                     this.currentStreak = data.currentStreak || 0;
                     console.log('🔥 Stats page - Streak loaded from backend:', this.currentStreak);
 
-                    // Determine earliest plan date
+                    // Exclude archived plans - overall growth uses only active/relevant plans
+                    const activePlans = (plansResponse.success && plansResponse.data && Array.isArray(plansResponse.data))
+                        ? plansResponse.data.filter((p: any) => {
+                            const s = (p.status || '').toLowerCase();
+                            const db = (p.db_status || '').toLowerCase();
+                            return s !== 'archived' && db !== 'archived';
+                        })
+                        : [];
+
                     let earliestPlanDateVal: Date | null = null;
-                    if (plansResponse.success && plansResponse.data && Array.isArray(plansResponse.data)) {
-                        plansResponse.data.forEach((p: any) => {
-                            if (p.start_date) {
-                                const pd = new Date(p.start_date);
-                                if (!isNaN(pd.getTime())) {
-                                    if (!earliestPlanDateVal || pd < earliestPlanDateVal) {
-                                        earliestPlanDateVal = pd;
-                                    }
-                                }
+                    activePlans.forEach((p: any) => {
+                        if (p.start_date) {
+                            const pd = new Date(p.start_date);
+                            if (!isNaN(pd.getTime()) && (!earliestPlanDateVal || pd < earliestPlanDateVal)) {
+                                earliestPlanDateVal = pd;
                             }
-                        });
-                    }
+                        }
+                    });
 
                     // Process activity data
                     let allDaysData: DayStat[] = (data.allDaysData || []).map((d: any) => {
@@ -167,27 +172,55 @@ export class StatsComponent implements OnInit {
                     if (allDaysData.length > 0 || earliestPlanDateVal) {
                         const filledData: DayStat[] = [];
 
-                        let startDate: Date;
-                        const firstLogDate = allDaysData.length > 0 ? new Date(allDaysData[0].date) : new Date();
+                        // Overall Growth: start = user registration date, end = latest plan end (across all active plans)
+                        // Planned target = sum of total goals of all plans, distributed evenly over the range
+                        // Your progress = sum(actual words) per day across plans, then cumulated
+                        let startDate: Date | null = null;
+                        let endDate: Date | null = null;
 
-                        // Use earliest plan date if available. 
-                        // If plan date is OLDER (earlier) than first log, we start there (extending back).
-                        // If plan date is NEWER (later) than first log, we still start at first log (to not hide data).
-                        if (earliestPlanDateVal && earliestPlanDateVal < firstLogDate) {
-                            startDate = new Date(earliestPlanDateVal);
-                        } else {
-                            // Default to first log date, or if no logs, use plan date, or fallback
+                        // Start from user registration date
+                        if (data.registrationDate) {
+                            startDate = new Date(data.registrationDate);
+                            if (isNaN(startDate.getTime())) {
+                                startDate = null;
+                            }
+                        }
+
+                        // End from latest plan end date
+                        if (activePlans.length > 0) {
+                            activePlans.forEach((p: any) => {
+                                if (p.end_date) {
+                                    const ped = new Date(p.end_date);
+                                    if (!isNaN(ped.getTime()) && (!endDate || ped > endDate)) {
+                                        endDate = ped;
+                                    }
+                                }
+                            });
+                        }
+
+                        // Fallback logic if no plans found
+                        if (!startDate) {
                             if (allDaysData.length > 0) {
-                                startDate = new Date(firstLogDate);
-                            } else if (earliestPlanDateVal) {
-                                startDate = new Date(earliestPlanDateVal);
+                                startDate = new Date(allDaysData[0].date);
                             } else {
                                 startDate = new Date();
                                 startDate.setDate(startDate.getDate() - 30);
                             }
                         }
 
-                        const endDate = new Date(); // Today
+                        if (!endDate) {
+                            if (allDaysData.length > 0) {
+                                endDate = new Date(allDaysData[allDaysData.length - 1].date);
+                            } else {
+                                endDate = new Date();
+                            }
+                        }
+
+                        // Ensure endDate is at least startDate
+                        if (endDate < startDate) {
+                            endDate = new Date(startDate);
+                        }
+
                         startDate.setHours(0, 0, 0, 0);
                         endDate.setHours(0, 0, 0, 0);
 
@@ -203,23 +236,50 @@ export class StatsComponent implements OnInit {
                             dataMap.set(d.date, { count: d.count, target: d.target || 0 });
                         });
 
+                        // Planned target = sum of total goals of all active plans
+                        const totalGoalAllPlans = activePlans.reduce((acc: number, p: any) => {
+                            const g = p.total_word_count ?? p.target_amount ?? 0;
+                            const n = typeof g === 'number' ? g : (typeof g === 'string' ? parseInt(g, 10) : 0);
+                            return acc + (isNaN(n) ? 0 : n);
+                        }, 0);
+
+                        const diffMs = endDate.getTime() - startDate.getTime();
+                        const numDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)) + 1);
+                        const dailyTarget = totalGoalAllPlans / numDays;
+
+
                         const current = new Date(startDate);
+
                         while (current <= endDate) {
                             const dateStr = toLocalISOString(current);
-                            const dayData = dataMap.get(dateStr) || { count: 0, target: 0 };
+                            const dayData = dataMap.get(dateStr);
+                            const dayCount = dayData?.count ?? 0;  // sum(actual words) from backend, per day
+                            const dayTarget = dailyTarget;  // distribute total goal evenly across chart range
+
                             filledData.push({
                                 date: dateStr,
-                                count: dayData.count,
-                                target: dayData.target
+                                count: dayCount,
+                                target: dayTarget
                             });
                             current.setDate(current.getDate() + 1);
                         }
-                        this.allDaysDataForChart = filledData;
 
-                        // Reset initial count to 0 because we are showing the full history from the start
+
+                        // Collect plan milestone dates for x-axis prioritization
+                        const planMilestoneDates = new Set<string>();
+                        activePlans.forEach(p => {
+                            if (p.start_date) planMilestoneDates.add(p.start_date);
+                            if (p.end_date) planMilestoneDates.add(p.end_date);
+                        });
+                        this.planMilestoneDates = Array.from(planMilestoneDates);
+
+                        // Use full data range (modified per user request to show all history)
+                        this.allDaysDataForChart = filledData;
                         this.initialChartCount = 0;
+
                     } else {
                         this.allDaysDataForChart = [];
+                        this.initialChartCount = 0;
                     }
 
                     // Last 14 days logic

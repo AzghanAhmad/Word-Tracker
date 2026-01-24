@@ -25,7 +25,7 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
 
   // Pagination
   currentPage = 1;
-  itemsPerPage = 10;
+  itemsPerPage = 20;
   totalItems = 0;
   totalPages = 1;
 
@@ -135,6 +135,7 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
     if (this.currentPage < this.totalPages) {
       this.currentPage++;
       this.loadActiveChallenges();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 
@@ -142,6 +143,7 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
     if (this.currentPage > 1) {
       this.currentPage--;
       this.loadActiveChallenges();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 
@@ -149,6 +151,7 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
     this.itemsPerPage = parseInt(event.target.value, 10);
     this.currentPage = 1;
     this.loadActiveChallenges();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   openModal() {
@@ -313,7 +316,7 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
    */
   private parseDate(dateValue: any): Date | null {
     if (!dateValue) return null;
-    
+
     // Handle JSON string containing MySqlDateTime object
     if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
       try {
@@ -325,7 +328,7 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
         // If JSON parse fails, continue to other formats
       }
     }
-    
+
     // Handle string dates (YYYY-MM-DD format from backend)
     if (typeof dateValue === 'string') {
       const dateStr = dateValue.split('T')[0]; // Remove time if present
@@ -336,14 +339,14 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
       const parsed = new Date(dateValue);
       return isNaN(parsed.getTime()) ? null : parsed;
     }
-    
+
     // Handle MySqlDateTime-like objects (already parsed)
     if (dateValue && typeof dateValue === 'object') {
       if (dateValue.Year && dateValue.Month && dateValue.Day) {
         return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
       }
     }
-    
+
     // Try standard Date parsing as fallback
     const parsed = new Date(dateValue);
     return isNaN(parsed.getTime()) ? null : parsed;

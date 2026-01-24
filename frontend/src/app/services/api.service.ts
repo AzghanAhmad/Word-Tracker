@@ -315,7 +315,7 @@ export class ApiService {
         );
     }
 
-    logProgress(planId: number, date: string, actualCount: number, notes: string, targetCount?: number): Observable<any> {
+    logProgress(planId: number, date: string, actualCount: number, notes: string, targetCount?: number, skipSidebarRefresh: boolean = false): Observable<any> {
         // Ensure actual_count is an integer (backend expects int)
         const actual_count = Math.round(actualCount || 0);
 
@@ -336,7 +336,11 @@ export class ApiService {
         console.log('📤 Sending logProgress request:', { planId, payload });
 
         return this.http.post(`${this.apiUrl}/plans/${planId}/days`, payload).pipe(
-            tap(() => this._refreshSidebar.next())
+            tap(() => {
+                if (!skipSidebarRefresh) {
+                    this._refreshSidebar.next();
+                }
+            })
         );
     }
 

@@ -18,6 +18,12 @@ export class CommunityComponent implements OnInit {
   filteredPlans: any[] = [];
   isLoading = true;
 
+  // Pagination
+  currentPage: number = 1;
+  itemsPerPage: number = 20;
+  totalItems: number = 0;
+  totalPages: number = 1;
+
   // Filters
   selectedActivity: string = 'Any';
   selectedContent: string = 'Any';
@@ -70,21 +76,21 @@ export class CommunityComponent implements OnInit {
             // Parse and format dates in local timezone
             let startDate = plan.start_date;
             let endDate = plan.end_date;
-            
+
             if (startDate) {
               const parsedStartDate = this.parseDate(startDate);
               if (parsedStartDate) {
                 startDate = this.formatDateLocal(parsedStartDate);
               }
             }
-            
+
             if (endDate) {
               const parsedEndDate = this.parseDate(endDate);
               if (parsedEndDate) {
                 endDate = this.formatDateLocal(parsedEndDate);
               }
             }
-            
+
             return {
               id: plan.id,
               title: plan.title,
@@ -136,6 +142,54 @@ export class CommunityComponent implements OnInit {
 
       return matchActivity && matchContent;
     });
+
+    this.totalItems = this.filteredPlans.length;
+    this.totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+    if (this.currentPage > this.totalPages && this.totalPages > 0) {
+      this.currentPage = this.totalPages;
+    }
+    this.cdr.detectChanges();
+  }
+
+  get paginatedPlans(): any[] {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    return this.filteredPlans.slice(startIndex, startIndex + this.itemsPerPage);
+  }
+
+  setPage(page: number) {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  getPages(): any[] {
+    const total = this.totalPages;
+    const current = this.currentPage;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots: any[] = [];
+    let l;
+
+    for (let i = 1; i <= total; i++) {
+      if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+        range.push(i);
+      }
+    }
+
+    for (const i of range) {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+
+    return rangeWithDots;
   }
 
   openPlan(planId: number) {
@@ -180,7 +234,7 @@ export class CommunityComponent implements OnInit {
   // Helper function to parse date from various formats
   private parseDate(dateValue: any): Date | null {
     if (!dateValue) return null;
-    
+
     // Handle JSON string containing MySqlDateTime object
     if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
       try {
@@ -192,7 +246,7 @@ export class CommunityComponent implements OnInit {
         // If JSON parse fails, continue to other formats
       }
     }
-    
+
     // Handle string dates (YYYY-MM-DD format from backend or ISO format)
     if (typeof dateValue === 'string') {
       let dateStr = dateValue;
@@ -211,14 +265,14 @@ export class CommunityComponent implements OnInit {
       const parsed = new Date(dateValue);
       return isNaN(parsed.getTime()) ? null : parsed;
     }
-    
+
     // Handle MySqlDateTime-like objects (already parsed)
     if (dateValue && typeof dateValue === 'object') {
       if (dateValue.Year && dateValue.Month && dateValue.Day) {
         return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
       }
     }
-    
+
     // Try standard Date parsing as fallback
     const parsed = new Date(dateValue);
     return isNaN(parsed.getTime()) ? null : parsed;

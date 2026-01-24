@@ -187,7 +187,7 @@ public class DbInitService
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 checklist_id INT NOT NULL,
                 content TEXT NOT NULL,
-                is_done BOOLEAN DEFAULT FALSE,
+                is_completed BOOLEAN DEFAULT FALSE,
                 sort_order INT DEFAULT 0,
                 FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE CASCADE
             )",
