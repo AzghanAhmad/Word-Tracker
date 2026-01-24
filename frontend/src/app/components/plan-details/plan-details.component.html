@@ -314,13 +314,18 @@
                                 }}.</p>
                         </div>
                         <div class="chart-legend">
-                            <div class="legend-item goal"><span></span> Planned Goal</div>
+                            <div class="legend-item goal"><span class="dot"
+                                    [style.background-color]="plan.color_code || '#94a3b8'"
+                                    style="opacity: 0.6;"></span> Planned Goal</div>
+                            <div class="legend-item actual"><span class="dot"
+                                    [style.background-color]="plan.color_code || 'var(--primary-accent)'"></span>
+                                Actual Progress</div>
                         </div>
                     </div>
                     <div class="chart-container-inner" style="height: 350px;">
                         <app-output-stats-chart [data]="cumulativeChartData" [totalTarget]="plan.target_amount"
-                            [color]="'var(--primary-accent)'" [showActualProgress]="false"
-                            [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
+                            [color]="plan.color_code || 'var(--primary-accent)'" [showActualProgress]="true"
+                            [smoothPath]="true" [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
                         </app-output-stats-chart>
                     </div>
 
@@ -352,31 +357,55 @@
 
 
         <!-- Page 4: PROGRESS (Recording + Deep Analytics) -->
-        <div class="progress-tab" *ngSwitchCase="'progress'">
+        <div class="progress-tab" *ngSwitchCase="'progress'" [style.--plan-color]="plan.color_code || '#1e293b'">
             <!-- Status Indicators moved from stats -->
             <div class="metrics-grid">
                 <div class="metric-card">
-                    <div class="metric-icon"><i class="fas fa-calendar-day"></i></div>
+                    <div class="metric-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
                     <div class="metric-info">
                         <span class="label">Days Active</span>
                         <span class="value">{{ extendedStats.daysSinceStart }}</span>
                     </div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-icon"><i class="fas fa-clock"></i></div>
+                    <div class="metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
                     <div class="metric-info">
                         <span class="label">Time Remaining</span>
                         <span class="value">{{ stats.daysRemaining }}d</span>
                     </div>
                 </div>
                 <div class="metric-card status-card">
-                    <div class="metric-icon" [style.color]="extendedStats.statusColor">
+                    <div class="metric-icon">
                         <i class="fas" [class.fa-check-circle]="extendedStats.statusLabel === 'On Track'"
                             [class.fa-exclamation-circle]="extendedStats.statusLabel !== 'On Track'"></i>
                     </div>
                     <div class="metric-info">
                         <span class="label">Current Status</span>
-                        <span class="value" [style.color]="extendedStats.statusColor">{{ extendedStats.statusLabel
+                        <span class="value">{{ extendedStats.statusLabel }}</span>
+                    </div>
+                </div>
+                <!-- New Statistic Cards -->
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="metric-info">
+                        <span class="label">Daily Average</span>
+                        <span class="value">{{ extendedStats.avgWordsPerDay | number }} {{
+                            getUnitLabel(extendedStats.avgWordsPerDay) }}</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div class="metric-info">
+                        <span class="label">Best Session</span>
+                        <span class="value">{{ extendedStats.bestDay | number }} {{ getUnitLabel(extendedStats.bestDay)
                             }}</span>
                     </div>
                 </div>
@@ -477,78 +506,71 @@
                     <p>Milestone tracking and historical analysis</p>
                 </div>
 
-                <div class="charts-column" style="margin-top: 2rem;">
+                <div class="chart-and-metrics-row" style="margin-top: 2rem;">
                     <!-- Cumulative Growth Chart -->
                     <div class="chart-card-clean">
-                        <div class="chart-header">
+                        <div class="chart-header" [style.border-left-color]="plan.color_code || '#1e293b'">
                             <div class="header-left">
                                 <h3>Plan Cumulative Growth</h3>
                                 <p class="chart-subtitle">Your journey towards the {{ plan.target_amount | number }} {{
                                     getUnitLabel(plan.target_amount) }} goal</p>
                             </div>
+                            <!-- Restored Ahead/Behind Pill -->
+                            <div class="ahead-behind-pill" *ngIf="extendedStats"
+                                [style.background-color]="extendedStats.statusColor + '15'"
+                                [style.color]="extendedStats.statusColor">
+                                <i class="fas" [class.fa-check-circle]="extendedStats.statusLabel === 'On Track'"
+                                    [class.fa-exclamation-circle]="extendedStats.statusLabel !== 'On Track'"></i>
+                                {{ extendedStats.statusLabel }}
+                            </div>
                             <div class="chart-legend">
                                 <div class="legend-item goal"><span></span> Planned Goal</div>
-                                <div class="legend-item actual"><span></span> Actual Progress</div>
+                                <div class="legend-item actual"><span
+                                        [style.background-color]="plan.color_code || 'var(--primary-accent)'"></span>
+                                    Actual Progress</div>
                             </div>
                         </div>
                         <div class="chart-body">
                             <app-output-stats-chart [data]="cumulativeChartData" [totalTarget]="plan.target_amount"
-                                [color]="'var(--primary-accent)'" [showActualProgress]="true"
+                                [color]="plan.color_code || 'var(--primary-accent)'" [showActualProgress]="true"
                                 [unit]="plan.measurement_unit" [pluralUnit]="getUnitLabel(0)">
                             </app-output-stats-chart>
                         </div>
                     </div>
 
-                    <div class="metrics-grid" style="margin-top: 2rem;">
-                        <div class="metric-card">
-                            <div class="metric-icon"><i class="fas fa-trophy"></i></div>
-                            <div class="metric-info">
-                                <span class="label">Best Session</span>
-                                <span class="value">{{ extendedStats.bestDay | number }} {{
-                                    getUnitLabel(extendedStats.bestDay) }}</span>
-                            </div>
+
+                </div>
+                <div class="donut-row" style="margin-top: 2.5rem;">
+                    <div class="donut-card">
+                        <div class="donut-container">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10">
+                                </circle>
+                                <circle cx="50" cy="50" r="45" fill="none"
+                                    [attr.stroke]="plan.color_code || 'var(--primary-accent)'" stroke-width="10"
+                                    [attr.stroke-dasharray]="(extendedStats.completionRate * 2.82) + ', 282'">
+                                </circle>
+                            </svg>
+                            <div class="donut-text">{{ extendedStats.completionRate }}%</div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
-                            <div class="metric-info">
-                                <span class="label">Daily Average</span>
-                                <span class="value">{{ extendedStats.avgWordsPerDay | number }} {{
-                                    getUnitLabel(extendedStats.avgWordsPerDay) }}</span>
-                            </div>
-                        </div>
+                        <h4>Total Progress</h4>
+                        <p>Completion of your project goal</p>
                     </div>
 
-                    <div class="donut-row" style="margin-top: 2.5rem;">
-                        <div class="donut-card">
-                            <div class="donut-container">
-                                <svg width="100" height="100" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10">
-                                    </circle>
-                                    <circle cx="50" cy="50" r="45" fill="none" stroke="var(--primary-accent)"
-                                        stroke-width="10"
-                                        [attr.stroke-dasharray]="(extendedStats.completionRate * 2.82) + ', 282'">
-                                    </circle>
-                                </svg>
-                                <div class="donut-text">{{ extendedStats.completionRate }}%</div>
-                            </div>
-                            <h4>Total Progress</h4>
-                            <p>Completion of your project goal</p>
+                    <div class="donut-card">
+                        <div class="donut-container">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10">
+                                </circle>
+                                <circle cx="50" cy="50" r="45" fill="none" [attr.stroke]="plan.color_code || '#10b981'"
+                                    stroke-width="10"
+                                    [attr.stroke-dasharray]="(extendedStats.dailyTargetMet * 2.82) + ', 282'">
+                                </circle>
+                            </svg>
+                            <div class="donut-text">{{ extendedStats.dailyTargetMet }}%</div>
                         </div>
-
-                        <div class="donut-card">
-                            <div class="donut-container">
-                                <svg width="100" height="100" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="10">
-                                    </circle>
-                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" stroke-width="10"
-                                        [attr.stroke-dasharray]="(extendedStats.dailyTargetMet * 2.82) + ', 282'">
-                                    </circle>
-                                </svg>
-                                <div class="donut-text">{{ extendedStats.dailyTargetMet }}%</div>
-                            </div>
-                            <h4>Target Accuracy</h4>
-                            <p>Consistency in meeting daily goals</p>
-                        </div>
+                        <h4>Target Accuracy</h4>
+                        <p>Consistency in meeting daily goals</p>
                     </div>
                 </div>
             </div>

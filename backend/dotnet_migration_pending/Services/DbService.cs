@@ -1571,13 +1571,15 @@ public class DbService : IDbService
         {
             Console.WriteLine($"📝 Logging progress for plan {planId}, user {userId}, date {date}: {actualCount} words, target: {targetCount ?? 0}");
             
-            // Validate date format
+            // Validate date format - parse as UTC since frontend sends UTC-based date strings
             if (!DateTime.TryParse(date, out var parsedDate))
             {
                 _lastError = $"Invalid date format: {date}";
                 Console.WriteLine($"✗ {_lastError}");
                 return false;
             }
+            // Assume the date string represents UTC (calendar date)
+            parsedDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
             
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
@@ -3326,23 +3328,36 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@u", userId);
             
             // Total Plans - count all visible plans (excluding archived) for the user
-            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived')";
-            var totalPlans = Convert.ToInt32(cmd.ExecuteScalar());
-            
-            // Active Plans - include active and completed plans, exclude archived
+            // status is nullable, default to 'active' if null. Check case-insensitively.
             cmd.CommandText = @"SELECT COUNT(*) FROM plans 
                                WHERE user_id=@u 
-                               AND COALESCE(status, 'active') != 'archived'";
+                               AND (status IS NULL OR LOWER(status) != 'archived')";
+            var totalPlans = Convert.ToInt32(cmd.ExecuteScalar());
+            
+            // Active Plans - count plans that are NOT archived and NOT completed
+            // If status is null, it's considered active
+            cmd.CommandText = @"SELECT COUNT(*) FROM plans 
+                               WHERE user_id=@u 
+                               AND (status IS NULL OR (LOWER(status) != 'archived' AND LOWER(status) != 'completed'))";
             var activePlans = Convert.ToInt32(cmd.ExecuteScalar());
             
-            // Total Words - sum of total_word_count from all plans
-            cmd.CommandText = "SELECT COALESCE(SUM(total_word_count), 0) FROM plans WHERE user_id=@u";
-            var totalWords = Convert.ToInt64(cmd.ExecuteScalar());
-            
-            // Completed Plans - count plans with status='completed'
-            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND status='completed'";
+            // Completed Plans - count plans with status='completed' (case-insensitive)
+            cmd.CommandText = @"SELECT COUNT(*) FROM plans 
+                               WHERE user_id=@u 
+                               AND status IS NOT NULL AND LOWER(status)='completed'";
             var completedPlans = Convert.ToInt32(cmd.ExecuteScalar());
 
+            // Total Words - sum of actual_count from plan_days for all user's plans
+            // 'completed_amount' is a calculated field, not in DB. We must sum the logs.
+            cmd.CommandText = @"SELECT COALESCE(SUM(pd.actual_count), 0) 
+                                FROM plan_days pd
+                                INNER JOIN plans p ON pd.plan_id = p.id
+                                WHERE p.user_id = @u";
+            var totalWordsResult = cmd.ExecuteScalar();
+            var totalWords = totalWordsResult == null || totalWordsResult == DBNull.Value 
+                ? 0 
+                : Convert.ToInt64(totalWordsResult);
+            
             // Total Challenges (Joined)
             cmd.CommandText = "SELECT COUNT(*) FROM challenge_participants WHERE user_id=@u";
             var totalChallenges = Convert.ToInt32(cmd.ExecuteScalar());
@@ -3364,15 +3379,15 @@ public class DbService : IDbService
                 activeChallenges
             };
             
-            Console.WriteLine($"✓ Dashboard stats calculated: Total={totalPlans}, Active={activePlans}, Words={totalWords}, Completed={completedPlans}");
+            Console.WriteLine($"✓ Dashboard stats calculated: TotalPlans={totalPlans}, ActivePlans={activePlans}, CompletedPlans={completedPlans}, TotalWords={totalWords}");
             return JsonSerializer.Serialize(obj);
         }
         catch (MySqlException ex)
         {
             _lastError = $"Database error ({ex.Number}): {ex.Message}";
             Console.WriteLine($"✗ MySQL Error in GetDashboardStatsJson: {ex.Number} - {ex.Message}");
-            // Return default stats on error
-            var defaultObj = new { totalPlans = 0, activePlans = 0, totalWords = 0, completedPlans = 0 };
+            // Return default stats on error so dashboard doesn't crash
+            var defaultObj = new { totalPlans = 0, activePlans = 0, totalWords = 0, completedPlans = 0, totalChallenges = 0, activeChallenges = 0 };
             return JsonSerializer.Serialize(defaultObj);
         }
         catch (Exception ex)
@@ -3970,28 +3985,29 @@ public class DbService : IDbService
             totalCmd.Parameters.AddWithValue("@u", userId);
             var totalWords = Convert.ToInt64(totalCmd.ExecuteScalar());
             
-            // Generate activity data for last 365 days (fill missing days with 0)
+            // Calculate days since registration
             var today = DateTime.Today;
+            var regDate = registrationDate.Date;
+            
             var activityData = new List<Dictionary<string, object>>();
             var allDaysData = new List<Dictionary<string, object>>();
-            var allDaysDataSet = new HashSet<string>(); // Track dates already added
+            var allDaysDataSet = new HashSet<string>();
+            var allDates = new List<string>();
             long cumulative = 0;
             int bestDay = 0;
             int currentStreak = 0;
+
+            // Generate all days from registration to end of current month
+            var currentMonthEnd = new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
+            var current = regDate;
             
-            // Build all days data from registration date to today
-            for (int i = daysSinceRegistration; i >= 0; i--)
+            while (current <= currentMonthEnd)
             {
-                var date = today.AddDays(-i);
-                var dateKey = date.ToString("yyyy-MM-dd");
+                var dateKey = current.ToString("yyyy-MM-dd");
                 var (actualCount, targetCount) = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : (0, 0);
                 
                 cumulative += actualCount;
-                
-                if (actualCount > bestDay)
-                {
-                    bestDay = actualCount;
-                }
+                if (actualCount > bestDay) bestDay = actualCount;
                 
                 var dayData = new Dictionary<string, object>
                 {
@@ -4002,47 +4018,17 @@ public class DbService : IDbService
                 
                 allDaysData.Add(dayData);
                 allDaysDataSet.Add(dateKey);
+                allDates.Add(dateKey);
                 
-                // Last 14 days for bar chart
-                if (i < 14)
+                // Last 14 days for activityData (Bar chart)
+                if (current > today.AddDays(-14) && current <= today)
                 {
                     activityData.Add(dayData);
                 }
-            }
-            
-            // Add all remaining days of the current month (including future dates)
-            var currentMonthStart = new DateTime(today.Year, today.Month, 1);
-            var currentMonthEnd = currentMonthStart.AddMonths(1).AddDays(-1);
-            
-            for (var date = currentMonthStart; date <= currentMonthEnd; date = date.AddDays(1))
-            {
-                var dateKey = date.ToString("yyyy-MM-dd");
                 
-                // Only add if not already in allDaysData
-                if (!allDaysDataSet.Contains(dateKey))
-                {
-                    var (actualCount, targetCount) = dailyStats.ContainsKey(dateKey) ? dailyStats[dateKey] : (0, 0);
-                    
-                    var dayData = new Dictionary<string, object>
-                    {
-                        ["date"] = dateKey,
-                        ["count"] = actualCount,
-                        ["target"] = targetCount
-                    };
-                    
-                    allDaysData.Add(dayData);
-                    allDaysDataSet.Add(dateKey);
-                }
+                current = current.AddDays(1);
             }
-            
-            // Sort allDaysData by date to ensure proper ordering
-            allDaysData.Sort((a, b) => 
-            {
-                var dateA = DateTime.Parse(a["date"]?.ToString() ?? "");
-                var dateB = DateTime.Parse(b["date"]?.ToString() ?? "");
-                return dateA.CompareTo(dateB);
-            });
-            
+
             // Get user login dates for streak calculation
             var loginDates = new HashSet<string>();
             try
@@ -4064,32 +4050,29 @@ public class DbService : IDbService
                         loginDates.Add(loginDate);
                     }
                 }
-                Console.WriteLine($"✓ Found {loginDates.Count} login dates for user {userId}");
             }
-            catch (MySqlException ex)
-            {
-                // Table might not exist yet - log warning but continue
-                Console.WriteLine($"⚠ Warning: Could not fetch login dates (table might not exist): {ex.Message}");
-                // Continue with empty loginDates - streak will be 0 until table is created
-            }
-            
+            catch (MySqlException) { }
+
             // Calculate current streak (counting backwards from today)
-            // Streak logic: Only counts consecutive days of login
-            // - User must login (any authenticated API call counts as login) each day
-            // - If user logs in on day 1, streak = 1
-            // - If user logs in on day 1 and day 2, streak = 2, etc.
-            // - If a day is missed (no login), the streak breaks
-            // - We allow today to be 0 without breaking the streak yet (user has all day to login)
-            // - Login is tracked automatically via LoginTrackingMiddleware on every authenticated request
-            Console.WriteLine($"📊 Calculating streak: Found {loginDates.Count} login dates");
-            
-            // Build a set of all dates from registration to today to check for consecutive logins
-            // Reuse existing 'today' variable defined earlier in the method
-            var allDates = new List<string>();
-            for (int i = daysSinceRegistration; i >= 0; i--)
+            // We allow today to be missing without breaking streak YET
+            var checkDate = today;
+            if (loginDates.Contains(checkDate.ToString("yyyy-MM-dd")))
             {
-                var date = today.AddDays(-i);
-                allDates.Add(date.ToString("yyyy-MM-dd"));
+                while (loginDates.Contains(checkDate.ToString("yyyy-MM-dd")))
+                {
+                    currentStreak++;
+                    checkDate = checkDate.AddDays(-1);
+                }
+            }
+            else
+            {
+                // Today not logged in yet, check starting from yesterday
+                checkDate = today.AddDays(-1);
+                while (loginDates.Contains(checkDate.ToString("yyyy-MM-dd")))
+                {
+                    currentStreak++;
+                    checkDate = checkDate.AddDays(-1);
+                }
             }
             
             // Calculate streak by counting backwards from today
@@ -4132,9 +4115,11 @@ public class DbService : IDbService
                 ["weeklyAvg"] = weeklyAvg,
                 ["bestDay"] = bestDay,
                 ["currentStreak"] = currentStreak,
+                ["registrationDate"] = registrationDate.ToString("yyyy-MM-dd"), // Added registration date
                 ["activityData"] = activityData, // Last 14 days
                 ["allDaysData"] = allDaysData   // Last 90 days for line chart and heatmap
             };
+
             
             Console.WriteLine($"✓ Retrieved stats: Total={totalWords}, WeeklyAvg={weeklyAvg}, BestDay={bestDay}, Streak={currentStreak}");
             return JsonSerializer.Serialize(stats);

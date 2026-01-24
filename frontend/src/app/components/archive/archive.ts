@@ -29,6 +29,12 @@ export class ArchiveComponent implements OnInit {
   isLoading = true;
   activeTab: 'plans' | 'checklists' | 'projects' = 'plans';
 
+  // Pagination
+  itemsPerPage = 20;
+  plansPage = 1;
+  checklistsPage = 1;
+  projectsPage = 1;
+
   // Getters for counts to prevent change detection errors
   get plansCount(): number {
     return this.archivedPlans?.length || 0;
@@ -58,7 +64,7 @@ export class ArchiveComponent implements OnInit {
       this.archivedPlans = [];
       this.archivedChecklists = [];
       this.archivedProjects = [];
-      
+
       // Load all archived items in parallel using forkJoin
       forkJoin({
         plans: this.apiService.getArchivedPlans().pipe(
@@ -84,14 +90,14 @@ export class ArchiveComponent implements OnInit {
           // Update all arrays in a single change detection cycle using setTimeout
           // This prevents ExpressionChangedAfterItHasBeenCheckedError
           setTimeout(() => {
-            this.archivedPlans = results.plans?.success && results.plans?.data 
-              ? Array.isArray(results.plans.data) ? results.plans.data : [] 
+            this.archivedPlans = results.plans?.success && results.plans?.data
+              ? Array.isArray(results.plans.data) ? results.plans.data : []
               : [];
-            this.archivedChecklists = results.checklists?.success && results.checklists?.data 
-              ? Array.isArray(results.checklists.data) ? results.checklists.data : [] 
+            this.archivedChecklists = results.checklists?.success && results.checklists?.data
+              ? Array.isArray(results.checklists.data) ? results.checklists.data : []
               : [];
-            this.archivedProjects = results.projects?.success && results.projects?.data 
-              ? Array.isArray(results.projects.data) ? results.projects.data : [] 
+            this.archivedProjects = results.projects?.success && results.projects?.data
+              ? Array.isArray(results.projects.data) ? results.projects.data : []
               : [];
             this.isLoading = false;
             this.cdr.markForCheck();
@@ -223,6 +229,71 @@ export class ArchiveComponent implements OnInit {
     this.activeTab = tab;
   }
 
+  // Pagination Methods
+  get paginatedPlans(): any[] {
+    const startIndex = (this.plansPage - 1) * this.itemsPerPage;
+    return this.archivedPlans.slice(startIndex, startIndex + this.itemsPerPage);
+  }
+
+  get paginatedChecklists(): any[] {
+    const startIndex = (this.checklistsPage - 1) * this.itemsPerPage;
+    return this.archivedChecklists.slice(startIndex, startIndex + this.itemsPerPage);
+  }
+
+  get paginatedProjects(): any[] {
+    const startIndex = (this.projectsPage - 1) * this.itemsPerPage;
+    return this.archivedProjects.slice(startIndex, startIndex + this.itemsPerPage);
+  }
+
+  get totalPlansPages(): number {
+    return Math.ceil(this.archivedPlans.length / this.itemsPerPage);
+  }
+
+  get totalChecklistsPages(): number {
+    return Math.ceil(this.archivedChecklists.length / this.itemsPerPage);
+  }
+
+  get totalProjectsPages(): number {
+    return Math.ceil(this.archivedProjects.length / this.itemsPerPage);
+  }
+
+  setPage(page: number, type: 'plans' | 'checklists' | 'projects') {
+    const totalPages = type === 'plans' ? this.totalPlansPages : (type === 'checklists' ? this.totalChecklistsPages : this.totalProjectsPages);
+    if (page >= 1 && page <= totalPages) {
+      if (type === 'plans') this.plansPage = page;
+      else if (type === 'checklists') this.checklistsPage = page;
+      else if (type === 'projects') this.projectsPage = page;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  getPages(total: number, current: number): any[] {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots: any[] = [];
+    let l;
+
+    for (let i = 1; i <= total; i++) {
+      if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+        range.push(i);
+      }
+    }
+
+    for (const i of range) {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+
+    return rangeWithDots;
+  }
+
   /**
    * Safely converts a date value to a string that can be used with DatePipe
    * Handles string, Date object, MySqlDateTime JSON string, or object with date properties
@@ -288,7 +359,7 @@ export class ArchiveComponent implements OnInit {
         }
         return '';
       }
-      
+
       // Try common date object properties
       if (dateValue.date) {
         return this.getDateString(dateValue.date);
@@ -296,7 +367,7 @@ export class ArchiveComponent implements OnInit {
       if (dateValue.value) {
         return this.getDateString(dateValue.value);
       }
-      
+
       // Try to parse as JSON string and extract date
       try {
         const jsonStr = JSON.stringify(dateValue);

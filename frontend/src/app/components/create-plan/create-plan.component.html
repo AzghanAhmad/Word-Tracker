@@ -1140,7 +1140,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr *ngFor="let day of planDays">
+                                <tr *ngFor="let day of paginatedPlanDays">
                                     <td>{{ day.num }}</td>
                                     <td>{{ day.day }}</td>
                                     <td>{{ day.date }}</td>
@@ -1155,6 +1155,21 @@
                                 </tr>
                             </tbody>
                         </table>
+
+                        <!-- Pagination Controls -->
+                        <div class="pagination-controls" *ngIf="totalPages > 1">
+                            <button class="btn-page" [disabled]="currentPage === 1" (click)="prevPage()">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </button>
+
+                            <span class="page-info">
+                                Page {{ currentPage }} of {{ totalPages }}
+                            </span>
+
+                            <button class="btn-page" [disabled]="currentPage === totalPages" (click)="nextPage()">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Calendar View -->

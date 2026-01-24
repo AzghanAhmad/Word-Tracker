@@ -16,7 +16,11 @@ public class StatsController : ControllerBase
         _db = db;
     }
     
-    private int UserId() => int.Parse(User.Claims.First(c => c.Type == "user_id").Value);
+    private int UserId() 
+    {
+        var claim = User.Claims.FirstOrDefault(c => c.Type == "user_id" || c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(claim, out var id) ? id : 0;
+    }
 
     /// <summary>
     /// Get user statistics

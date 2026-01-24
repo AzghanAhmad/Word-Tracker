@@ -39,8 +39,8 @@
                     <span class="dot target-dot"></span> Planned Target
                 </div>
             </div>
-            <app-output-stats-chart [data]="allDaysDataForChart"
-                [initialCount]="initialChartCount"></app-output-stats-chart>
+            <app-output-stats-chart [data]="allDaysDataForChart" [initialCount]="initialChartCount"
+                [skipStartPoint]="true" [xAxisTickCount]="18" [planDates]="planMilestoneDates"></app-output-stats-chart>
         </div>
 
         <div class="bottom-grid">

@@ -177,6 +177,37 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
     totalDays: number = 0;
     daysLeft: number = 0;
 
+    // Pagination for Table View
+    currentPage: number = 1;
+    pageSize: number = 70;
+
+    get paginatedPlanDays(): PlanDay[] {
+        const startIndex = (this.currentPage - 1) * this.pageSize;
+        return this.planDays.slice(startIndex, startIndex + this.pageSize);
+    }
+
+    get totalPages(): number {
+        return Math.ceil(this.planDays.length / this.pageSize);
+    }
+
+    nextPage() {
+        if (this.currentPage < this.totalPages) {
+            this.currentPage++;
+        }
+    }
+
+    prevPage() {
+        if (this.currentPage > 1) {
+            this.currentPage--;
+        }
+    }
+
+    goToPage(page: number) {
+        if (page >= 1 && page <= this.totalPages) {
+            this.currentPage = page;
+        }
+    }
+
     // Progress Tab data
     progressEntries: ProgressUpdate[] = [];
 
@@ -1115,27 +1146,27 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
         for (let i = 0; i < this.totalDays; i++) {
             const weight = dayWeights[i];
             let dailyTarget = 0;
-            
+
             if (weight > 0) {
                 // Apply normalization factor to maintain strategy proportions
                 dailyTarget = unroundedTargets[i] * normalizationFactor;
                 // Round to nearest integer
                 dailyTarget = Math.round(dailyTarget);
             }
-            
+
             roundedTargets.push(dailyTarget);
             totalRounded += dailyTarget;
         }
 
         // Calculate rounding difference and distribute it intelligently
         let roundingDifference = this.targetWordCount - totalRounded;
-        
+
         // Distribute the rounding difference across days with non-zero weights
         // Prioritize days that are closer to the strategy's expected value
         if (roundingDifference !== 0) {
             // Create array of indices with non-zero weights, sorted by how close they are to their normalized value
             const adjustableDays: { index: number, normalizedValue: number, currentRounded: number }[] = [];
-            
+
             for (let i = 0; i < this.totalDays; i++) {
                 if (dayWeights[i] > 0) {
                     const normalizedValue = unroundedTargets[i] * normalizationFactor;
@@ -1146,7 +1177,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                     });
                 }
             }
-            
+
             // Sort by how much the rounded value deviates from the normalized value
             // Days with larger fractional parts should get priority for adjustment
             adjustableDays.sort((a, b) => {
@@ -1154,24 +1185,24 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
                 const bDeviation = Math.abs(b.normalizedValue - b.currentRounded);
                 return bDeviation - aDeviation; // Larger deviation first
             });
-            
+
             // Distribute the rounding difference
             let remainingDiff = roundingDifference;
             let adjustIndex = 0;
-            
+
             while (remainingDiff !== 0 && adjustIndex < adjustableDays.length) {
                 const dayInfo = adjustableDays[adjustIndex];
                 const adjustment = remainingDiff > 0 ? 1 : -1;
-                
+
                 // Only adjust if it doesn't make the value negative
                 if (roundedTargets[dayInfo.index] + adjustment >= 0) {
                     roundedTargets[dayInfo.index] += adjustment;
                     remainingDiff -= adjustment;
                 }
-                
+
                 adjustIndex++;
             }
-            
+
             // If there's still a difference, apply it to the last day (safety net)
             if (remainingDiff !== 0) {
                 // Find the last day with non-zero weight
@@ -1190,7 +1221,7 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             const current = new Date(start);
             current.setDate(start.getDate() + i);
             const dailyTarget = roundedTargets[i];
-            
+
             cumulativeTarget += dailyTarget;
 
             this.planDays.push({
@@ -1948,7 +1979,8 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
                 // Save both target_count (from user edits) and actual_count (preserve existing)
                 // The backend will update target_count while preserving actual_count
-                this.apiService.logProgress(this.planId!, dateStr, actualCount, '', targetCount).subscribe({
+                // Pass true for skipSidebarRefresh to prevent flooding the sidebar with updates for every day
+                this.apiService.logProgress(this.planId!, dateStr, actualCount, '', targetCount, true).subscribe({
                     next: (response) => {
                         if (response && response.success) {
                             savedCount++;
@@ -1970,6 +2002,9 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
 
         await Promise.all(promises);
         console.log(`✅ Completed saving plan days: ${savedCount} succeeded, ${failedCount} failed out of ${this.planDays.length} total`);
+
+        // Trigger one sidebar refresh after all days are saved
+        this.apiService.triggerRefreshSidebar();
 
         if (failedCount > 0) {
             console.warn(`⚠ Warning: ${failedCount} plan days failed to save. Manual target edits may not be persisted.`);

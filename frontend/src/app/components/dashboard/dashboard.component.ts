@@ -27,7 +27,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Pagination
   currentPage: number = 1;
-  itemsPerPage: number = 12;
+  itemsPerPage = 20;
 
   constructor(
     private apiService: ApiService,
@@ -108,20 +108,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
           console.log('Response data:', response.data);
           console.log('Is array?', Array.isArray(response.data));
           console.log('Response data length:', response.data?.length);
-          
+
           if (response.success && response.data && Array.isArray(response.data)) {
             console.log('Plans loaded (raw):', response.data);
             console.log('Plans count before filter:', response.data.length);
-            
+
             // Show all plans except archived ones
             const filteredPlans = response.data.filter((p: any) => {
               // Only filter out archived plans - show completed plans too
               const status = (p.status || '').toLowerCase();
               return status !== 'archived';
             });
-            
+
             console.log('Plans count after filter:', filteredPlans.length);
-            
+
             this.plans = filteredPlans
               .map((p: any) => {
                 const color = (p.dashboard_color || p.color_code || '#1C2E4A').trim();
@@ -148,7 +148,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                   status: displayStatus
                 };
               });
-              
+
             console.log('Final plans array:', this.plans);
             console.log('Final plans count:', this.plans.length);
           } else {
@@ -180,11 +180,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   setPage(page: number) {
     if (page >= 1 && page <= this.totalPages) {
       this.currentPage = page;
-      // Scroll to top of plans grid smoothly
-      const grid = document.querySelector('.plans-grid');
-      if (grid) {
-        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 

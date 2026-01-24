@@ -107,6 +107,10 @@ export class AppComponent implements AfterViewInit {
       setTimeout(() => {
         this.isPublicPage = this.publicRoutes.includes(event.urlAfterRedirects) ||
           event.urlAfterRedirects === '';
+
+        // Scroll to top on navigation
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         this.cdr.detectChanges();
       }, 0);
     });
