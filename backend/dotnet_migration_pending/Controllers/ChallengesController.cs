@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 using WordTracker.Api.Services;
 
 namespace WordTracker.Api.Controllers;
@@ -14,9 +15,9 @@ public class ChallengesController : ControllerBase
 
     public record CreateChallengeRequest(
         string title, 
-        string? description, 
-        string? type, 
-        int target_words, 
+        string description, 
+        string goal_type, 
+        decimal goal_amount, 
         string start_date, 
         string end_date,
         bool? is_public
@@ -34,43 +35,120 @@ public class ChallengesController : ControllerBase
     {
         try
         {
-            Console.WriteLine($"🏆 Create challenge request received");
-            Console.WriteLine($"   Title: {req?.title ?? "null"}");
-            Console.WriteLine($"   Target words: {req?.target_words}");
-            Console.WriteLine($"   Start: {req?.start_date}, End: {req?.end_date}");
-            
-            if (string.IsNullOrWhiteSpace(req?.title) || req.target_words <= 0 || 
-                string.IsNullOrWhiteSpace(req.start_date) || string.IsNullOrWhiteSpace(req.end_date))
-            {
-                return BadRequest(new { success = false, message = "Missing required fields (title, target_words, start_date, end_date)" });
-            }
-            
+            Console.WriteLine($"🏆 Create challenge request received: {req?.title}");
             var userId = UserId();
+
+            // 1. Validation Rules
+            var errors = new Dictionary<string, string>();
+
+            // Challenge Name
+            if (string.IsNullOrWhiteSpace(req?.title))
+                errors.Add("title", "Challenge name is required");
+            else if (req.title.Length < 3)
+                errors.Add("title", "Challenge name must be at least 3 characters");
+            else if (!_db.IsChallengeTitleUnique(userId, req.title))
+                errors.Add("title", "A challenge with this name already exists");
+
+            // Description
+            if (string.IsNullOrWhiteSpace(req?.description))
+                errors.Add("description", "Description is required");
+            else if (req.description.Length < 10)
+                errors.Add("description", "Description must be at least 10 characters");
+
+            // Goal Type
+            var validGoalTypes = new[] { "word_count", "time_based", "task_based" };
+            if (string.IsNullOrWhiteSpace(req?.goal_type) || !validGoalTypes.Contains(req.goal_type))
+                errors.Add("goal_type", "Please select a valid goal type (word_count, time_based, or task_based)");
+
+            // Goal Amount
+            if (req == null || req.goal_amount <= 0)
+                errors.Add("goal_amount", "Goal amount must be a positive number");
+            else if (req.goal_type == "word_count" || req.goal_type == "time_based" || req.goal_type == "task_based")
+            {
+                // Requirement expects integer for these types
+                if (req.goal_amount % 1 != 0)
+                    errors.Add("goal_amount", "Goal amount must be an integer for the selected goal type");
+            }
+
+            // Dates
+            DateTime startDate, endDate;
+            bool startParsed = DateTime.TryParse(req?.start_date, out startDate);
+            bool endParsed = DateTime.TryParse(req?.end_date, out endDate);
+
+            if (!startParsed)
+                errors.Add("start_date", "Invalid start date format");
+            else if (startDate.Date < DateTime.Today)
+                errors.Add("start_date", "Start date must be today or a future date");
+
+            if (!endParsed)
+                errors.Add("end_date", "Invalid end date format");
+            else if (startParsed && endDate.Date <= startDate.Date)
+                errors.Add("end_date", "End date must be greater than start date");
+
+            if (startParsed && endParsed)
+            {
+                var duration = (endDate.Date - startDate.Date).TotalDays + 1;
+                if (duration < 1)
+                    errors.Add("end_date", "Duration must be at least 1 day");
+            }
+
+            if (errors.Count > 0)
+            {
+                return BadRequest(new { success = false, message = "Validation failed", errors });
+            }
+
+            // 2. Business Logic
+            var totalDays = (int)(endDate.Date - startDate.Date).TotalDays + 1;
+            var dailyTarget = req.goal_amount / totalDays;
+            
+            // Round appropriately (to integer if word count/task, or 2 decimals if others)
+            if (req.goal_type == "word_count" || req.goal_type == "task_based")
+                dailyTarget = Math.Ceiling(dailyTarget);
+            else
+                dailyTarget = Math.Round(dailyTarget, 2);
+
+            string status;
+            var today = DateTime.Today;
+            if (today < startDate.Date)
+                status = "upcoming";
+            else if (today >= startDate.Date && today <= endDate.Date)
+                status = "active";
+            else
+                status = "completed"; // Should not happen on creation usually but safe check
+
+            // 3. Save to database
             var id = _db.CreateChallenge(
                 userId, 
                 req.title, 
-                req.description ?? "", 
-                req.type ?? "word_count", 
-                req.target_words, 
-                req.start_date, 
-                req.end_date,
-                req.is_public ?? true
+                req.description, 
+                req.goal_type, 
+                (int)req.goal_amount, 
+                startDate.ToString("yyyy-MM-dd"), 
+                endDate.ToString("yyyy-MM-dd"),
+                req.is_public ?? true,
+                status,
+                totalDays,
+                dailyTarget
             );
             
             if (id > 0)
             {
                 Console.WriteLine($"✅ Challenge created successfully with ID: {id}");
-                return StatusCode(201, new { success = true, message = "Challenge created", id });
+                return StatusCode(201, new { 
+                    success = true, 
+                    message = "Challenge created successfully", 
+                    id,
+                    redirect_url = $"/challenges/{id}" 
+                });
             }
             
             var errorMsg = _db.GetLastError();
-            Console.WriteLine($"✗ Failed to create challenge: {errorMsg}");
             return StatusCode(500, new { success = false, message = string.IsNullOrWhiteSpace(errorMsg) ? "Failed to create challenge" : errorMsg });
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Exception creating challenge: {ex.Message}");
-            return StatusCode(500, new { success = false, message = $"Error: {ex.Message}" });
+            return StatusCode(500, new { success = false, message = $"An unexpected error occurred: {ex.Message}" });
         }
     }
 

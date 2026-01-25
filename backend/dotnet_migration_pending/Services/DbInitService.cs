@@ -204,7 +204,9 @@ public class DbInitService
                 end_date DATE,
                 is_public BOOLEAN DEFAULT TRUE,
                 invite_code VARCHAR(10),
-                status ENUM('Active', 'Completed', 'Failed') DEFAULT 'Active',
+                status VARCHAR(50) DEFAULT 'active',
+                daily_target DECIMAL(15,2) DEFAULT 0,
+                total_days INT DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )",
@@ -419,13 +421,24 @@ public class DbInitService
                 { "end_date", "DATE" },
                 { "is_public", "BOOLEAN DEFAULT TRUE" },
                 { "invite_code", "VARCHAR(10)" },
-                { "status", "ENUM('Active', 'Completed', 'Failed') DEFAULT 'Active'" }
+                { "status", "VARCHAR(50) DEFAULT 'upcoming'" },
+                { "daily_target", "DECIMAL(15,2) DEFAULT 0" },
+                { "total_days", "INT DEFAULT 0" }
             };
             
             foreach (var (column, definition) in challengesColumnsToAdd)
             {
                 await AddColumnIfNotExistsAsync(conn, "challenges", column, definition);
             }
+
+            // Ensure challenges status is VARCHAR
+            try
+            {
+                using var fixChallengeStatusCmd = conn.CreateCommand();
+                fixChallengeStatusCmd.CommandText = "ALTER TABLE challenges MODIFY COLUMN status VARCHAR(50) DEFAULT 'active'";
+                await fixChallengeStatusCmd.ExecuteNonQueryAsync();
+            }
+            catch { }
 
             // Add missing columns to challenge_participants table if they don't exist
             var challengeParticipantsColumnsToAdd = new Dictionary<string, string>

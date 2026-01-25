@@ -25,7 +25,8 @@ public interface IDbService
     string GetArchivedPlansJson(int userId);
     bool AddChecklistItem(int checklistId, string content);
     bool UpdateChecklistItem(int itemId, bool isDone);
-    int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic);
+    int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic, string status, int totalDays, decimal dailyTarget);
+    bool IsChallengeTitleUnique(int userId, string title);
     string GetChallengesJson(int userId);
     string GetAllPublicChallengesJson(int userId);
     string? GetChallengeJson(int id, int userId);
