@@ -18,9 +18,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     totalPlans: 0,
     totalWords: 0,
     activePlans: 0,
-    completedPlans: 0
+    completedPlans: 0,
+    activeChallenges: 0,
+    totalChallenges: 0
   };
   plans: any[] = [];
+  challenges: any[] = [];
   private routerSubscription?: Subscription;
   private isInitialized = false;
   public isLoading = false;
@@ -77,29 +80,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     this.cdr.detectChanges(); // Force initial loader
     const userType = localStorage.getItem('user_type');
+    
+    // Check if we have valid authentication data
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
+    
+    if (!token || !userId) {
+      console.warn('🔐 No valid authentication data found - redirecting to login');
+      localStorage.clear();
+      this.router.navigate(['/login']);
+      return;
+    }
 
-    // Fetch real dashboard stats from backend
-    this.apiService.getDashboardStats().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          console.log('Dashboard stats:', response.data);
-          this.stats = response.data;
-        }
-        this.cdr.detectChanges(); // Force update
-      },
-      error: (error) => {
-        console.error('Error fetching dashboard stats:', error);
-        // Fallback to mock data on error
-        this.cdr.detectChanges(); // Force update
-      }
-    });
-
-    // Fetch real plans from backend - using finalize here to turn off loading since it's the heavier call
+    // Fetch real plans from backend
     this.apiService.getPlans()
-      .pipe(finalize(() => {
-        this.isLoading = false;
-        this.cdr.detectChanges(); // Force update on complete
-      }))
       .subscribe({
         next: (response) => {
           console.log('Full API response:', response);
@@ -151,20 +145,136 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
             console.log('Final plans array:', this.plans);
             console.log('Final plans count:', this.plans.length);
+            
+            // Calculate stats from plans data
+            this.calculateStatsFromPlans();
           } else {
             console.warn('No plans data in response:', { success: response.success, hasData: !!response.data });
             this.plans = [];
           }
         },
         error: (error) => {
-          console.error('Error fetching plans:', error);
-          if (userType !== 'demo') {
-            this.plans = [];
-          } else {
-            this.plans = [];
+          console.error('❌ Error fetching plans:', error);
+          
+          // Check if it's an authentication error
+          if (error.status === 401) {
+            console.warn('🔐 Authentication error - clearing localStorage and redirecting to login');
+            localStorage.clear();
+            this.router.navigate(['/login']);
+            return;
           }
+          
+          this.plans = [];
         }
       });
+
+    // Fetch challenges from backend
+    this.apiService.getChallenges()
+      .pipe(finalize(() => {
+        this.isLoading = false;
+        this.cdr.detectChanges(); // Force update on complete
+      }))
+      .subscribe({
+        next: (response) => {
+          console.log('🏆 Challenges API response:', response);
+          
+          if (response.success && response.data && Array.isArray(response.data)) {
+            this.challenges = response.data;
+            console.log('🏆 Challenges loaded:', this.challenges.length);
+            
+            // Recalculate stats including challenges
+            this.calculateStatsFromData();
+          } else {
+            console.warn('No challenges data in response:', { success: response.success, hasData: !!response.data });
+            this.challenges = [];
+            // Still calculate stats from plans only
+            this.calculateStatsFromData();
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error fetching challenges:', error);
+          
+          // Check if it's an authentication error
+          if (error.status === 401) {
+            console.warn('🔐 Authentication error - clearing localStorage and redirecting to login');
+            localStorage.clear();
+            this.router.navigate(['/login']);
+            return;
+          }
+          
+          this.challenges = [];
+          // Still calculate stats from plans only
+          this.calculateStatsFromData();
+        }
+      });
+  }
+
+  /**
+   * Calculate dashboard stats from both plans and challenges data
+   */
+  private calculateStatsFromData() {
+    // Calculate plans stats
+    let totalPlans = 0;
+    let activePlans = 0;
+    let completedPlans = 0;
+    let totalWords = 0;
+
+    if (this.plans && this.plans.length > 0) {
+      this.plans.forEach(plan => {
+        totalPlans++;
+        
+        // Count active plans (not completed or archived)
+        const status = (plan.status || '').toLowerCase();
+        if (status === 'completed') {
+          completedPlans++;
+        } else if (status !== 'archived') {
+          activePlans++;
+        }
+        
+        // Sum up completed words from all plans
+        const completedAmount = plan.completed_amount || 0;
+        totalWords += completedAmount;
+      });
+    }
+
+    // Calculate challenges stats
+    let totalChallenges = 0;
+    let activeChallenges = 0;
+
+    if (this.challenges && this.challenges.length > 0) {
+      this.challenges.forEach(challenge => {
+        totalChallenges++;
+        
+        // Count active challenges
+        const status = (challenge.status || '').toLowerCase();
+        if (status === 'active') {
+          activeChallenges++;
+        }
+      });
+    }
+
+    this.stats = {
+      totalPlans,
+      activePlans,
+      completedPlans,
+      totalWords,
+      totalChallenges,
+      activeChallenges
+    };
+
+    console.log('📊 Calculated stats from data:', this.stats);
+    console.log(`📊 Plans: ${totalPlans} total, ${activePlans} active, ${completedPlans} completed, ${totalWords} words`);
+    console.log(`🏆 Challenges: ${totalChallenges} total, ${activeChallenges} active`);
+    
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Calculate dashboard stats directly from the plans data (legacy method)
+   */
+  private calculateStatsFromPlans() {
+    // Call the new comprehensive method
+    this.calculateStatsFromData();
   }
 
   // Pagination Methods
