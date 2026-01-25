@@ -2737,7 +2737,7 @@ public class DbService : IDbService
         }
     }
 
-    public int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic)
+    public int CreateChallenge(int userId, string title, string description, string type, int goalCount, string startDate, string endDate, bool isPublic, string status, int totalDays, decimal dailyTarget)
     {
         _lastError = string.Empty;
         try
@@ -2750,27 +2750,25 @@ public class DbService : IDbService
             // Generate a random invite code
             var inviteCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
             
-            // Calculate duration days
-            var start = DateTime.Parse(startDate);
-            var end = DateTime.Parse(endDate);
-            var durationDays = (int)(end - start).TotalDays;
-            
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"INSERT INTO challenges (user_id,title,description,type,goal_count,duration_days,start_date,end_date,is_public,invite_code,status) 
-                VALUES (@u,@t,@d,@y,@g,@n,@s,@e,@p,@i,'Active'); SELECT LAST_INSERT_ID();";
+            cmd.CommandText = @"INSERT INTO challenges (user_id,title,description,type,goal_count,duration_days,start_date,end_date,is_public,invite_code,status,daily_target,total_days) 
+                VALUES (@u,@t,@d,@y,@g,@n,@s,@e,@p,@i,@status,@dt,@td); SELECT LAST_INSERT_ID();";
             cmd.Parameters.AddWithValue("@u", userId);
             cmd.Parameters.AddWithValue("@t", title);
             cmd.Parameters.AddWithValue("@d", description);
             cmd.Parameters.AddWithValue("@y", type);
             cmd.Parameters.AddWithValue("@g", goalCount);
-            cmd.Parameters.AddWithValue("@n", durationDays);
+            cmd.Parameters.AddWithValue("@n", totalDays); // Use total_days for duration_days
             cmd.Parameters.AddWithValue("@s", startDate);
             cmd.Parameters.AddWithValue("@e", endDate);
             cmd.Parameters.AddWithValue("@p", isPublic);
             cmd.Parameters.AddWithValue("@i", inviteCode);
+            cmd.Parameters.AddWithValue("@status", status);
+            cmd.Parameters.AddWithValue("@dt", dailyTarget);
+            cmd.Parameters.AddWithValue("@td", totalDays);
             
             var id = cmd.ExecuteScalar();
-            var challengeId = id is ulong ul ? (int)ul : (id is long l ? (int)l : -1);
+            var challengeId = id is ulong ul ? (int)ul : (id is long l ? (int)l : (id is int i ? i : -1));
             
             if (challengeId > 0)
             {
@@ -2792,6 +2790,25 @@ public class DbService : IDbService
             _lastError = $"Error: {ex.Message}";
             Console.WriteLine($"✗ Error creating challenge: {ex.Message}");
             return -1;
+        }
+    }
+
+    public bool IsChallengeTitleUnique(int userId, string title)
+    {
+        try
+        {
+            using var conn = new MySqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COUNT(*) FROM challenges WHERE user_id = @u AND title = @t";
+            cmd.Parameters.AddWithValue("@u", userId);
+            cmd.Parameters.AddWithValue("@t", title);
+            return Convert.ToInt32(cmd.ExecuteScalar()) == 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"✗ Error checking challenge title uniqueness: {ex.Message}");
+            return false;
         }
     }
 
@@ -3328,36 +3345,23 @@ public class DbService : IDbService
             cmd.Parameters.AddWithValue("@u", userId);
             
             // Total Plans - count all visible plans (excluding archived) for the user
-            // status is nullable, default to 'active' if null. Check case-insensitively.
-            cmd.CommandText = @"SELECT COUNT(*) FROM plans 
-                               WHERE user_id=@u 
-                               AND (status IS NULL OR LOWER(status) != 'archived')";
+            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived')";
             var totalPlans = Convert.ToInt32(cmd.ExecuteScalar());
             
-            // Active Plans - count plans that are NOT archived and NOT completed
-            // If status is null, it's considered active
+            // Active Plans - include active and completed plans, exclude archived
             cmd.CommandText = @"SELECT COUNT(*) FROM plans 
                                WHERE user_id=@u 
-                               AND (status IS NULL OR (LOWER(status) != 'archived' AND LOWER(status) != 'completed'))";
+                               AND COALESCE(status, 'active') != 'archived'";
             var activePlans = Convert.ToInt32(cmd.ExecuteScalar());
             
-            // Completed Plans - count plans with status='completed' (case-insensitive)
-            cmd.CommandText = @"SELECT COUNT(*) FROM plans 
-                               WHERE user_id=@u 
-                               AND status IS NOT NULL AND LOWER(status)='completed'";
+            // Total Words - sum of completed_amount from all plans (Source of truth for total progress)
+            cmd.CommandText = "SELECT COALESCE(SUM(completed_amount), 0) FROM plans WHERE user_id=@u";
+            var totalWords = Convert.ToInt64(cmd.ExecuteScalar());
+            
+            // Completed Plans - count plans with status='completed'
+            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND status='completed'";
             var completedPlans = Convert.ToInt32(cmd.ExecuteScalar());
 
-            // Total Words - sum of actual_count from plan_days for all user's plans
-            // 'completed_amount' is a calculated field, not in DB. We must sum the logs.
-            cmd.CommandText = @"SELECT COALESCE(SUM(pd.actual_count), 0) 
-                                FROM plan_days pd
-                                INNER JOIN plans p ON pd.plan_id = p.id
-                                WHERE p.user_id = @u";
-            var totalWordsResult = cmd.ExecuteScalar();
-            var totalWords = totalWordsResult == null || totalWordsResult == DBNull.Value 
-                ? 0 
-                : Convert.ToInt64(totalWordsResult);
-            
             // Total Challenges (Joined)
             cmd.CommandText = "SELECT COUNT(*) FROM challenge_participants WHERE user_id=@u";
             var totalChallenges = Convert.ToInt32(cmd.ExecuteScalar());
@@ -3379,15 +3383,15 @@ public class DbService : IDbService
                 activeChallenges
             };
             
-            Console.WriteLine($"✓ Dashboard stats calculated: TotalPlans={totalPlans}, ActivePlans={activePlans}, CompletedPlans={completedPlans}, TotalWords={totalWords}");
+            Console.WriteLine($"✓ Dashboard stats calculated: Total={totalPlans}, Active={activePlans}, Words={totalWords}, Completed={completedPlans}");
             return JsonSerializer.Serialize(obj);
         }
         catch (MySqlException ex)
         {
             _lastError = $"Database error ({ex.Number}): {ex.Message}";
             Console.WriteLine($"✗ MySQL Error in GetDashboardStatsJson: {ex.Number} - {ex.Message}");
-            // Return default stats on error so dashboard doesn't crash
-            var defaultObj = new { totalPlans = 0, activePlans = 0, totalWords = 0, completedPlans = 0, totalChallenges = 0, activeChallenges = 0 };
+            // Return default stats on error
+            var defaultObj = new { totalPlans = 0, activePlans = 0, totalWords = 0, completedPlans = 0 };
             return JsonSerializer.Serialize(defaultObj);
         }
         catch (Exception ex)
@@ -3992,7 +3996,6 @@ public class DbService : IDbService
             var activityData = new List<Dictionary<string, object>>();
             var allDaysData = new List<Dictionary<string, object>>();
             var allDaysDataSet = new HashSet<string>();
-            var allDates = new List<string>();
             long cumulative = 0;
             int bestDay = 0;
             int currentStreak = 0;
@@ -4018,7 +4021,6 @@ public class DbService : IDbService
                 
                 allDaysData.Add(dayData);
                 allDaysDataSet.Add(dateKey);
-                allDates.Add(dateKey);
                 
                 // Last 14 days for activityData (Bar chart)
                 if (current > today.AddDays(-14) && current <= today)
@@ -4075,35 +4077,6 @@ public class DbService : IDbService
                 }
             }
             
-            // Calculate streak by counting backwards from today
-            for (int i = allDates.Count - 1; i >= 0; i--)
-            {
-                var dateKey = allDates[i];
-                bool userLoggedIn = loginDates.Contains(dateKey);
-                
-                // Debug logging for today and recent days
-                if (i >= allDates.Count - 3)
-                {
-                    Console.WriteLine($"  Day {dateKey}: Login={userLoggedIn}");
-                }
-                
-                // Streak increases if user logged in on this day
-                if (userLoggedIn)
-                {
-                    currentStreak++;
-                }
-                else if (i == allDates.Count - 1)
-                {
-                    // Today might not have login yet, but we don't break yet - keep looking at previous days
-                    continue;
-                }
-                else
-                {
-                    // Gap found in previous days (no login)
-                    Console.WriteLine($"  Streak broken at {dateKey}: No login recorded");
-                    break;
-                }
-            }
             Console.WriteLine($"✓ Final streak: {currentStreak} days");
             
             // Calculate weekly average (last 90 days = ~12.86 weeks)

@@ -568,8 +568,7 @@
             input[type="text"],
             input[type="number"],
             input[type="date"],
-            textarea,
-            select {
+            textarea {
                 padding: 0.875rem;
                 border: 2px solid #e2e8f0;
                 border-radius: 8px;
@@ -582,22 +581,112 @@
                     border-color: #667eea;
                     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
                 }
+
+                &.is-invalid {
+                    border-color: #ef4444 !important;
+                    background-color: #fffafb;
+
+                    &:focus {
+                        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+                    }
+                }
             }
 
-            &.checkbox {
-                flex-direction: row;
-                align-items: center;
-                gap: 0.5rem;
+            .error-text {
+                color: #ef4444;
+                font-size: 0.75rem;
+                font-weight: 500;
+                margin-top: 0.25rem;
+                animation: fadeIn 0.2s ease;
+            }
 
-                label {
+            select {
+                padding: 0.875rem;
+                padding-right: 2.5rem;
+                border: 2px solid #e2e8f0;
+                border-radius: 8px;
+                font-size: 1rem;
+                font-family: inherit;
+                transition: all 0.2s;
+                appearance: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                background-color: #fff;
+                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right 0.875rem center;
+                background-size: 1.1rem;
+                cursor: pointer;
+
+                &:focus {
+                    outline: none;
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+                }
+            }
+
+            &.checkbox-group {
+                margin-top: 0.5rem;
+
+                .custom-checkbox {
                     display: flex;
                     align-items: center;
-                    gap: 0.5rem;
+                    gap: 1rem;
                     cursor: pointer;
-                }
+                    user-select: none;
 
-                input {
-                    width: auto;
+                    input[type="checkbox"] {
+                        display: none; // Hide actual checkbox
+                    }
+
+                    .checkmark-box {
+                        width: 22px;
+                        height: 22px;
+                        border: 2px solid #cbd5e1;
+                        border-radius: 6px;
+                        background: white;
+                        position: relative;
+                        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+
+                        &::after {
+                            content: '\f00c';
+                            font-family: 'Font Awesome 6 Free';
+                            font-weight: 900;
+                            color: white;
+                            font-size: 11px;
+                            opacity: 0;
+                            transform: scale(0.5);
+                            transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                        }
+                    }
+
+                    .label-text {
+                        font-size: 0.95rem;
+                        font-weight: 600;
+                        color: #4b5563;
+                        line-height: 1;
+                    }
+
+                    &:hover .checkmark-box {
+                        border-color: #94a3b8;
+                    }
+
+                    input[type="checkbox"]:checked+.checkmark-box {
+                        background: #1C2E4A; // Brand Navy
+                        border-color: #1C2E4A;
+
+                        &::after {
+                            opacity: 1;
+                            transform: scale(1);
+                        }
+                    }
+
+                    input[type="checkbox"]:checked~.label-text {
+                        color: #1C2E4A;
+                    }
                 }
             }
         }

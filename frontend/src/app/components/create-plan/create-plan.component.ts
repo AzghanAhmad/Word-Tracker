@@ -1826,6 +1826,11 @@ export class CreatePlanComponent implements OnInit, AfterViewInit {
             return;
         }
 
+        if (this.getDescriptionWordCount() === 0) {
+            this.notificationService.showError('Please enter a plan description.');
+            return;
+        }
+
         const payload = {
             title: this.planName,
             total_word_count: Math.round(this.targetWordCount),

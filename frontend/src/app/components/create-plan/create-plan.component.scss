@@ -673,9 +673,21 @@ $radius-sm: 8px;
 
                         // Default inputs
                         input:not([type="radio"]):not([type="color"]),
-                        select,
                         textarea {
                             @include input-base;
+                        }
+
+                        select {
+                            @include input-base;
+                            appearance: none !important;
+                            -webkit-appearance: none !important;
+                            -moz-appearance: none !important;
+                            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+                            background-repeat: no-repeat !important;
+                            background-position: right 0.75rem center !important;
+                            background-size: 1rem !important;
+                            padding-right: 2.5rem !important;
+                            cursor: pointer;
                         }
                     }
 
@@ -1703,8 +1715,7 @@ $radius-sm: 8px;
         }
 
         // Standard Inputs & Selects
-        .white-bg-input,
-        select,
+        .white-bg-input:not(select),
         input[type="text"],
         input[type="number"],
         input[type="date"] {
@@ -1725,237 +1736,264 @@ $radius-sm: 8px;
             }
         }
 
-        // Toggle Containers
-        .toggle-container {
-            display: flex !important;
-            background: #f1f5f9 !important;
-            border-radius: 10px !important;
-            padding: 4px !important;
-            border: 1px solid #dee5e7 !important;
-            margin-top: 6px !important;
-
-            .toggle-option {
-                flex: 1 !important;
-                text-align: center !important;
-                padding: 10px 0 !important;
-                cursor: pointer !important;
-                border-radius: 8px !important;
-                font-size: 0.85rem !important;
-                font-weight: 600 !important;
-                color: #58666e !important;
-                transition: all 0.2s ease !important;
-                text-transform: uppercase !important;
-
-                &.active {
-                    background: #fff !important;
-                    color: #1e293b !important;
-                    font-weight: 700 !important;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-                }
-            }
-        }
-
-        // Segmented Controls (Customizations)
-        .segmented-control {
-            display: flex !important;
+        select,
+        .white-bg-input:where(select) {
+            width: 100% !important;
+            padding: 10px 30px 10px 14px !important;
+            background: #ffffff !important;
             border: 1px solid #dee5e7 !important;
             border-radius: 8px !important;
-            overflow: hidden !important;
-            margin-top: 6px !important;
+            color: #58666e !important;
+            font-size: 0.95rem !important;
+            transition: border-color .2s !important;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, .05) !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 0.75rem center !important;
+            background-size: 1rem !important;
+            cursor: pointer !important;
 
-            button {
-                flex: 1 !important;
-                padding: 3px !important;
-                font-size: 12px !important;
-                font-weight: 600 !important;
-                border: none !important;
-                border-right: 1px solid #dee5e7 !important;
-                background-color: #fff !important;
+            &:focus {
+                outline: none !important;
+                border-color: #1c2e4a !important;
+                box-shadow: 0 0 0 3px rgba(125, 150, 171, 0.1) !important;
+            }
+        }
+    }
+
+    // Toggle Containers
+    .toggle-container {
+        display: flex !important;
+        background: #f1f5f9 !important;
+        border-radius: 10px !important;
+        padding: 4px !important;
+        border: 1px solid #dee5e7 !important;
+        margin-top: 6px !important;
+
+        .toggle-option {
+            flex: 1 !important;
+            text-align: center !important;
+            padding: 10px 0 !important;
+            cursor: pointer !important;
+            border-radius: 8px !important;
+            font-size: 0.85rem !important;
+            font-weight: 600 !important;
+            color: #58666e !important;
+            transition: all 0.2s ease !important;
+            text-transform: uppercase !important;
+
+            &.active {
+                background: #fff !important;
+                color: #1e293b !important;
+                font-weight: 700 !important;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+            }
+        }
+    }
+
+    // Segmented Controls (Customizations)
+    .segmented-control {
+        display: flex !important;
+        border: 1px solid #dee5e7 !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
+        margin-top: 6px !important;
+
+        button {
+            flex: 1 !important;
+            padding: 3px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            border: none !important;
+            border-right: 1px solid #dee5e7 !important;
+            background-color: #fff !important;
+            color: #58666e !important;
+            cursor: pointer !important;
+            text-transform: none !important;
+
+            &:last-child {
+                border-right: none !important;
+            }
+
+            &.active {
+                background: #f1f5f9 !important;
+                color: #1e293b !important;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+            }
+        }
+    }
+
+    // Action Buttons Group (Customizations)
+    .action-buttons-group {
+        display: flex !important;
+        gap: 0.4rem !important;
+        flex-wrap: wrap !important;
+        margin-top: 1rem !important;
+
+        .btn-outline-action {
+            flex: 1 !important;
+            min-width: 95px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 5px !important;
+            padding: 3px !important;
+            border: 1px solid !important;
+            border-color: #dee5e7 #dee5e7 #d8e1e3 !important;
+            border-radius: 6px !important;
+            background-color: #fff !important;
+            color: #58666e !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            text-transform: none !important;
+            cursor: pointer !important;
+            box-shadow: 0 1px 1px rgba(90, 90, 90, .1) !important;
+
+            i {
+                font-size: 0.9rem !important;
+                color: #4b5563 !important;
+            }
+
+            &:hover {
+                background: #f9fafb !important;
+                border-color: #9ca3af !important;
+            }
+        }
+    }
+
+    .date-display-green {
+        margin-top: 1.5rem !important;
+        color: #34d399 !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+    }
+
+    // 📈 Progress Behavior Specifics
+    .progress-behavior-group {
+        .behavior-section {
+            .behavior-title {
+                font-size: 0.95rem !important;
+                font-weight: 700 !important;
                 color: #58666e !important;
+                margin-bottom: 1rem !important;
+                line-height: 1.4 !important;
+                display: block !important;
+            }
+
+            &.mt-4 {
+                margin-top: 2rem !important;
+            }
+
+            .premium-radio-container {
+                display: block !important;
+                position: relative !important;
+                padding-left: 28px !important;
+                margin-bottom: 1.25rem !important;
                 cursor: pointer !important;
-                text-transform: none !important;
+                font-size: 0.9rem !important;
+                user-select: none !important;
+                color: #4b5563 !important;
 
                 &:last-child {
-                    border-right: none !important;
+                    margin-bottom: 0 !important;
                 }
 
-                &.active {
-                    background: #f1f5f9 !important;
-                    color: #1e293b !important;
-                    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05) !important;
-                }
-            }
-        }
-
-        // Action Buttons Group (Customizations)
-        .action-buttons-group {
-            display: flex !important;
-            gap: 0.4rem !important;
-            flex-wrap: wrap !important;
-            margin-top: 1rem !important;
-
-            .btn-outline-action {
-                flex: 1 !important;
-                min-width: 95px !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 5px !important;
-                padding: 3px !important;
-                border: 1px solid !important;
-                border-color: #dee5e7 #dee5e7 #d8e1e3 !important;
-                border-radius: 6px !important;
-                background-color: #fff !important;
-                color: #58666e !important;
-                font-size: 12px !important;
-                font-weight: 600 !important;
-                text-transform: none !important;
-                cursor: pointer !important;
-                box-shadow: 0 1px 1px rgba(90, 90, 90, .1) !important;
-
-                i {
-                    font-size: 0.9rem !important;
-                    color: #4b5563 !important;
-                }
-
-                &:hover {
-                    background: #f9fafb !important;
-                    border-color: #9ca3af !important;
-                }
-            }
-        }
-
-        .date-display-green {
-            margin-top: 1.5rem !important;
-            color: #34d399 !important;
-            font-size: 0.95rem !important;
-            font-weight: 500 !important;
-        }
-
-        // 📈 Progress Behavior Specifics
-        .progress-behavior-group {
-            .behavior-section {
-                .behavior-title {
-                    font-size: 0.95rem !important;
-                    font-weight: 700 !important;
-                    color: #58666e !important;
-                    margin-bottom: 1rem !important;
-                    line-height: 1.4 !important;
-                    display: block !important;
-                }
-
-                &.mt-4 {
-                    margin-top: 2rem !important;
-                }
-
-                .premium-radio-container {
-                    display: block !important;
-                    position: relative !important;
-                    padding-left: 28px !important;
-                    margin-bottom: 1.25rem !important;
+                input {
+                    position: absolute !important;
+                    opacity: 0 !important;
                     cursor: pointer !important;
-                    font-size: 0.9rem !important;
-                    user-select: none !important;
-                    color: #4b5563 !important;
+                    height: 0 !important;
+                    width: 0 !important;
 
-                    &:last-child {
-                        margin-bottom: 0 !important;
-                    }
-
-                    input {
-                        position: absolute !important;
-                        opacity: 0 !important;
-                        cursor: pointer !important;
-                        height: 0 !important;
-                        width: 0 !important;
-
-                        &:checked~.checkmark {
-                            background-color: #fff !important;
-                            border-color: #1c2e4a !important;
-
-                            &:after {
-                                display: block !important;
-                            }
-                        }
-                    }
-
-                    .checkmark {
-                        position: absolute !important;
-                        top: 2px !important;
-                        left: 0 !important;
-                        height: 18px !important;
-                        width: 18px !important;
+                    &:checked~.checkmark {
                         background-color: #fff !important;
-                        border: 2px solid #d1d5db !important;
-                        border-radius: 50% !important;
-                        transition: all 0.2s !important;
+                        border-color: #1c2e4a !important;
 
                         &:after {
-                            content: "" !important;
-                            position: absolute !important;
-                            display: none !important;
-                            top: 3px !important;
-                            left: 3px !important;
-                            width: 8px !important;
-                            height: 8px !important;
-                            border-radius: 50% !important;
-                            background: #1c2e4a !important;
+                            display: block !important;
                         }
-                    }
-
-                    .radio-label {
-                        line-height: 1.5 !important;
-                        display: inline-block !important;
-
-                        strong {
-                            font-weight: 700 !important;
-                            color: #1e293b !important;
-                        }
-
-                        color: #64748b !important; // Description part
-                    }
-
-                    &:hover .checkmark {
-                        border-color: #1c2e4a !important;
                     }
                 }
 
-                // Progress percentage input field
-                .progress-input-wrapper {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin-top: 0.5rem;
+                .checkmark {
+                    position: absolute !important;
+                    top: 2px !important;
+                    left: 0 !important;
+                    height: 18px !important;
+                    width: 18px !important;
+                    background-color: #fff !important;
+                    border: 2px solid #d1d5db !important;
+                    border-radius: 50% !important;
+                    transition: all 0.2s !important;
 
-                    .progress-percentage-input {
-                        flex: 1;
-                        padding: 0.75rem;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 6px;
-                        font-size: 0.95rem;
-                        font-weight: 600;
-                        color: #1e293b;
-                        background: white;
-                        transition: all 0.2s;
+                    &:after {
+                        content: "" !important;
+                        position: absolute !important;
+                        display: none !important;
+                        top: 3px !important;
+                        left: 3px !important;
+                        width: 8px !important;
+                        height: 8px !important;
+                        border-radius: 50% !important;
+                        background: #1c2e4a !important;
+                    }
+                }
 
-                        &:focus {
-                            outline: none;
-                            border-color: #1c2e4a;
-                            box-shadow: 0 0 0 3px rgba(28, 46, 74, 0.1);
-                        }
+                .radio-label {
+                    line-height: 1.5 !important;
+                    display: inline-block !important;
 
-                        &::placeholder {
-                            color: #cbd5e1;
-                            font-weight: 400;
-                        }
+                    strong {
+                        font-weight: 700 !important;
+                        color: #1e293b !important;
                     }
 
-                    .percentage-symbol {
-                        font-size: 1rem;
-                        font-weight: 600;
-                        color: #64748b;
-                        user-select: none;
+                    color: #64748b !important; // Description part
+                }
+
+                &:hover .checkmark {
+                    border-color: #1c2e4a !important;
+                }
+            }
+
+            // Progress percentage input field
+            .progress-input-wrapper {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 0.5rem;
+
+                .progress-percentage-input {
+                    flex: 1;
+                    padding: 0.75rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+                    font-size: 0.95rem;
+                    font-weight: 600;
+                    color: #1e293b;
+                    background: white;
+                    transition: all 0.2s;
+
+                    &:focus {
+                        outline: none;
+                        border-color: #1c2e4a;
+                        box-shadow: 0 0 0 3px rgba(28, 46, 74, 0.1);
                     }
+
+                    &::placeholder {
+                        color: #cbd5e1;
+                        font-weight: 400;
+                    }
+                }
+
+                .percentage-symbol {
+                    font-size: 1rem;
+                    font-weight: 600;
+                    color: #64748b;
+                    user-select: none;
                 }
             }
         }
@@ -3325,11 +3363,25 @@ $radius-sm: 8px;
 
                             input[type="text"],
                             input[type="number"],
-                            input[type="date"],
+                            input[type="date"] {
+                                @include input-base;
+                                background: white;
+                                font-size: 1rem;
+                            }
+
                             select {
                                 @include input-base;
                                 background: white;
                                 font-size: 1rem;
+                                appearance: none !important;
+                                -webkit-appearance: none !important;
+                                -moz-appearance: none !important;
+                                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+                                background-repeat: no-repeat !important;
+                                background-position: right 1rem center !important;
+                                background-size: 1rem !important;
+                                padding-right: 2.5rem !important;
+                                cursor: pointer;
                             }
 
                             .radio-group-modern {

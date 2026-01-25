@@ -39,7 +39,10 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
     is_public: true
   };
 
+  formErrors: any = {};
+
   inviteCodeInput: string = '';
+  todayStr: string = new Date().toISOString().split('T')[0];
 
   constructor(
     private apiService: ApiService,
@@ -263,17 +266,53 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
   }
 
   createChallenge() {
-    if (!this.newChallenge.name || !this.newChallenge.description || !this.newChallenge.start_date || !this.newChallenge.end_date) {
+    this.formErrors = {};
+    const errors: any = {};
+
+    // Client-side validation
+    if (!this.newChallenge.name || this.newChallenge.name.trim().length < 3) {
+      errors.name = 'Challenge name must be at least 3 characters';
+    }
+    if (!this.newChallenge.description || this.newChallenge.description.trim().length < 10) {
+      errors.description = 'Description must be at least 10 characters';
+    }
+    if (!this.newChallenge.start_date) {
+      errors.start_date = 'Start date is required';
+    } else {
+      const start = new Date(this.newChallenge.start_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (start < today) {
+        errors.start_date = 'Start date must be today or future';
+      }
+    }
+    if (!this.newChallenge.end_date) {
+      errors.end_date = 'End date is required';
+    } else if (this.newChallenge.start_date) {
+      const start = new Date(this.newChallenge.start_date);
+      const end = new Date(this.newChallenge.end_date);
+      if (end <= start) {
+        errors.end_date = 'End date must be after start date';
+      }
+    }
+    if (!this.newChallenge.goal_amount || this.newChallenge.goal_amount <= 0) {
+      errors.goal_amount = 'Goal amount must be positive';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      this.formErrors = errors;
+      this.notificationService.showError('Please fix the validation errors');
       return;
     }
 
     this.isSubmitting = true;
+    this.cdr.detectChanges();
 
     const payload = {
       title: this.newChallenge.name,
       description: this.newChallenge.description,
-      type: this.newChallenge.goal_type,
-      target_words: this.newChallenge.goal_amount,
+      goal_type: this.newChallenge.goal_type,
+      goal_amount: this.newChallenge.goal_amount,
       start_date: this.newChallenge.start_date,
       end_date: this.newChallenge.end_date,
       is_public: this.newChallenge.is_public
@@ -286,15 +325,29 @@ export class GroupChallengesComponent implements OnInit, OnDestroy {
         console.log('Challenge created:', response);
         if (response.success) {
           this.notificationService.showSuccess(response.message || 'Challenge created successfully!');
+          this.closeModal();
+          this.resetForm();
+          this.loadActiveChallenges();
+
+          if (response.id) {
+            setTimeout(() => {
+              this.router.navigate(['/challenge', response.id]);
+            }, 1000);
+          }
+        } else {
+          this.notificationService.showError(response.message || 'Failed to create challenge');
         }
         this.isSubmitting = false;
-        this.closeModal();
-        this.resetForm();
-        this.loadActiveChallenges();
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error creating challenge:', error);
+        if (error.error?.errors) {
+          this.formErrors = error.error.errors;
+        }
+        this.notificationService.showError(error.error?.message || 'Failed to create challenge');
         this.isSubmitting = false;
+        this.cdr.detectChanges();
       }
     });
   }

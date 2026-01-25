@@ -144,45 +144,57 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label>Challenge Name *</label>
-                    <input type="text" [(ngModel)]="newChallenge.name" placeholder="e.g. NaNoWriMo 2026">
+                    <input type="text" [(ngModel)]="newChallenge.name" placeholder="e.g. NaNoWriMo 2026"
+                        [class.is-invalid]="formErrors.title || formErrors.name">
+                    <div class="error-text" *ngIf="formErrors.title || formErrors.name">{{ formErrors.title ||
+                        formErrors.name }}</div>
                 </div>
 
                 <div class="form-group">
-                    <label>Description</label>
-                    <textarea [(ngModel)]="newChallenge.description" rows="3"
-                        placeholder="What's this challenge about?"></textarea>
+                    <label>Description *</label>
+                    <textarea [(ngModel)]="newChallenge.description" rows="3" placeholder="What's this challenge about?"
+                        [class.is-invalid]="formErrors.description"></textarea>
+                    <div class="error-text" *ngIf="formErrors.description">{{ formErrors.description }}</div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group half">
                         <label>Start Date *</label>
-                        <input type="date" [(ngModel)]="newChallenge.start_date">
+                        <input type="date" [(ngModel)]="newChallenge.start_date"
+                            [class.is-invalid]="formErrors.start_date" [min]="todayStr">
+                        <div class="error-text" *ngIf="formErrors.start_date">{{ formErrors.start_date }}</div>
                     </div>
                     <div class="form-group half">
                         <label>End Date *</label>
-                        <input type="date" [(ngModel)]="newChallenge.end_date">
+                        <input type="date" [(ngModel)]="newChallenge.end_date" [class.is-invalid]="formErrors.end_date"
+                            [min]="newChallenge.start_date || todayStr">
+                        <div class="error-text" *ngIf="formErrors.end_date">{{ formErrors.end_date }}</div>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group half">
                         <label>Goal Type</label>
-                        <select [(ngModel)]="newChallenge.goal_type">
-                            <option value="word_count">Total Word Count</option>
-                            <option value="daily_avg">Daily Average</option>
-                            <option value="time">Time Spent</option>
+                        <select [(ngModel)]="newChallenge.goal_type" [class.is-invalid]="formErrors.goal_type">
+                            <option value="word_count">Word Count</option>
+                            <option value="time_based">Time Based (minutes)</option>
+                            <option value="task_based">Task Based (number of tasks)</option>
                         </select>
+                        <div class="error-text" *ngIf="formErrors.goal_type">{{ formErrors.goal_type }}</div>
                     </div>
                     <div class="form-group half">
                         <label>Goal Amount</label>
-                        <input type="number" [(ngModel)]="newChallenge.goal_amount">
+                        <input type="number" [(ngModel)]="newChallenge.goal_amount"
+                            [class.is-invalid]="formErrors.goal_amount">
+                        <div class="error-text" *ngIf="formErrors.goal_amount">{{ formErrors.goal_amount }}</div>
                     </div>
                 </div>
 
-                <div class="form-group checkbox">
-                    <label>
+                <div class="form-group checkbox-group">
+                    <label class="custom-checkbox">
                         <input type="checkbox" [(ngModel)]="newChallenge.is_public">
-                        Public Challenge (Anyone can join)
+                        <span class="checkmark-box"></span>
+                        <span class="label-text">Public Challenge (Anyone can join)</span>
                     </label>
                 </div>
             </div>
