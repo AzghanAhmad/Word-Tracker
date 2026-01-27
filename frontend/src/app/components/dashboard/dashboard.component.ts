@@ -120,7 +120,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
               .map((p: any) => {
                 const color = (p.dashboard_color || p.color_code || '#1C2E4A').trim();
                 const validColor = color && color.length > 0 && color.startsWith('#') ? color : '#1C2E4A';
-                const progress = p.current_progress || (p.target_amount > 0 ? Math.round((p.completed_amount / p.target_amount) * 100) : 0);
+                // Calculate progress from current_progress percentage or default to 0
+                const progress = p.current_progress || 0;
+                
+                // Calculate completed amount from progress percentage and target
+                const calculatedCompletedAmount = p.target_amount > 0 ? Math.round((progress / 100) * p.target_amount) : 0;
 
                 // Normalize status for display
                 let displayStatus = p.status || 'In Progress';
@@ -134,9 +138,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                   ...p,
                   plan_name: p.title || p.plan_name || 'Untitled Plan',
                   progress: progress,
-                  completed_amount: (p.current_progress && p.current_progress > 0)
-                    ? Math.max(p.completed_amount, Math.round((p.current_progress / 100) * p.target_amount))
-                    : p.completed_amount,
+                  completed_amount: calculatedCompletedAmount,
                   color_code: validColor, // Ensure color is never empty
                   dashboard_color: validColor,
                   status: displayStatus
@@ -231,7 +233,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           activePlans++;
         }
         
-        // Sum up completed words from all plans
+        // Sum up completed words from all plans using calculated completed amount
         const completedAmount = plan.completed_amount || 0;
         totalWords += completedAmount;
       });
