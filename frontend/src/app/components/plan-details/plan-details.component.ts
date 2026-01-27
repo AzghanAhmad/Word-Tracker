@@ -133,7 +133,8 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
         statusLabel: 'On Track',
         statusColor: 'var(--primary-accent)',
         completionRate: 0,
-        dailyTargetMet: 0
+        dailyTargetMet: 0,
+        timeRemainingPercent: 0
     };
 
 
@@ -727,6 +728,12 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
             : 0;
 
         newExtendedStats.completionRate = newPlan.progress;
+
+        // Time Remaining %
+        const totalDuration = Math.ceil((end - start) / (1000 * 3600 * 24));
+        newExtendedStats.timeRemainingPercent = totalDuration > 0
+            ? Math.round((newStats.daysRemaining / totalDuration) * 100)
+            : 0;
 
         // Assign all changes at once to avoid change detection errors
         this.stats = newStats;

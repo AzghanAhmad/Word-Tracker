@@ -6,6 +6,18 @@
         </button>
     </div>
 
+    <div class="feature-explanation" *ngIf="!showCreateForm && !showEditForm">
+        <div class="explanation-icon">
+            <i class="fas fa-sitemap"></i>
+        </div>
+        <div class="explanation-content">
+            <h3>Boost Your Team's Productivity</h3>
+            <p>Organization Plans allow teams to collaborate on writing projects. Create shared project spaces, set
+                aggregate deadlines, and track the collective progress of your organization's goals. Projects can be
+                public within the organization or private to specific group members.</p>
+        </div>
+    </div>
+
     <!-- Error Message -->
     <div class="error-message" *ngIf="errorMessage">
         <i class="fas fa-exclamation-circle"></i>

@@ -28,8 +28,22 @@ export class CommunityComponent implements OnInit {
   selectedActivity: string = 'Any';
   selectedContent: string = 'Any';
 
-  activities = ['Any', 'Writing', 'Editing', 'Proofreading', 'Revising'];
-  contentTypes = ['Any', 'Novel', 'Short Story', 'Thesis', 'Blog', 'Essay', 'Script', 'Non-Fiction', 'Book'];
+  activities = [
+    'Any', 'Admin', 'Crafting', 'Drafting', 'Editing', 'Grading', 'Losing',
+    'Marketing', 'Narrating', 'Plotting', 'Proofreading', 'Publishing',
+    'Reading', 'Recording', 'Release', 'Revision', 'Running', 'Saving',
+    'Setup', 'Spending', 'Study', 'Training', 'Transcription', 'Translation',
+    'Watching', 'Winning', 'Work', 'Writing'
+  ];
+  contentTypes = [
+    'Any', 'Audiobook', 'Blog Post', 'Book', 'Chapbook', 'Comics', 'Conference Paper',
+    'Diary', 'Dissertation', 'Documentation', 'Essay', 'Fiction', 'Game', 'Grant',
+    'Home', 'Journal', 'Journal Paper', 'Magazine Article', 'Manuals', 'Manuscript',
+    'Marathon', 'Money', 'Movie', 'Newsletter', 'Newspaper Article', 'Non-Fiction',
+    'Novel', 'Novella', 'Other', 'Paper', 'Personal', 'Poem', 'Practice', 'Project',
+    'Proposal', 'Screenplay', 'Script', 'Short Story', 'Speech', 'TV', 'Technical Document',
+    'Textbook', 'Thesis', 'Video', 'Website', 'Weight', 'Work', 'Workout'
+  ];
 
   constructor(
     private apiService: ApiService,

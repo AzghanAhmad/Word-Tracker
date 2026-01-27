@@ -257,7 +257,7 @@ if (frontendPath != null)
 var finalPort = Environment.GetEnvironmentVariable("PORT") ?? "5200";
 var url = $"http://0.0.0.0:{finalPort}";
 
-Console.WriteLine($"🚀 Word Tracker API starting on {url}");
+Console.WriteLine($"🚀 AuthorFlow API starting on {url}");
 Console.WriteLine($"📊 Database: {dbName}");
 Console.WriteLine($"🔐 JWT Secret: {(secret.Length > 20 ? secret.Substring(0, 20) + "..." : secret)}");
 Console.WriteLine($"🔗 Connection String: {(connectionString.Contains("Password=") ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" : connectionString)}");

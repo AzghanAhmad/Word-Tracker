@@ -1,5 +1,5 @@
 @echo off
-echo Building Word Tracker Backend (C#)...
+echo Building AuthorFlow Backend (C#)...
 "C:\Program Files\dotnet\dotnet.exe" build
 if %errorlevel% neq 0 (
     echo Build failed.

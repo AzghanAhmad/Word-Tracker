@@ -1,4 +1,4 @@
-// Calendar Page Component for Word Tracker
+// Calendar Page Component for AuthorFlow
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';

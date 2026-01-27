@@ -245,6 +245,7 @@ h4 {
             border-radius: $radius-full;
             font-size: 0.875rem;
             margin-bottom: $spacing-lg;
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             color: $gray-300;
 
@@ -345,6 +346,7 @@ h4 {
                 border-radius: $radius-lg;
                 overflow: hidden;
                 box-shadow: $shadow-2xl;
+                -webkit-backdrop-filter: blur(20px);
                 backdrop-filter: blur(20px);
 
                 @media (max-width: 968px) {

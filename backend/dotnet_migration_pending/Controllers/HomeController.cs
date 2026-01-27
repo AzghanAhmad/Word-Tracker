@@ -18,7 +18,7 @@ public class HomeController : ControllerBase
     {
         return Ok(new
         {
-            message = "Word Tracker API",
+            message = "AuthorFlow API",
             version = "1.0.0",
             status = "running",
             endpoints = new
