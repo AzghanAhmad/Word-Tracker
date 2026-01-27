@@ -3,7 +3,8 @@
     <div class="page-header">
         <h1>Your Account Details</h1>
         <p class="subtitle">Site-wide account information and settings. <strong>AuthorFlow</strong> is a product of
-            <strong>ScribeCount</strong>.</p>
+            <strong>ScribeCount</strong>.
+        </p>
     </div>
 
     <!-- Success/Error Messages -->
@@ -80,10 +81,10 @@
                 <div class="setting-row">
                     <div class="setting-label">PLANS & CHALLENGES</div>
                     <div class="setting-value">
-                        <p class="value-text">You're tracking <strong>{{ activePlansCount }}</strong> plan{{
-                            activePlansCount !== 1 ? 's' : '' }} on Word Tracker. <a href="javascript:void(0)"
+                        <p class="value-text">You're tracking <strong>{{ totalPlansCount }}</strong> plan{{
+                            totalPlansCount !== 1 ? 's' : '' }} on AuthorFlow. <a href="javascript:void(0)"
                                 class="inline-link" (click)="viewDashboard()">See Your Dashboard</a>.</p>
-                        <p class="note-text">You can track unlimited plans and projects on Word Tracker.</p>
+                        <p class="note-text">You can track unlimited plans and projects on AuthorFlow.</p>
                     </div>
                 </div>
             </div>

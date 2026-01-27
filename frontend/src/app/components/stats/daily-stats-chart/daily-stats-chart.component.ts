@@ -136,8 +136,8 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                     {
                         label: 'Planned Target',
                         data: targets,
-                        backgroundColor: '#f1f5f9',
-                        borderColor: '#e2e8f0',
+                        backgroundColor: '#0098DE20',
+                        borderColor: '#0098DE',
                         borderWidth: 1,
                         borderRadius: 4,
                         barPercentage: 0.8,
@@ -176,7 +176,7 @@ export class DailyStatsChartComponent implements AfterViewInit, OnChanges, OnDes
                     {
                         label: 'Planned Target',
                         data: targets,
-                        borderColor: '#e2e8f0',
+                        borderColor: '#0098DE',
                         borderWidth: 2,
                         borderDash: [5, 5],
                         pointRadius: 0,

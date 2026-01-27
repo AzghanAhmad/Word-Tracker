@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo Word Tracker Backend (C# .NET)
+echo AuthorFlow Backend (C# .NET)
 echo ========================================
 echo.
 

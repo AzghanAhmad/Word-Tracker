@@ -1,4 +1,19 @@
 <div class="community-container">
+    <div class="header">
+        <h2>Community Plans</h2>
+    </div>
+
+    <div class="feature-explanation">
+        <div class="explanation-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="explanation-content">
+            <h3>Learn from Fellow Authors</h3>
+            <p>Community Plans are public templates shared by other writers. Explore how others structure their goals,
+                compare different writing strategies, and use these plans as inspiration for your own projects. You can
+                share your own plans by making them "Public" in your plan settings.</p>
+        </div>
+    </div>
 
     <!-- Loading State -->
     <app-content-loader *ngIf="isLoading"></app-content-loader>
@@ -47,7 +62,8 @@
                             <circle [attr.cx]="point.x" [attr.cy]="point.y" r="3" class="visible-dot" />
 
                             <!-- Hit Area (transparent target) -->
-                            <circle [attr.cx]="point.x" [attr.cy]="point.y" r="10" fill="transparent" class="hit-area" />
+                            <circle [attr.cx]="point.x" [attr.cy]="point.y" r="10" fill="transparent"
+                                class="hit-area" />
 
                             <!-- Tooltip -->
                             <g class="tooltip-box">
@@ -83,8 +99,7 @@
             <div class="page-numbers" style="display: flex; gap: 0.5rem;">
                 <ng-container *ngFor="let page of getPages()">
                     <button *ngIf="page !== '...'" class="page-num" [class.active]="currentPage === page"
-                        (click)="setPage(page)"
-                        [style.background]="currentPage === page ? '#1C2E4A' : 'white'"
+                        (click)="setPage(page)" [style.background]="currentPage === page ? '#1C2E4A' : 'white'"
                         [style.color]="currentPage === page ? 'white' : '#1e293b'"
                         style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; cursor: pointer;">
                         {{ page }}

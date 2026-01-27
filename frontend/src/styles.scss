@@ -1,5 +1,5 @@
 /* ===========================================
-   WORD TRACKER - Global Styles (Fully Responsive)
+   AUTHORFLOW - Global Styles (Fully Responsive)
    =========================================== */
 
 @import "quill/dist/quill.snow.css";
@@ -164,18 +164,18 @@ select {
     font-family: inherit;
     font-size: inherit;
     -webkit-appearance: none;
-    /* Remove default styling on iOS */
     -moz-appearance: none;
     appearance: none;
     border: 1px solid var(--border-color);
     width: 100%;
     background-color: #ffffff;
     color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 
     &::placeholder {
         color: #999999;
         opacity: 1;
-        /* Firefox */
     }
 }
 
@@ -192,8 +192,9 @@ select {
 }
 
 /* ==========================================
-   SCROLLBAR STYLING (Modern)
+   SCROLLBAR STYLING (Universal Support)
    ========================================== */
+/* Webkit Browsers (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -206,11 +207,19 @@ select {
 ::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 4px;
+    border: 2px solid #f1f1f1;
+    /* Padding effect around thumb */
     transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+/* Firefox Support */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
 }
 
 /* ==========================================

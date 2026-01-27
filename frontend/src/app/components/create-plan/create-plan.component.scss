@@ -226,6 +226,7 @@ $radius-sm: 8px;
         position: sticky;
         top: 80px;
         z-index: 100;
+        -webkit-backdrop-filter: blur(12px);
         backdrop-filter: blur(12px);
 
         .title-section {
@@ -1046,6 +1047,7 @@ $radius-sm: 8px;
                             .chart-tooltip {
                                 position: absolute;
                                 background: rgba(255, 255, 255, 0.95);
+                                -webkit-backdrop-filter: blur(8px);
                                 backdrop-filter: blur(8px);
                                 color: #1e293b;
                                 padding: 12px 16px;

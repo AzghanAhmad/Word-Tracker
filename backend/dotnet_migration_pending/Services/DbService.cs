@@ -3344,8 +3344,8 @@ public class DbService : IDbService
             using var cmd = conn.CreateCommand();
             cmd.Parameters.AddWithValue("@u", userId);
             
-            // Total Plans - count all visible plans (excluding archived) for the user
-            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u AND (status IS NULL OR status != 'archived')";
+            // Total Plans - count ALL plans for the user (including archived)
+            cmd.CommandText = "SELECT COUNT(*) FROM plans WHERE user_id=@u";
             var totalPlans = Convert.ToInt32(cmd.ExecuteScalar());
             
             // Active Plans - include active and completed plans, exclude archived
@@ -3354,8 +3354,11 @@ public class DbService : IDbService
                                AND COALESCE(status, 'active') != 'archived'";
             var activePlans = Convert.ToInt32(cmd.ExecuteScalar());
             
-            // Total Words - sum of completed_amount from all plans (Source of truth for total progress)
-            cmd.CommandText = "SELECT COALESCE(SUM(completed_amount), 0) FROM plans WHERE user_id=@u";
+            // Total Words - sum of actual_count from plan_days for all user's plans
+            cmd.CommandText = @"SELECT COALESCE(SUM(pd.actual_count), 0) 
+                               FROM plan_days pd 
+                               JOIN plans p ON pd.plan_id = p.id 
+                               WHERE p.user_id = @u";
             var totalWords = Convert.ToInt64(cmd.ExecuteScalar());
             
             // Completed Plans - count plans with status='completed'
@@ -4079,8 +4082,12 @@ public class DbService : IDbService
             
             Console.WriteLine($"✓ Final streak: {currentStreak} days");
             
-            // Calculate weekly average (last 90 days = ~12.86 weeks)
-            var weeklyAvg = totalWords > 0 ? (int)Math.Round(totalWords / 12.86) : 0;
+            // Calculate proper weekly average based on actual time period
+            var daysSinceReg = Math.Max(1, (int)(DateTime.Today - registrationDate).TotalDays + 1);
+            var weeksSinceReg = Math.Max(1, daysSinceReg / 7.0);
+            var weeklyAvg = totalWords > 0 ? (int)Math.Round(totalWords / weeksSinceReg) : 0;
+            
+            Console.WriteLine($"📊 Weekly avg calculation: {totalWords} total words / {weeksSinceReg:F1} weeks = {weeklyAvg} words/week");
             
             var stats = new Dictionary<string, object>
             {

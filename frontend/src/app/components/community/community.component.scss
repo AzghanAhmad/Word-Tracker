@@ -15,6 +15,60 @@
     margin: 0 auto;
     font-family: 'Inter', sans-serif;
 
+    .header {
+        margin-bottom: 2rem;
+
+        h2 {
+            margin: 0;
+            color: #1e293b;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    }
+
+    .feature-explanation {
+        display: flex;
+        gap: 1.5rem;
+        background: linear-gradient(to right, #f8fafc, #f0fdf4);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        align-items: center;
+
+        .explanation-icon {
+            width: 54px;
+            height: 54px;
+            background: #ffffff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #10b981; // Green
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .explanation-content {
+            h3 {
+                margin: 0 0 0.5rem 0;
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #1e293b;
+                letter-spacing: -0.01em;
+            }
+
+            p {
+                margin: 0;
+                font-size: 0.95rem;
+                line-height: 1.6;
+                color: #64748b;
+                max-width: 800px;
+            }
+        }
+    }
+
     .filter-bar {
         display: flex;
         gap: 2rem;
@@ -44,6 +98,8 @@
                     font-size: 0.95rem;
                     color: #334155;
                     cursor: pointer;
+                    -webkit-appearance: none;
+                    -moz-appearance: none;
                     appearance: none;
                     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
                     background-repeat: no-repeat;

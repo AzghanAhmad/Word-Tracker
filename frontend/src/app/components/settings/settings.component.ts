@@ -34,7 +34,7 @@ export class SettingsComponent implements OnInit {
     weekStartOptions = ['Monday', 'Sunday'];
 
     // Plans tracking
-    activePlansCount: number = 0;
+    totalPlansCount: number = 0;
     templatesCount: number = 0;
 
     // Email reminders
@@ -168,7 +168,7 @@ export class SettingsComponent implements OnInit {
         this.apiService.getDashboardStats().subscribe({
             next: (response) => {
                 if (response.success && response.data) {
-                    this.activePlansCount = response.data.activePlans || 0;
+                    this.totalPlansCount = response.data.totalPlans || 0;
                 }
                 this.cdr.detectChanges();
             },

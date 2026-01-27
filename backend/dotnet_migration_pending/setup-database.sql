@@ -1,4 +1,4 @@
--- Word Tracker Database Setup Script
+-- AuthorFlow Database Setup Script
 -- Run this script in phpMyAdmin or MySQL command line to set up the database
 
 CREATE DATABASE IF NOT EXISTS word_tracker;
