@@ -27,9 +27,7 @@ var secret = jwtSecretEnv
     ?? jwtSecretConfig 
     ?? "dev_secret_must_be_at_least_32_bytes_long_for_hs256_security_algorithm"; // Fallback must be long enough
 
-var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION") 
-    ?? builder.Configuration.GetConnectionString("Default") 
-    ?? "";
+var connectionString = ConnectionStringResolver.Resolve(builder.Configuration);
 
 // Ensure connection string has zero date handling parameters
 if (!string.IsNullOrEmpty(connectionString) && !connectionString.Contains("AllowZeroDateTime"))

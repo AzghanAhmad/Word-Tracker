@@ -1571,15 +1571,13 @@ public class DbService : IDbService
         {
             Console.WriteLine($"📝 Logging progress for plan {planId}, user {userId}, date {date}: {actualCount} words, target: {targetCount ?? 0}");
             
-            // Validate date format - parse as UTC since frontend sends UTC-based date strings
+            // Validate date format (YYYY-MM-DD from frontend — calendar date, not UTC instant)
             if (!DateTime.TryParse(date, out var parsedDate))
             {
                 _lastError = $"Invalid date format: {date}";
                 Console.WriteLine($"✗ {_lastError}");
                 return false;
             }
-            // Assume the date string represents UTC (calendar date)
-            parsedDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
             
             using var conn = new MySqlConnection(_connectionString);
             conn.Open();
