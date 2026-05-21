@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using WordTracker.Api;
 using WordTracker.Api.Services;
 using WordTracker.Api.Middleware;
 
