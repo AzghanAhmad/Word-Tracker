@@ -8,6 +8,7 @@ import { ContentLoaderComponent } from '../content-loader/content-loader.compone
 import { OutputStatsChartComponent, WordEntry } from '../stats/output-stats-chart/output-stats-chart.component';
 
 import { Subscription, filter } from 'rxjs';
+import { formatDateKeyLocal } from '../../utils/date-key.util';
 
 @Component({
     selector: 'app-plan-details',
@@ -328,12 +329,7 @@ export class PlanDetailsComponent implements OnInit, OnDestroy {
     // Helper function to format date as YYYY-MM-DD in local timezone
     // This ensures dates match between progress page and schedule page
     private formatDateLocal(date: Date): string {
-        // UPDATED: Use local time instead of UTC to avoid timezone shifts
-        // This ensures consistency with Calendar and Create Plan pages
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return formatDateKeyLocal(date);
     }
 
     generateCalendarDays() {

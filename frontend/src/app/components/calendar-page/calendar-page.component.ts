@@ -9,6 +9,7 @@ import { environment } from '../../../environments/environment';
 import { ApiService } from '../../services/api.service';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
+import { formatDateKeyLocal, normalizeDateKeyFromApi } from '../../utils/date-key.util';
 
 @Component({
   selector: 'app-calendar-page',
@@ -270,24 +271,8 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           if (response.success && response.data) {
             const logs: { [key: string]: number } = {};
             response.data.forEach((d: any) => {
-              // Normalize date to YYYY-MM-DD format
-              let dateKey: string;
-
-              if (typeof d.date === 'string') {
-                if (d.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                  dateKey = d.date;
-                } else if (d.date.includes('T')) {
-                  const dateObj = new Date(d.date);
-                  dateKey = this.formatDateKey(dateObj);
-                } else {
-                  const dateObj = new Date(d.date);
-                  dateKey = this.formatDateKey(dateObj);
-                }
-              } else {
-                const dateObj = new Date(d.date);
-                dateKey = this.formatDateKey(dateObj);
-              }
-              // Sum up actual_count if multiple entries exist for the same date
+              const dateKey = normalizeDateKeyFromApi(d.date);
+              if (!dateKey) return;
               const actualCount = d.actual_count || d.actualCount || 0;
               logs[dateKey] = (logs[dateKey] || 0) + actualCount;
             });
@@ -337,25 +322,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
           plans.forEach((plan: any) => {
             if (plan.days && Array.isArray(plan.days)) {
               plan.days.forEach((day: any) => {
-                let dateKey: string | null = null;
-
-                if (day.date) {
-                  if (typeof day.date === 'string') {
-                    if (day.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                      dateKey = day.date;
-                    } else if (day.date.includes('T')) {
-                      const dateObj = new Date(day.date);
-                      dateKey = this.formatDateKey(dateObj);
-                    } else {
-                      const dateObj = new Date(day.date);
-                      dateKey = this.formatDateKey(dateObj);
-                    }
-                  }
-                  if (!dateKey) {
-                    try { dateKey = new Date(day.date).toISOString().split('T')[0]; } catch (e) { }
-                  }
-                }
-
+                const dateKey = normalizeDateKeyFromApi(day.date);
                 if (dateKey) {
                   const actualCount = (day.actual_count !== undefined) ? day.actual_count : (day.actualCount || 0);
                   allLogs[dateKey] = (allLogs[dateKey] || 0) + actualCount;
@@ -443,12 +410,7 @@ export class CalendarPageComponent implements OnInit, OnDestroy {
    * Formats date as YYYY-MM-DD for use as key
    */
   private formatDateKey(date: Date): string {
-    // UPDATED: Use local time instead of UTC to match PlanDetailsComponent logic
-    // This ensures that the dates displayed in Calendar match exactly with Plan Details
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatDateKeyLocal(date);
   }
 
   /**
