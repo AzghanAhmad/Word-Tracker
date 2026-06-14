@@ -1810,7 +1810,7 @@ public class DbService : IDbService
         }
     }
 
-    public int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items)
+    public int CreateChecklistWithItems(int userId, int? planId, string name, System.Text.Json.JsonElement[]? items, string? activityType = null, string? contentType = null, string? startDate = null, string? endDate = null, string? algorithmType = null)
     {
         _lastError = string.Empty;
         try
@@ -1838,10 +1838,16 @@ public class DbService : IDbService
                 // Create checklist
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = transaction;
-                cmd.CommandText = @"INSERT INTO checklists (user_id,plan_id,name,is_archived) VALUES (@u,@p,@n,0); SELECT LAST_INSERT_ID();";
+                cmd.CommandText = @"INSERT INTO checklists (user_id,plan_id,name,is_archived,activity_type,content_type,start_date,end_date,algorithm_type) 
+                                    VALUES (@u,@p,@n,0,@a_type,@c_type,@s_date,@e_date,@alg); SELECT LAST_INSERT_ID();";
                 cmd.Parameters.AddWithValue("@u", userId);
                 cmd.Parameters.AddWithValue("@p", planId ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@n", name);
+                cmd.Parameters.AddWithValue("@a_type", string.IsNullOrWhiteSpace(activityType) ? "Writing" : activityType);
+                cmd.Parameters.AddWithValue("@c_type", string.IsNullOrWhiteSpace(contentType) ? "Novel" : contentType);
+                cmd.Parameters.AddWithValue("@s_date", string.IsNullOrWhiteSpace(startDate) ? (object)DBNull.Value : startDate);
+                cmd.Parameters.AddWithValue("@e_date", string.IsNullOrWhiteSpace(endDate) ? (object)DBNull.Value : endDate);
+                cmd.Parameters.AddWithValue("@alg", string.IsNullOrWhiteSpace(algorithmType) ? "steadily" : algorithmType);
                 
                 Console.WriteLine($"   Executing INSERT INTO checklists...");
                 var idResult = cmd.ExecuteScalar();
@@ -1889,14 +1895,20 @@ public class DbService : IDbService
                             if (item.TryGetProperty("is_done", out var doneProp) || item.TryGetProperty("Is_done", out doneProp)) isCompleted |= parseBool(doneProp);
                             if (item.TryGetProperty("is_completed", out var compProp) || item.TryGetProperty("Is_completed", out compProp)) isCompleted |= parseBool(compProp);
                             if (item.TryGetProperty("checked", out var checkedProp) || item.TryGetProperty("Checked", out checkedProp)) isCompleted |= parseBool(checkedProp);
+                            string? dateStr = null;
+                            if (item.TryGetProperty("date", out var dateProp) || item.TryGetProperty("Date", out dateProp))
+                            {
+                                dateStr = dateProp.GetString();
+                            }
 
                             using var itemCmd = conn.CreateCommand();
                             itemCmd.Transaction = transaction;
-                            itemCmd.CommandText = @"INSERT INTO checklist_items (checklist_id,content,sort_order,is_completed) VALUES (@c,@x,@s,@d)";
+                            itemCmd.CommandText = @"INSERT INTO checklist_items (checklist_id,content,sort_order,is_completed,date) VALUES (@c,@x,@s,@d,@date)";
                             itemCmd.Parameters.AddWithValue("@c", checklistId);
                             itemCmd.Parameters.AddWithValue("@x", content);
                             itemCmd.Parameters.AddWithValue("@s", sortOrder++);
                             itemCmd.Parameters.AddWithValue("@d", isCompleted);
+                            itemCmd.Parameters.AddWithValue("@date", string.IsNullOrWhiteSpace(dateStr) ? (object)DBNull.Value : dateStr.Trim());
                             itemCmd.ExecuteNonQuery();
                             itemsAdded++;
                         }
@@ -1984,7 +1996,7 @@ public class DbService : IDbService
                     using var itemsConn = new MySqlConnection(_connectionString);
                     itemsConn.Open();
                     using var itemsCmd = itemsConn.CreateCommand();
-                    itemsCmd.CommandText = "SELECT id, content, is_completed, sort_order FROM checklist_items WHERE checklist_id = @cid ORDER BY sort_order ASC, id ASC";
+                    itemsCmd.CommandText = "SELECT id, content, is_completed, sort_order, date FROM checklist_items WHERE checklist_id = @cid ORDER BY sort_order ASC, id ASC";
                     itemsCmd.Parameters.AddWithValue("@cid", checklistId);
                     
                     using var itemsReader = itemsCmd.ExecuteReader();
@@ -1994,11 +2006,13 @@ public class DbService : IDbService
                     var colContent = itemsReader.GetOrdinal("content");
                     var colCompleted = itemsReader.GetOrdinal("is_completed");
                     var colSort = itemsReader.GetOrdinal("sort_order");
+                    var colDate = itemsReader.GetOrdinal("date");
 
                     while (itemsReader.Read())
                     {
                         var content = itemsReader.IsDBNull(colContent) ? "" : itemsReader.GetString(colContent);
                         var isCompleted = itemsReader.IsDBNull(colCompleted) ? false : itemsReader.GetBoolean(colCompleted);
+                        var dateVal = itemsReader.IsDBNull(colDate) ? null : itemsReader.GetDateTime(colDate).ToString("yyyy-MM-dd");
                         
                         items.Add(new Dictionary<string, object>
                         {
@@ -2008,7 +2022,8 @@ public class DbService : IDbService
                             ["checked"] = isCompleted,
                             ["is_done"] = isCompleted,
                             ["is_completed"] = isCompleted,
-                            ["sort_order"] = itemsReader.GetInt32(colSort)
+                            ["sort_order"] = itemsReader.GetInt32(colSort),
+                            ["date"] = dateVal
                         });
                     }
                     
@@ -2077,7 +2092,7 @@ public class DbService : IDbService
             using var itemsConn = new MySqlConnection(_connectionString);
             itemsConn.Open();
             using var itemsCmd = itemsConn.CreateCommand();
-            itemsCmd.CommandText = "SELECT id, content, is_completed, sort_order FROM checklist_items WHERE checklist_id = @cid ORDER BY sort_order ASC, id ASC";
+            itemsCmd.CommandText = "SELECT id, content, is_completed, sort_order, date FROM checklist_items WHERE checklist_id = @cid ORDER BY sort_order ASC, id ASC";
             itemsCmd.Parameters.AddWithValue("@cid", checklistId);
             
             using var itemsReader = itemsCmd.ExecuteReader();
@@ -2086,11 +2101,13 @@ public class DbService : IDbService
             var cContent = itemsReader.GetOrdinal("content");
             var cCompleted = itemsReader.GetOrdinal("is_completed");
             var cSort = itemsReader.GetOrdinal("sort_order");
+            var cDate = itemsReader.GetOrdinal("date");
 
             while (itemsReader.Read())
             {
                 var content = itemsReader.IsDBNull(cContent) ? "" : itemsReader.GetString(cContent);
                 var isCompleted = itemsReader.IsDBNull(cCompleted) ? false : itemsReader.GetBoolean(cCompleted);
+                var dateVal = itemsReader.IsDBNull(cDate) ? null : itemsReader.GetDateTime(cDate).ToString("yyyy-MM-dd");
                 
                 items.Add(new Dictionary<string, object>
                 {
@@ -2100,7 +2117,8 @@ public class DbService : IDbService
                     ["checked"] = isCompleted,
                     ["is_done"] = isCompleted,
                     ["is_completed"] = isCompleted,
-                    ["sort_order"] = itemsReader.GetInt32(cSort)
+                    ["sort_order"] = itemsReader.GetInt32(cSort),
+                    ["date"] = dateVal
                 });
             }
             
@@ -2121,7 +2139,7 @@ public class DbService : IDbService
         }
     }
 
-    public bool UpdateChecklist(int id, int userId, int? planId, string name, System.Text.Json.JsonElement[]? items)
+    public bool UpdateChecklist(int id, int userId, int? planId, string name, System.Text.Json.JsonElement[]? items, string? activityType = null, string? contentType = null, string? startDate = null, string? endDate = null, string? algorithmType = null)
     {
         _lastError = string.Empty;
         try
@@ -2135,13 +2153,20 @@ public class DbService : IDbService
             
             try
             {
-                // Update checklist header (name and plan_id)
+                // Update checklist header (name, plan_id, and strategy metadata fields)
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = transaction;
                 // We use id and user_id to ensure ownership
-                cmd.CommandText = "UPDATE checklists SET name=@n, plan_id=@p WHERE id=@id AND user_id=@u";
+                cmd.CommandText = @"UPDATE checklists 
+                                    SET name=@n, plan_id=@p, activity_type=@a_type, content_type=@c_type, start_date=@s_date, end_date=@e_date, algorithm_type=@alg 
+                                    WHERE id=@id AND user_id=@u";
                 cmd.Parameters.AddWithValue("@n", name);
                 cmd.Parameters.AddWithValue("@p", planId ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@a_type", string.IsNullOrWhiteSpace(activityType) ? "Writing" : activityType);
+                cmd.Parameters.AddWithValue("@c_type", string.IsNullOrWhiteSpace(contentType) ? "Novel" : contentType);
+                cmd.Parameters.AddWithValue("@s_date", string.IsNullOrWhiteSpace(startDate) ? (object)DBNull.Value : startDate);
+                cmd.Parameters.AddWithValue("@e_date", string.IsNullOrWhiteSpace(endDate) ? (object)DBNull.Value : endDate);
+                cmd.Parameters.AddWithValue("@alg", string.IsNullOrWhiteSpace(algorithmType) ? "steadily" : algorithmType);
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.Parameters.AddWithValue("@u", userId);
                 
@@ -2220,6 +2245,12 @@ public class DbService : IDbService
                             else if (idProp.ValueKind == JsonValueKind.String && int.TryParse(idProp.GetString(), out var sid)) itemId = sid;
                         }
 
+                        string? dateStr = null;
+                        if (item.TryGetProperty("date", out var dateProp) || item.TryGetProperty("Date", out dateProp))
+                        {
+                            dateStr = dateProp.GetString();
+                        }
+
                         if (!string.IsNullOrWhiteSpace(content))
                         {
                             if (itemId > 0 && existingIds.Contains(itemId))
@@ -2227,10 +2258,11 @@ public class DbService : IDbService
                                 // Update existing
                                 using var updateCmd = conn.CreateCommand();
                                 updateCmd.Transaction = transaction;
-                                updateCmd.CommandText = "UPDATE checklist_items SET content=@x, sort_order=@s, is_completed=@d WHERE id=@id AND checklist_id=@c";
+                                updateCmd.CommandText = "UPDATE checklist_items SET content=@x, sort_order=@s, is_completed=@d, date=@date WHERE id=@id AND checklist_id=@c";
                                 updateCmd.Parameters.AddWithValue("@x", content);
                                 updateCmd.Parameters.AddWithValue("@s", sortOrder++);
                                 updateCmd.Parameters.AddWithValue("@d", isCompleted);
+                                updateCmd.Parameters.AddWithValue("@date", string.IsNullOrWhiteSpace(dateStr) ? (object)DBNull.Value : dateStr.Trim());
                                 updateCmd.Parameters.AddWithValue("@id", itemId);
                                 updateCmd.Parameters.AddWithValue("@c", id);
                                 updateCmd.ExecuteNonQuery();
@@ -2241,11 +2273,12 @@ public class DbService : IDbService
                                 // Insert new
                                 using var insertCmd = conn.CreateCommand();
                                 insertCmd.Transaction = transaction;
-                                insertCmd.CommandText = "INSERT INTO checklist_items (checklist_id,content,sort_order,is_completed) VALUES (@c,@x,@s,@d)";
+                                insertCmd.CommandText = "INSERT INTO checklist_items (checklist_id,content,sort_order,is_completed,date) VALUES (@c,@x,@s,@d,@date)";
                                 insertCmd.Parameters.AddWithValue("@c", id);
                                 insertCmd.Parameters.AddWithValue("@x", content);
                                 insertCmd.Parameters.AddWithValue("@s", sortOrder++);
                                 insertCmd.Parameters.AddWithValue("@d", isCompleted);
+                                insertCmd.Parameters.AddWithValue("@date", string.IsNullOrWhiteSpace(dateStr) ? (object)DBNull.Value : dateStr.Trim());
                                 insertCmd.ExecuteNonQuery();
                             }
                         }
@@ -2319,12 +2352,12 @@ public class DbService : IDbService
         }
     }
 
-    public bool UpdateChecklistItem(int itemId, bool isDone)
+    public bool UpdateChecklistItem(int itemId, bool isDone, string? date = null, string? content = null)
     {
         _lastError = string.Empty;
         try
         {
-            Console.WriteLine($"🔌 Updating checklist item {itemId}: is_done = {isDone}");
+            Console.WriteLine($"🔌 Updating checklist item {itemId}: is_done = {isDone}, date = {date ?? "null"}, content = {content ?? "null"}");
             
             if (string.IsNullOrEmpty(_connectionString))
             {
@@ -2338,8 +2371,21 @@ public class DbService : IDbService
             Console.WriteLine($"✓ Database connection opened");
             
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE checklist_items SET is_completed=@d WHERE id=@id";
+            var setClauses = new List<string> { "is_completed=@d" };
             cmd.Parameters.AddWithValue("@d", isDone);
+            
+            if (date != null)
+            {
+                setClauses.Add("date=@date");
+                cmd.Parameters.AddWithValue("@date", string.IsNullOrWhiteSpace(date) ? (object)DBNull.Value : date.Trim());
+            }
+            if (content != null)
+            {
+                setClauses.Add("content=@content");
+                cmd.Parameters.AddWithValue("@content", content);
+            }
+            
+            cmd.CommandText = $"UPDATE checklist_items SET {string.Join(", ", setClauses)} WHERE id=@id";
             cmd.Parameters.AddWithValue("@id", itemId);
             
             Console.WriteLine($"   Executing UPDATE checklist_items SET is_completed={isDone} WHERE id={itemId}");

@@ -18,6 +18,44 @@
                 placeholder="e.g., NaNoWriMo Tasks, Research Checklist" required [disabled]="isLoadingData">
         </div>
 
+        <!-- Checklist Configuration -->
+        <div class="config-section">
+            <h3>Checklist Configuration</h3>
+            
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="activityType">Activity</label>
+                    <select id="activityType" [(ngModel)]="activityType" class="form-select" [disabled]="isLoadingData">
+                        <option *ngFor="let act of activities" [value]="act">{{ act }}</option>
+                    </select>
+                </div>
+                <div class="form-group half">
+                    <label for="contentType">Content Type</label>
+                    <select id="contentType" [(ngModel)]="contentType" class="form-select" [disabled]="isLoadingData">
+                        <option *ngFor="let type of contentTypes" [value]="type">{{ type }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate" [(ngModel)]="startDate" class="form-input" [disabled]="isLoadingData">
+                </div>
+                <div class="form-group half">
+                    <label for="endDate">Target Finish Date</label>
+                    <input type="date" id="endDate" [(ngModel)]="endDate" class="form-input" [disabled]="isLoadingData">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="algorithmType">Strategy</label>
+                <select id="algorithmType" [(ngModel)]="algorithmType" class="form-select" [disabled]="isLoadingData">
+                    <option *ngFor="let strat of strategies" [value]="strat.id">{{ strat.label }}</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Checklist Items -->
         <div class="items-section">
             <h3>Tasks</h3>
@@ -30,6 +68,10 @@
                     <div class="item-text">
                         <input type="text" [(ngModel)]="item.text" class="item-input"
                             placeholder="Enter task description" [disabled]="isLoadingData">
+                        <div class="item-date-picker">
+                            <label><i class="far fa-calendar-alt"></i> Date:</label>
+                            <input type="date" [(ngModel)]="item.date" class="item-date-input" [disabled]="isLoadingData">
+                        </div>
                     </div>
                     <div class="item-actions">
                         <button type="button" class="btn-icon" (click)="moveUp(i)" [disabled]="i === 0 || isLoadingData"

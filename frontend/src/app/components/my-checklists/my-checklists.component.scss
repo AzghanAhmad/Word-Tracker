@@ -43,6 +43,52 @@
             }
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+
+            .view-mode-toggles {
+                display: flex;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 0.25rem;
+                border-radius: 12px;
+                gap: 0.35rem;
+
+                .btn-toggle {
+                    border: none;
+                    background: transparent;
+                    padding: 0.6rem 1.25rem;
+                    font-size: 0.875rem;
+                    font-weight: 600;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    transition: all 0.2s ease;
+
+                    i {
+                        font-size: 0.95rem;
+                    }
+
+                    &:hover {
+                        color: white;
+                        background: rgba(255, 255, 255, 0.05);
+                    }
+
+                    &.active {
+                        background: #005DDB;
+                        color: white;
+                        box-shadow: 0 4px 12px rgba(0, 93, 219, 0.3);
+                        border-color: rgba(255, 255, 255, 0.2);
+                    }
+                }
+            }
+        }
+
         .btn-create-new {
             background: #005DDB;
             border: 1px solid white;
@@ -165,20 +211,39 @@
             }
         }
 
-        .progress-text {
+        .progress-text-row {
             font-size: 0.85rem;
             color: #94a3b8;
             font-weight: 500;
-            margin-bottom: 1.75rem;
+            margin-bottom: 1.5rem;
             display: flex;
-            align-items: center; // Align line with text
+            align-items: center;
             justify-content: space-between;
 
-            &::before {
-                content: 'Checklists';
-                margin-right: 6px;
+            .checklists-label {
                 color: #8b7ff5;
                 font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                cursor: pointer;
+                user-select: none;
+                transition: color 0.2s;
+
+                &:hover {
+                    color: #a78bfa;
+                }
+
+                i {
+                    font-size: 1.05rem;
+                    color: #8b7ff5;
+                }
+            }
+
+            .completed-ratio {
+                color: #cbd5e1;
+                font-size: 0.825rem;
+                font-weight: 500;
             }
         }
 
@@ -291,6 +356,215 @@
             color: #64748b;
         }
     }
+
+    .checklist-list-view {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+
+        .checklist-list-card {
+            background: #1C2E4A;
+            border-radius: 20px;
+            padding: 1.5rem 2.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            color: white;
+
+            &:hover {
+                border-color: rgba(255, 255, 255, 0.1);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+                transform: translateY(-2px);
+            }
+
+            .list-card-main {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 2rem;
+                width: 100%;
+            }
+
+            .list-card-left {
+                flex: 1;
+                min-width: 200px;
+
+                h3 {
+                    margin: 0 0 0.5rem 0;
+                    font-size: 1.25rem;
+                    font-weight: 700;
+
+                    .checklist-title {
+                        color: white;
+                        text-decoration: none;
+                        transition: color 0.2s;
+
+                        &:hover {
+                            color: #60a5fa;
+                        }
+                    }
+                }
+
+                .date {
+                    font-size: 0.8rem;
+                    color: #94a3b8;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                }
+            }
+
+            .list-card-center {
+                flex: 2;
+                max-width: 500px;
+                min-width: 250px;
+
+                .status-container {
+                    display: flex;
+                    flex-direction: column;
+                    width: 100%;
+
+                    .task-status-label {
+                        font-size: 0.7rem;
+                        font-weight: 600;
+                        color: #94a3b8;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        margin-bottom: 0.35rem;
+                        opacity: 0.8;
+                    }
+
+                    .progress-bar-container {
+                        height: 6px;
+                        background: rgba(13, 27, 42, 0.4);
+                        border-radius: 10px;
+                        overflow: hidden;
+                        margin-bottom: 0.5rem;
+
+                        .progress-bar {
+                            height: 100%;
+                            background: linear-gradient(90deg, #8b7ff5 0%, #60a5fa 100%);
+                            transition: width 0.4s ease;
+                        }
+                    }
+
+                    .progress-text-row {
+                        margin-bottom: 0;
+                    }
+                }
+            }
+
+            .list-card-right {
+                display: flex;
+                align-items: center;
+
+                .card-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+
+                    .btn-icon {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: #94a3b8;
+                        transition: all 0.2s;
+                        text-decoration: none;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+
+                        &:hover {
+                            background: rgba(255, 255, 255, 0.15);
+                            color: #ffffff;
+                        }
+
+                        &.delete:hover {
+                            background: #ef4444;
+                            color: white;
+                            border-color: #ef4444;
+                        }
+
+                        &.archive:hover {
+                            background: #f59e0b;
+                            color: white;
+                            border-color: #f59e0b;
+                        }
+                    }
+
+                    .view-details-btn {
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        color: white;
+                        padding: 0.55rem 1.1rem;
+                        border-radius: 10px;
+                        font-weight: 600;
+                        font-size: 0.85rem;
+                        transition: all 0.2s;
+                        text-decoration: none;
+                        margin-left: 0.5rem;
+                        white-space: nowrap;
+
+                        &:hover {
+                            background: #ffffff;
+                            border-color: #ffffff;
+                            color: #1C2E4A;
+                            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                        }
+                    }
+                }
+            }
+
+            .items-preview.list-layout {
+                margin-top: 1.25rem;
+                padding-top: 1.25rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 0.5rem;
+                margin-bottom: 0;
+
+                .item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.8rem;
+                    color: #cbd5e1;
+                    font-size: 0.9rem;
+                    padding: 0.4rem 0.6rem;
+                    border-radius: 8px;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    cursor: pointer;
+                    user-select: none;
+
+                    &:hover {
+                        background: rgba(255, 255, 255, 0.05);
+                        color: white;
+                        transform: translateX(4px);
+                    }
+
+                    i {
+                        color: #ffffff;
+                        font-size: 1.05rem;
+                        width: 1.25rem;
+                        display: flex;
+                        justify-content: center;
+                    }
+
+                    .done {
+                        text-decoration: line-through;
+                        text-decoration-thickness: 2px;
+                        opacity: 0.4;
+                        color: #94a3b8;
+                    }
+                }
+            }
+        }
+    }
 }
 
 @media (max-width: 768px) {
@@ -309,9 +583,65 @@
                 font-size: 2rem;
             }
 
+            .header-actions {
+                flex-direction: column;
+                width: 100%;
+                gap: 1rem;
+
+                .view-mode-toggles {
+                    width: 100%;
+                    justify-content: center;
+
+                    .btn-toggle {
+                        flex: 1;
+                        justify-content: center;
+                    }
+                }
+            }
+
             .btn-create-new {
                 width: 100%;
                 justify-content: center;
+            }
+        }
+
+        .checklist-list-view {
+            .checklist-list-card {
+                padding: 1.5rem;
+
+                .list-card-main {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 1.25rem;
+                }
+
+                .list-card-left {
+                    width: 100%;
+                    min-width: unset;
+                }
+
+                .list-card-center {
+                    width: 100%;
+                    min-width: unset;
+                    max-width: unset;
+                }
+
+                .list-card-right {
+                    width: 100%;
+                    
+                    .card-actions {
+                        width: 100%;
+                        justify-content: space-between;
+                        flex-wrap: wrap;
+
+                        .view-details-btn {
+                            width: 100%;
+                            text-align: center;
+                            margin-left: 0;
+                            margin-top: 0.5rem;
+                        }
+                    }
+                }
             }
         }
     }

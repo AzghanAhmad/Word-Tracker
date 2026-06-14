@@ -178,6 +178,11 @@ public class DbInitService
                 plan_id INT DEFAULT NULL,
                 name VARCHAR(255) NOT NULL,
                 is_archived BOOLEAN DEFAULT FALSE,
+                activity_type VARCHAR(50) DEFAULT 'Writing',
+                content_type VARCHAR(50) DEFAULT 'Novel',
+                start_date DATE DEFAULT NULL,
+                end_date DATE DEFAULT NULL,
+                algorithm_type VARCHAR(50) DEFAULT 'steadily',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                 FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE SET NULL
@@ -189,6 +194,7 @@ public class DbInitService
                 content TEXT NOT NULL,
                 is_completed BOOLEAN DEFAULT FALSE,
                 sort_order INT DEFAULT 0,
+                date DATE DEFAULT NULL,
                 FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE CASCADE
             )",
             
@@ -492,6 +498,9 @@ public class DbInitService
             // Ensure sort_order column exists in checklist_items
             await AddColumnIfNotExistsAsync(conn, "checklist_items", "sort_order", "INT DEFAULT 0");
             
+            // Ensure date column exists in checklist_items
+            await AddColumnIfNotExistsAsync(conn, "checklist_items", "date", "DATE DEFAULT NULL");
+            
             // Ensure is_completed column exists (some schemas use is_done)
             try
             {
@@ -572,6 +581,11 @@ public class DbInitService
             
             // Add is_archived column to checklists table if it doesn't exist
             await AddColumnIfNotExistsAsync(conn, "checklists", "is_archived", "BOOLEAN DEFAULT FALSE");
+            await AddColumnIfNotExistsAsync(conn, "checklists", "activity_type", "VARCHAR(50) DEFAULT 'Writing'");
+            await AddColumnIfNotExistsAsync(conn, "checklists", "content_type", "VARCHAR(50) DEFAULT 'Novel'");
+            await AddColumnIfNotExistsAsync(conn, "checklists", "start_date", "DATE DEFAULT NULL");
+            await AddColumnIfNotExistsAsync(conn, "checklists", "end_date", "DATE DEFAULT NULL");
+            await AddColumnIfNotExistsAsync(conn, "checklists", "algorithm_type", "VARCHAR(50) DEFAULT 'steadily'");
             
             // Fix plans table: convert status to VARCHAR so it can hold 'archived'
             using (var convertCmd = conn.CreateCommand())

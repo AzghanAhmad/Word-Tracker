@@ -17,6 +17,12 @@ interface Checklist {
     title?: string; // Or 'title'
     items: ChecklistItem[];
     created_at: string;
+    plan_id?: number | null;
+    activity_type?: string;
+    content_type?: string;
+    start_date?: string;
+    end_date?: string;
+    algorithm_type?: string;
 }
 
 @Component({
@@ -30,6 +36,7 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
     checklists: Checklist[] = [];
     username: string = 'User';
     isLoading = true;
+    viewMode: 'boxes' | 'list' = 'boxes';
     private routerSubscription: any;
 
     // Pagination
@@ -46,6 +53,7 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         this.username = localStorage.getItem('username') || 'User';
+        this.viewMode = (localStorage.getItem('myChecklistsViewMode') as 'boxes' | 'list') || 'boxes';
         // Load data immediately
         this.loadChecklists();
 
@@ -82,6 +90,7 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
                         created_at: this.parseDate(list.created_at), // Parse date properly
                         items: list.items ? list.items.map((item: any) => ({
                             ...item,
+                            text: item.text || item.content || '',
                             is_done: item.is_done !== undefined ? item.is_done :
                                 (item.checked !== undefined ? item.checked :
                                     (item.is_completed !== undefined ? item.is_completed : false))
@@ -128,6 +137,12 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    setViewMode(mode: 'boxes' | 'list') {
+        this.viewMode = mode;
+        localStorage.setItem('myChecklistsViewMode', mode);
+        this.cdr.detectChanges();
+    }
+
     getCompletionPercentage(list: Checklist): number {
         if (!list.items || list.items.length === 0) return 0;
         const completed = list.items.filter(item => item.is_done).length;
@@ -137,6 +152,51 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
     getCompletedCount(list: Checklist): number {
         if (!list.items) return 0;
         return list.items.filter(item => item.is_done).length;
+    }
+
+    toggleAllItems(list: Checklist) {
+        if (!list.items || list.items.length === 0) return;
+
+        const allCompleted = list.items.every(item => item.is_done);
+        const newStatus = !allCompleted;
+
+        // Optimistic UI update
+        const originalStates = list.items.map(item => item.is_done);
+        list.items.forEach(item => item.is_done = newStatus);
+        this.cdr.detectChanges();
+
+        const payload = {
+            name: list.name || list.title || 'Untitled Checklist',
+            plan_id: list.plan_id || null,
+            activity_type: list.activity_type || null,
+            content_type: list.content_type || null,
+            start_date: list.start_date || null,
+            end_date: list.end_date || null,
+            algorithm_type: list.algorithm_type || null,
+            items: list.items.map(item => ({
+                id: item.id,
+                text: item.text || (item as any).content || '',
+                checked: newStatus,
+                date: (item as any).date || null
+            }))
+        };
+
+        this.apiService.updateChecklist(list.id, payload).subscribe({
+            next: (response) => {
+                if (!response.success) {
+                    // Rollback on failure
+                    list.items.forEach((item, index) => item.is_done = originalStates[index]);
+                    this.cdr.detectChanges();
+                    console.error('Failed to update all items');
+                }
+            },
+            error: (err) => {
+                // Rollback on error
+                list.items.forEach((item, index) => item.is_done = originalStates[index]);
+                this.cdr.detectChanges();
+                console.error('Error updating all checklist items:', err);
+            }
+        });
     }
 
     toggleItem(listId: number, item: ChecklistItem) {

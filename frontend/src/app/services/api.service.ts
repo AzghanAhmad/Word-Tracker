@@ -306,11 +306,11 @@ export class ApiService {
         );
     }
 
-    updateChecklistItem(itemId: number, isDone: boolean): Observable<any> {
+    updateChecklistItem(itemId: number, isDone: boolean, date: string | null = null, content: string | null = null): Observable<any> {
         if (this.useMock) {
             return of({ success: true, message: 'Item updated (Mock)' });
         }
-        return this.http.patch(`${this.apiUrl}/checklists/items/${itemId}`, { is_done: isDone }).pipe(
+        return this.http.patch(`${this.apiUrl}/checklists/items/${itemId}`, { is_done: isDone, date: date, content: content }).pipe(
             tap(() => this._refreshSidebar.next())
         );
     }

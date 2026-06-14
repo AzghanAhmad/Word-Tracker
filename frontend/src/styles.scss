@@ -179,6 +179,13 @@ select {
     }
 }
 
+input[type="checkbox"] {
+    -webkit-appearance: checkbox;
+    -moz-appearance: checkbox;
+    appearance: checkbox;
+    width: auto;
+}
+
 /* ==========================================
    FOCUS STATES (Accessibility)
    ========================================== */

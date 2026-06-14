@@ -62,6 +62,7 @@ export const routes: Routes = [
     { path: 'create-checklist', component: CreateChecklistComponent, canActivate: [authGuard] },
     { path: 'checklist/edit/:id', component: CreateChecklistComponent, canActivate: [authGuard] }, // Edit route
     { path: 'my-checklists', component: MyChecklistsComponent, canActivate: [authGuard] },
+    { path: 'checklists/:id', component: ChecklistPageComponent, canActivate: [authGuard] },
     { path: 'archive', component: ArchiveComponent, canActivate: [authGuard] },
     { path: 'community', component: CommunityComponent, canActivate: [authGuard] },
     { path: 'challenges', component: GroupChallengesComponent, canActivate: [authGuard] },

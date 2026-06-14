@@ -16,8 +16,23 @@ public class ChecklistsController : ControllerBase
         return int.TryParse(claim, out var id) ? id : 0;
     }
 
-    public record ChecklistItemRequest(int? id, string text, bool? is_done, bool? is_completed, bool? @checked);
-    public record CreateChecklistRequest(string name, int? plan_id, ChecklistItemRequest[]? items, ChecklistItemRequest[]? tasks);
+    public record ChecklistItemRequest(int? id, string text, bool? is_done, bool? is_completed, bool? @checked, string? date);
+    public record CreateChecklistRequest(
+        string name, 
+        int? plan_id, 
+        ChecklistItemRequest[]? items, 
+        ChecklistItemRequest[]? tasks,
+        string? activity_type = null,
+        string? activityType = null,
+        string? content_type = null,
+        string? contentType = null,
+        string? start_date = null,
+        string? startDate = null,
+        string? end_date = null,
+        string? endDate = null,
+        string? algorithm_type = null,
+        string? algorithmType = null
+    );
     public record AddItemRequest(int checklist_id, string content);
     public record ArchiveRequest(bool is_archived);
 
@@ -80,9 +95,17 @@ public class ChecklistsController : ControllerBase
                 Console.WriteLine("   No items provided");
             }
 
-            // Create checklist with items
-            Console.WriteLine($"   Calling CreateChecklistWithItems...");
-            var checklistId = _db.CreateChecklistWithItems(userId, req.plan_id, req.name, itemsArray);
+            var checklistId = _db.CreateChecklistWithItems(
+                userId, 
+                req.plan_id, 
+                req.name, 
+                itemsArray, 
+                req.activity_type ?? req.activityType,
+                req.content_type ?? req.contentType,
+                req.start_date ?? req.startDate,
+                req.end_date ?? req.endDate,
+                req.algorithm_type ?? req.algorithmType
+            );
             
             if (checklistId > 0)
             {
@@ -231,8 +254,18 @@ public class ChecklistsController : ControllerBase
                 Console.WriteLine("   No items provided");
             }
 
-            Console.WriteLine($"   Calling UpdateChecklist...");
-            var ok = _db.UpdateChecklist(id, userId, req.plan_id, req.name, itemsArray);
+            var ok = _db.UpdateChecklist(
+                id, 
+                userId, 
+                req.plan_id, 
+                req.name, 
+                itemsArray,
+                req.activity_type ?? req.activityType,
+                req.content_type ?? req.contentType,
+                req.start_date ?? req.startDate,
+                req.end_date ?? req.endDate,
+                req.algorithm_type ?? req.algorithmType
+            );
             
             if (ok)
             {
@@ -363,9 +396,9 @@ public class ChecklistsController : ControllerBase
     {
         try
         {
-            Console.WriteLine($"📝 Updating checklist item {id}: is_done = {req.is_done}");
+            Console.WriteLine($"📝 Updating checklist item {id}: is_done = {req.is_done}, date = {req.date}, content = {req.content}");
             
-            var ok = _db.UpdateChecklistItem(id, req.is_done);
+            var ok = _db.UpdateChecklistItem(id, req.is_done, req.date, req.content);
             
             if (ok)
             {
@@ -385,5 +418,5 @@ public class ChecklistsController : ControllerBase
         }
     }
 
-    public record UpdateItemRequest(bool is_done);
+    public record UpdateItemRequest(bool is_done, string? date, string? content);
 }

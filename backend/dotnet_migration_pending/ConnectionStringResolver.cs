@@ -7,43 +7,60 @@ public static class ConnectionStringResolver
 {
     public static string Resolve(IConfiguration configuration)
     {
-        var direct = Environment.GetEnvironmentVariable("DB_CONNECTION");
-        if (!string.IsNullOrWhiteSpace(direct))
-            return direct.Trim();
+        // Detect if running on Railway
+        bool isRailway = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RAILWAY_ENVIRONMENT"))
+                         || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("RAILWAY_STATIC_URL"));
 
-        var fromUrl = ParseMysqlUrl(
-            Environment.GetEnvironmentVariable("MYSQL_URL")
-            ?? Environment.GetEnvironmentVariable("DATABASE_URL"));
-        if (!string.IsNullOrWhiteSpace(fromUrl))
-            return fromUrl;
-
-        var host = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("MYSQLHOST"),
-            Environment.GetEnvironmentVariable("MYSQL_HOST"),
-            Environment.GetEnvironmentVariable("DB_HOST"));
-        var port = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("MYSQLPORT"),
-            Environment.GetEnvironmentVariable("MYSQL_PORT"),
-            Environment.GetEnvironmentVariable("DB_PORT")) ?? "3306";
-        var user = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("MYSQLUSER"),
-            Environment.GetEnvironmentVariable("MYSQL_USER"),
-            Environment.GetEnvironmentVariable("DB_USER")) ?? "root";
-        var password = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("MYSQLPASSWORD"),
-            Environment.GetEnvironmentVariable("MYSQL_PASSWORD"),
-            Environment.GetEnvironmentVariable("DB_PASSWORD"));
-        var database = FirstNonEmpty(
-            Environment.GetEnvironmentVariable("MYSQLDATABASE"),
-            Environment.GetEnvironmentVariable("MYSQL_DATABASE"),
-            Environment.GetEnvironmentVariable("DB_NAME")) ?? "railway";
-
-        if (!string.IsNullOrWhiteSpace(host) && !string.IsNullOrWhiteSpace(password))
+        if (isRailway)
         {
-            return $"Server={host};Port={port};Database={database};User={user};Password={password};SslMode=Required;";
-        }
+            var direct = Environment.GetEnvironmentVariable("DB_CONNECTION");
+            if (!string.IsNullOrWhiteSpace(direct))
+                return direct.Trim();
 
-        return configuration.GetConnectionString("Default") ?? "";
+            var fromUrl = ParseMysqlUrl(
+                Environment.GetEnvironmentVariable("MYSQL_URL")
+                ?? Environment.GetEnvironmentVariable("DATABASE_URL"));
+            if (!string.IsNullOrWhiteSpace(fromUrl))
+                return fromUrl;
+
+            var host = FirstNonEmpty(
+                Environment.GetEnvironmentVariable("MYSQLHOST"),
+                Environment.GetEnvironmentVariable("MYSQL_HOST"),
+                Environment.GetEnvironmentVariable("DB_HOST"));
+            var port = FirstNonEmpty(
+                Environment.GetEnvironmentVariable("MYSQLPORT"),
+                Environment.GetEnvironmentVariable("MYSQL_PORT"),
+                Environment.GetEnvironmentVariable("DB_PORT")) ?? "3306";
+            var user = FirstNonEmpty(
+                Environment.GetEnvironmentVariable("MYSQLUSER"),
+                Environment.GetEnvironmentVariable("MYSQL_USER"),
+                Environment.GetEnvironmentVariable("DB_USER")) ?? "root";
+            var password = FirstNonEmpty(
+                Environment.GetEnvironmentVariable("MYSQLPASSWORD"),
+                Environment.GetEnvironmentVariable("MYSQL_PASSWORD"),
+                Environment.GetEnvironmentVariable("DB_PASSWORD"));
+            var database = FirstNonEmpty(
+                Environment.GetEnvironmentVariable("MYSQLDATABASE"),
+                Environment.GetEnvironmentVariable("MYSQL_DATABASE"),
+                Environment.GetEnvironmentVariable("DB_NAME")) ?? "railway";
+
+            if (!string.IsNullOrWhiteSpace(host) && !string.IsNullOrWhiteSpace(password))
+            {
+                return $"Server={host};Port={port};Database={database};User={user};Password={password};SslMode=Required;";
+            }
+
+            return configuration.GetConnectionString("Railway") ?? configuration.GetConnectionString("Default") ?? "";
+        }
+        else
+        {
+            // Running locally
+            var direct = Environment.GetEnvironmentVariable("DB_CONNECTION");
+            if (!string.IsNullOrWhiteSpace(direct))
+                return direct.Trim();
+
+            return configuration.GetConnectionString("Local") 
+                   ?? "Server=localhost;Port=3306;Database=word_tracker;User=root;Password=;SslMode=none;";
+        }
     }
 
     private static string? FirstNonEmpty(params string?[] values)

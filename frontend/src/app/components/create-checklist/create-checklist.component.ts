@@ -14,11 +14,29 @@ import { filter } from 'rxjs/operators';
 })
 export class CreateChecklistComponent implements OnInit {
     checklistName: string = '';
-    items: { id?: number; text: string; checked: boolean }[] = [];
+    items: { id?: number; text: string; checked: boolean; date?: string }[] = [];
     newItemText: string = '';
     planId: number | null = null;
     isLoading: boolean = false;
     isLoadingData: boolean = false;
+
+    activityType: string = 'Writing';
+    contentType: string = 'Novel';
+    startDate: string = '';
+    endDate: string = '';
+    algorithmType: string = 'steadily';
+
+    activities = ['Writing', 'Editing', 'Proofreading', 'Revising', 'Researching', 'Outlining'];
+    contentTypes = ['Novel', 'Short Story', 'Thesis', 'Blog', 'Essay', 'Script', 'Non-Fiction'];
+    strategies = [
+        { id: 'steadily', label: 'Steadily' },
+        { id: 'rising', label: 'Rising to the challenge' },
+        { id: 'biting', label: 'Biting the bullet' },
+        { id: 'mountain', label: 'Mountain hike' },
+        { id: 'valley', label: 'Valley' },
+        { id: 'oscillating', label: 'Oscillating' },
+        { id: 'random', label: 'Randomly' }
+    ];
 
     // Edit Mode
     isEditMode = false;
@@ -71,6 +89,11 @@ export class CreateChecklistComponent implements OnInit {
             this.checklistName = '';
             this.items = [];
             this.planId = null;
+            this.activityType = 'Writing';
+            this.contentType = 'Novel';
+            this.startDate = '';
+            this.endDate = '';
+            this.algorithmType = 'steadily';
             // Add initial empty item only for new creation
             this.addItem();
         }
@@ -87,6 +110,12 @@ export class CreateChecklistComponent implements OnInit {
                     const checklist = response.data;
                     this.checklistName = checklist.name || checklist.title || '';
                     this.planId = checklist.plan_id || null;
+                    this.activityType = checklist.activity_type || 'Writing';
+                    this.contentType = checklist.content_type || 'Novel';
+                    this.startDate = checklist.start_date ? checklist.start_date.split('T')[0] : '';
+                    this.endDate = checklist.end_date ? checklist.end_date.split('T')[0] : '';
+                    this.algorithmType = checklist.algorithm_type || 'steadily';
+                    
                     this.items = checklist.items ? checklist.items.map((i: any) => {
                         // Support both checked, is_done, and is_completed for maximum compatibility
                         const isDone = i.checked !== undefined ? i.checked :
@@ -94,7 +123,8 @@ export class CreateChecklistComponent implements OnInit {
                         return {
                             id: i.id,
                             text: i.text || i.content || '',
-                            checked: !!isDone
+                            checked: !!isDone,
+                            date: i.date ? i.date.split('T')[0] : ''
                         };
                     }) : [];
 
@@ -116,7 +146,7 @@ export class CreateChecklistComponent implements OnInit {
     }
 
     addItem() {
-        this.items.push({ text: '', checked: false });
+        this.items.push({ text: '', checked: false, date: '' });
         this.cdr.detectChanges();
     }
 
@@ -186,10 +216,16 @@ export class CreateChecklistComponent implements OnInit {
         const payload = {
             plan_id: this.planId,
             name: this.checklistName,
+            activity_type: this.activityType,
+            content_type: this.contentType,
+            start_date: this.startDate || null,
+            end_date: this.endDate || null,
+            algorithm_type: this.algorithmType,
             items: validItems.map(it => ({
                 id: it.id || null,
                 text: it.text,
-                checked: !!it.checked
+                checked: !!it.checked,
+                date: it.date || null
             }))
         };
 
