@@ -70,7 +70,7 @@
                             placeholder="Enter task description" [disabled]="isLoadingData">
                         <div class="item-date-picker">
                             <label><i class="far fa-calendar-alt"></i> Date:</label>
-                            <input type="date" [(ngModel)]="item.date" class="item-date-input" [disabled]="isLoadingData">
+                            <input type="date" [(ngModel)]="item.date" [min]="startDate" [max]="endDate" class="item-date-input" [disabled]="isLoadingData">
                         </div>
                     </div>
                     <div class="item-actions">

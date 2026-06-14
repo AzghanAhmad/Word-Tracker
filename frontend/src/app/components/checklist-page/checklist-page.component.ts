@@ -112,17 +112,17 @@ export class ChecklistPageComponent implements OnInit {
     saveAllTasks() {
         const payload = {
             name: this.plan.name || this.plan.title || 'My Checklist',
-            plan_id: this.plan.plan_id || null,
+            plan_id: this.plan.plan_id ? parseInt(this.plan.plan_id.toString(), 10) : null,
             activity_type: this.plan.activity_type || null,
             content_type: this.plan.content_type || null,
-            start_date: this.plan.start_date || null,
-            end_date: this.plan.end_date || null,
+            start_date: this.formatDateToString(this.plan.start_date),
+            end_date: this.formatDateToString(this.plan.end_date),
             algorithm_type: this.plan.algorithm_type || null,
             items: this.tasks.map(t => ({
                 id: t.id || null,
                 text: t.text,
                 checked: t.is_completed,
-                date: t.date
+                date: this.formatDateToString(t.date)
             }))
         };
         this.apiService.updateChecklist(this.planId, payload).subscribe({
@@ -196,8 +196,36 @@ export class ChecklistPageComponent implements OnInit {
     }
 
     savePlan() {
-        this.saveAllTasks();
-        alert('Checklist and schedule saved!');
+        const payload = {
+            name: this.plan.name || this.plan.title || 'My Checklist',
+            plan_id: this.plan.plan_id ? parseInt(this.plan.plan_id.toString(), 10) : null,
+            activity_type: this.plan.activity_type || null,
+            content_type: this.plan.content_type || null,
+            start_date: this.formatDateToString(this.plan.start_date),
+            end_date: this.formatDateToString(this.plan.end_date),
+            algorithm_type: this.plan.algorithm_type || null,
+            items: this.tasks.map(t => ({
+                id: t.id || null,
+                text: t.text,
+                checked: t.is_completed,
+                date: this.formatDateToString(t.date)
+            }))
+        };
+
+        this.apiService.updateChecklist(this.planId, payload).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    alert('Checklist and schedule saved successfully!');
+                    this.router.navigate(['/my-checklists']);
+                } else {
+                    alert('Failed to save checklist: ' + response.message);
+                }
+            },
+            error: (err) => {
+                console.error('Error saving checklist:', err);
+                alert('An error occurred while saving the checklist.');
+            }
+        });
     }
 
     // Week View Logic
@@ -346,5 +374,52 @@ export class ChecklistPageComponent implements OnInit {
 
             this.draggedTask = null;
         }
+    }
+
+    private parseDate(dateValue: any): Date | null {
+        if (!dateValue) return null;
+
+        // Handle JSON string containing MySqlDateTime object
+        if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(dateValue);
+                if (parsed.Year && parsed.Month && parsed.Day) {
+                    return new Date(parsed.Year, parsed.Month - 1, parsed.Day);
+                }
+            } catch (e) {
+                // If JSON parse fails, continue to other formats
+            }
+        }
+
+        // Handle string dates (YYYY-MM-DD format from backend)
+        if (typeof dateValue === 'string') {
+            const dateStr = dateValue.split('T')[0]; // Remove time if present
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            }
+            // Try standard Date parsing
+            const parsed = new Date(dateValue);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        // Handle MySqlDateTime-like objects (already parsed)
+        if (dateValue && typeof dateValue === 'object') {
+            if (dateValue.Year && dateValue.Month && dateValue.Day) {
+                return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
+            }
+        }
+
+        // Try standard Date parsing as fallback
+        const parsed = new Date(dateValue);
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    private formatDateToString(dateValue: any): string | null {
+        const parsed = this.parseDate(dateValue);
+        if (!parsed) return null;
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 }

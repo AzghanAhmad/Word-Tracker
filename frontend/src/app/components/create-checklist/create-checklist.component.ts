@@ -112,8 +112,8 @@ export class CreateChecklistComponent implements OnInit {
                     this.planId = checklist.plan_id || null;
                     this.activityType = checklist.activity_type || 'Writing';
                     this.contentType = checklist.content_type || 'Novel';
-                    this.startDate = checklist.start_date ? checklist.start_date.split('T')[0] : '';
-                    this.endDate = checklist.end_date ? checklist.end_date.split('T')[0] : '';
+                    this.startDate = this.formatDateToString(checklist.start_date) || '';
+                    this.endDate = this.formatDateToString(checklist.end_date) || '';
                     this.algorithmType = checklist.algorithm_type || 'steadily';
                     
                     this.items = checklist.items ? checklist.items.map((i: any) => {
@@ -218,14 +218,14 @@ export class CreateChecklistComponent implements OnInit {
             name: this.checklistName,
             activity_type: this.activityType,
             content_type: this.contentType,
-            start_date: this.startDate || null,
-            end_date: this.endDate || null,
+            start_date: this.formatDateToString(this.startDate),
+            end_date: this.formatDateToString(this.endDate),
             algorithm_type: this.algorithmType,
             items: validItems.map(it => ({
                 id: it.id || null,
                 text: it.text,
                 checked: !!it.checked,
-                date: it.date || null
+                date: this.formatDateToString(it.date)
             }))
         };
 
@@ -268,5 +268,52 @@ export class CreateChecklistComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         });
+    }
+
+    private parseDate(dateValue: any): Date | null {
+        if (!dateValue) return null;
+
+        // Handle JSON string containing MySqlDateTime object
+        if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(dateValue);
+                if (parsed.Year && parsed.Month && parsed.Day) {
+                    return new Date(parsed.Year, parsed.Month - 1, parsed.Day);
+                }
+            } catch (e) {
+                // If JSON parse fails, continue to other formats
+            }
+        }
+
+        // Handle string dates (YYYY-MM-DD format from backend)
+        if (typeof dateValue === 'string') {
+            const dateStr = dateValue.split('T')[0]; // Remove time if present
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            }
+            // Try standard Date parsing
+            const parsed = new Date(dateValue);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        // Handle MySqlDateTime-like objects (already parsed)
+        if (dateValue && typeof dateValue === 'object') {
+            if (dateValue.Year && dateValue.Month && dateValue.Day) {
+                return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
+            }
+        }
+
+        // Try standard Date parsing as fallback
+        const parsed = new Date(dateValue);
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    private formatDateToString(dateValue: any): string | null {
+        const parsed = this.parseDate(dateValue);
+        if (!parsed) return null;
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 }

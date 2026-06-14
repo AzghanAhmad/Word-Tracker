@@ -167,17 +167,17 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
 
         const payload = {
             name: list.name || list.title || 'Untitled Checklist',
-            plan_id: list.plan_id || null,
+            plan_id: list.plan_id ? parseInt(list.plan_id.toString(), 10) : null,
             activity_type: list.activity_type || null,
             content_type: list.content_type || null,
-            start_date: list.start_date || null,
-            end_date: list.end_date || null,
+            start_date: this.formatDateToString(list.start_date),
+            end_date: this.formatDateToString(list.end_date),
             algorithm_type: list.algorithm_type || null,
             items: list.items.map(item => ({
                 id: item.id,
                 text: item.text || (item as any).content || '',
                 checked: newStatus,
-                date: (item as any).date || null
+                date: this.formatDateToString((item as any).date)
             }))
         };
 
@@ -294,5 +294,14 @@ export class MyChecklistsComponent implements OnInit, OnDestroy {
         // Try standard Date parsing as fallback
         const parsed = new Date(dateValue);
         return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    private formatDateToString(dateValue: any): string | null {
+        const parsed = this.parseDate(dateValue);
+        if (!parsed) return null;
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 }

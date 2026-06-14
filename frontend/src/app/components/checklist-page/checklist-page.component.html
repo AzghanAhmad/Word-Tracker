@@ -112,7 +112,7 @@
                                 </span>
                                 <span class="meta-label pending" *ngIf="!task.is_completed">
                                     <i class="far fa-calendar-alt"></i> To do on 
-                                    <input type="date" [(ngModel)]="task.date" (change)="updateTask(task)" class="inline-date-input">
+                                    <input type="date" [(ngModel)]="task.date" [min]="plan.start_date" [max]="plan.end_date" (change)="updateTask(task)" class="inline-date-input">
                                 </span>
                             </div>
                         </div>
@@ -131,7 +131,7 @@
                                     <input type="text" [(ngModel)]="task.text" (blur)="updateTask(task)" class="task-list-input" placeholder="Task description">
                                     <div class="task-date-subtext">
                                         <i class="far fa-calendar-alt"></i> Date: 
-                                        <input type="date" [(ngModel)]="task.date" (change)="updateTask(task)" class="inline-date-input">
+                                        <input type="date" [(ngModel)]="task.date" [min]="plan.start_date" [max]="plan.end_date" (change)="updateTask(task)" class="inline-date-input">
                                     </div>
                                 </div>
                             </div>
