@@ -69,6 +69,11 @@
             <span *ngIf="!isCollapsed">Stats</span>
         </a>
 
+        <a routerLink="/focus-timer" routerLinkActive="active" class="nav-item" (click)="onNavItemClick()">
+            <i class="fas fa-hourglass-half"></i>
+            <span *ngIf="!isCollapsed">Focus Timer</span>
+        </a>
+
         <div class="divider"></div>
 
         <!-- Group 4: Social -->

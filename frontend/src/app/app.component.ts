@@ -5,12 +5,14 @@ import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { ToastComponent } from './components/shared/toast/toast.component';
+import { FocusTimerDockComponent } from './components/shared/focus-timer-navbar/focus-timer-navbar.component';
+import { FocusTimerService } from './services/focus-timer.service';
 import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SidebarComponent, NavbarComponent, FooterComponent, ToastComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, NavbarComponent, FooterComponent, ToastComponent, FocusTimerDockComponent],
   encapsulation: ViewEncapsulation.None,
   template: `
     <div class="app-wrapper">
@@ -33,6 +35,9 @@ import { filter } from 'rxjs/operators';
         </main>
       </div>
     </div>
+
+    <!-- Floating focus timer dock (authenticated pages only) -->
+    <app-focus-timer-dock *ngIf="!isPublicPage"></app-focus-timer-dock>
 
     <!-- Global Toasts -->
     <app-toast></app-toast>
@@ -99,7 +104,11 @@ export class AppComponent implements AfterViewInit {
   // Pages that should show the public layout (no sidebar)
   publicRoutes = ['/', '/login', '/register', '/privacy', '/terms', '/feedback', '/credits', '/forgot-password', '/forgot-username', '/contact'];
 
-  constructor(private router: Router, private cdr: ChangeDetectorRef) {
+  constructor(
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private focusTimer: FocusTimerService
+  ) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {

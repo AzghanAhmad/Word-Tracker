@@ -1,0 +1,29 @@
+<div class="focus-timer-dock" [class.expanded]="isExpanded" *ngIf="sessionActive">
+    <button type="button"
+            class="dock-tab"
+            (click)="toggleExpanded()"
+            [attr.aria-expanded]="isExpanded"
+            [attr.aria-label]="isExpanded ? 'Collapse focus timer' : 'Expand focus timer'">
+        <span class="tab-chevron">{{ isExpanded ? '‹' : '›' }}</span>
+    </button>
+
+    <div class="timer-panel" aria-live="polite" aria-atomic="true">
+        <a routerLink="/focus-timer" class="timer-link" title="Open Focus Timer page">
+            <span class="timer-text">
+                <span class="mode">{{ modeLabel }}</span>
+                <span class="time">{{ timeDisplay }} remaining</span>
+            </span>
+        </a>
+        <div class="timer-actions">
+            <button type="button" class="btn-icon" *ngIf="!isPaused" (click)="pause($event)" title="Pause">
+                <i class="fas fa-pause"></i>
+            </button>
+            <button type="button" class="btn-icon" *ngIf="isPaused" (click)="resume($event)" title="Resume">
+                <i class="fas fa-play"></i>
+            </button>
+            <button type="button" class="btn-icon btn-stop" (click)="stop($event)" title="Stop">
+                <i class="fas fa-stop"></i>
+            </button>
+        </div>
+    </div>
+</div>

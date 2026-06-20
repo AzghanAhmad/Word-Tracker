@@ -1,0 +1,156 @@
+:host {
+    display: contents;
+}
+
+.focus-timer-dock {
+    position: fixed;
+    right: 0;
+    bottom: 72px;
+    z-index: 1050;
+    display: flex;
+    align-items: stretch;
+    flex-direction: row;
+    pointer-events: none;
+
+    > * {
+        pointer-events: auto;
+    }
+}
+
+/* Semi-circle tab — left of panel, curves outward to the left */
+.dock-tab {
+    width: 42px;
+    min-height: 84px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-right: none;
+    border-radius: 42px 0 0 42px;
+    background: #1C2E4A;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 10px 10px 6px;
+    box-shadow: -3px 0 14px rgba(15, 23, 42, 0.2);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+
+    &:hover {
+        background: #243a5c;
+        box-shadow: -4px 0 18px rgba(15, 23, 42, 0.28);
+    }
+
+    .tab-chevron {
+        font-size: 1.35rem;
+        font-weight: 700;
+        line-height: 1;
+        font-family: system-ui, sans-serif;
+    }
+}
+
+/* Timer body — expands to the right of the tab */
+.timer-panel {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    background: #1C2E4A;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: none;
+    border-radius: 0 12px 12px 0;
+    box-shadow: -4px 4px 20px rgba(15, 23, 42, 0.2);
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.25s ease,
+                padding 0.35s ease;
+}
+
+.focus-timer-dock.expanded .timer-panel {
+    max-width: 340px;
+    opacity: 1;
+}
+
+.timer-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #ffffff;
+    min-width: 0;
+}
+
+.timer-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+}
+
+.mode {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.time {
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: #ffffff;
+}
+
+.timer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.btn-icon {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    transition: background 0.15s;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.24);
+    }
+
+    &.btn-stop:hover {
+        background: rgba(239, 68, 68, 0.35);
+        color: #fecaca;
+    }
+}
+
+@media (max-width: 768px) {
+    .focus-timer-dock {
+        bottom: 64px;
+    }
+
+    .timer-text .mode {
+        display: none;
+    }
+
+    .focus-timer-dock.expanded .timer-panel {
+        max-width: 260px;
+    }
+
+    .dock-tab {
+        min-height: 72px;
+        width: 38px;
+    }
+}

@@ -1,166 +1,260 @@
-<div class="checklists-page">
-    <!-- Hero Branding Section -->
+<div class="dashboard-container fade-in">
+    <!-- Dashboard Header Banner matching Pacemaker SS -->
+    <header class="welcome-banner mb-4">
+        <div class="welcome-text">
+            <h1>My Checklists</h1>
+            <p class="subtitle">Manage your publication checklists and track production progress</p>
+        </div>
+        <a routerLink="/create-checklist" class="btn-banner-action">
+            <i class="fas fa-plus"></i> Create New Checklist
+        </a>
+    </header>
 
+    <app-content-loader *ngIf="isLoading"></app-content-loader>
 
-    <div class="container fade-in">
-        <header class="page-header">
-            <div class="welcome-section">
-                <h1>Welcome to <span>AuthorFlow</span></h1>
-                <p>Track your progress and stay organized Checklists</p>
-            </div>
-            <div class="header-actions">
-                <div class="view-mode-toggles">
-                    <button class="btn-toggle" [class.active]="viewMode === 'boxes'" (click)="setViewMode('boxes')" title="Grid View">
-                        <i class="fas fa-th-large"></i> Boxes
-                    </button>
-                    <button class="btn-toggle" [class.active]="viewMode === 'list'" (click)="setViewMode('list')" title="List View">
-                        <i class="fas fa-list"></i> List
-                    </button>
-                </div>
-                <a routerLink="/create-checklist" class="btn-create-new">
-                    <i class="fas fa-plus"></i> Create New
-                </a>
-            </div>
-        </header>
-
-        <app-content-loader *ngIf="isLoading"></app-content-loader>
-
-        <div class="empty-state" *ngIf="!isLoading && checklists.length === 0">
-            <i class="fas fa-clipboard-check"></i>
-            <h3>No checklists found</h3>
-            <p>Create your first checklist to stay organized!</p>
+    <!-- Main Dashboard Workspace -->
+    <div class="dashboard-content" *ngIf="!isLoading">
+        
+        <!-- Empty State: No Projects Created -->
+        <div class="empty-state card text-center p-4 mb-4" *ngIf="projects.length === 0">
+            <div class="empty-icon"><i class="fas fa-clipboard-list"></i></div>
+            <h3>No Production Checklists Built Yet</h3>
+            <p>Kickstart your publication runway by defining your booktitle, launch date, and plan details.</p>
+            <a routerLink="/create-checklist" class="btn btn-primary mt-2">Create Your First Checklist</a>
         </div>
 
-        <!-- Boxes / Grid View -->
-        <div class="checklist-grid" *ngIf="!isLoading && checklists.length > 0 && viewMode === 'boxes'">
-            <div class="checklist-card" *ngFor="let list of checklists">
-                <div class="card-header">
-                    <h3><a [routerLink]="['/checklists', list.id]" style="color: inherit; text-decoration: none; cursor: pointer;">{{ list.name || list.title || 'Untitled Checklist' }}</a></h3>
-                    <div class="card-actions">
-                        <a [routerLink]="['/create-checklist']" [queryParams]="{edit: list.id}" class="btn-icon edit"
-                            title="Edit Checklist">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <button class="btn-icon delete" (click)="deleteChecklist(list.id); $event.stopPropagation()"
-                            title="Delete Checklist">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <button class="btn-icon archive" (click)="archiveChecklist(list.id); $event.stopPropagation()"
-                            title="Archive Checklist">
-                            <i class="fas fa-archive"></i>
-                        </button>
+        <div *ngIf="projects.length > 0">
+            
+            <!-- SECTION 1: PRODUCTION RUNWAY STRIP (Gantt Chart) -->
+            <section class="card runway-section mb-4">
+                <div class="runway-header mb-3">
+                    <div class="runway-title-area">
+                        <h3><i class="fas fa-chart-gantt text-primary"></i> Production Runway Strip</h3>
+                        <p class="section-desc">Gantt-style horizontal overview of active project lifecycles</p>
+                    </div>
+                    <!-- Zoom Controls -->
+                    <div class="zoom-controls">
+                        <span class="zoom-lbl">Timeline Span:</span>
+                        <button class="btn btn-secondary btn-xs" [class.active]="timelineWeeks === 13" (click)="zoomTimeline(13)">13 Weeks</button>
+                        <button class="btn btn-secondary btn-xs" [class.active]="timelineWeeks === 26" (click)="zoomTimeline(26)">26 Weeks</button>
+                        <button class="btn btn-secondary btn-xs" [class.active]="timelineWeeks === 52" (click)="zoomTimeline(52)">52 Weeks</button>
                     </div>
                 </div>
 
-                <div class="task-status-label">Task Status</div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar" [style.width.%]="getCompletionPercentage(list)"></div>
-                </div>
-                <div class="progress-text-row">
-                    <span class="checklists-label" (click)="toggleAllItems(list)" title="Toggle all tasks completion">
-                        <i [ngClass]="getCompletionPercentage(list) === 100 ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                        Checklists
-                    </span>
-                    <span class="completed-ratio">
-                        {{ getCompletedCount(list) }} / {{ list.items?.length || 0 }} completed
-                    </span>
+                <!-- Phase legend + explanation -->
+                <div class="runway-guide-box mb-3">
+                    <div class="runway-guide-header">
+                        <i class="fas fa-info-circle"></i>
+                        <span>How to read this chart</span>
+                    </div>
+                    <div class="runway-legend">
+                        <span class="legend-title">Production phases:</span>
+                        <span class="legend-item"><span class="swatch pw"></span> Pre-Writing</span>
+                        <span class="legend-item"><span class="swatch wr"></span> Writing</span>
+                        <span class="legend-item"><span class="swatch ed"></span> Editing</span>
+                        <span class="legend-item"><span class="swatch pr"></span> Production</span>
+                        <span class="legend-item"><span class="swatch mk"></span> Marketing</span>
+                        <span class="legend-item"><span class="swatch ln"></span> Launch</span>
+                        <span class="legend-item progress-key"><span class="swatch progress"></span> Task progress</span>
+                        <span class="legend-item"><i class="fas fa-flag text-danger"></i> Milestone due date</span>
+                    </div>
+                    <p class="runway-help">
+                        The colored bar is your <strong>planned publication timeline</strong> (90 days before launch → 30 days after).
+                        The white overlay shows how many checklist tasks you've completed.
+                        Set a <strong>Target Launch Date</strong> when creating or editing a checklist to anchor the timeline.
+                    </p>
                 </div>
 
-                <div class="items-preview">
-                    <div class="item" *ngFor="let item of list.items" (click)="toggleItem(list.id, item)"
-                        style="cursor: pointer;">
-                        <i [ngClass]="item.is_done ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                        <span [class.done]="item.is_done">{{ item.text }}</span>
+                <!-- Horizontal Scrollable Gantt Chart Wrapper -->
+                <div class="gantt-scroll-container">
+                    <div class="gantt-grid" [style.min-width.px]="timelineWeeks * 70">
+                        <!-- Top Timeline Axis (Weeks Header) -->
+                        <div class="gantt-axis-row">
+                            <div class="gantt-sticky-col spacer"></div>
+                            <div class="gantt-cells-container">
+                                <div class="gantt-axis-cell" *ngFor="let wk of timelineDates">
+                                    {{ wk.name }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Today Vertical Line Indicator -->
+                        <div class="gantt-today-line" 
+                             *ngIf="getTodayLinePercentage() !== -1"
+                             [style.left.%]="getTodayLinePercentage()">
+                            <span class="today-marker-flag">TODAY</span>
+                        </div>
+
+                        <!-- Gantt Rows per Project -->
+                        <div class="gantt-row" *ngFor="let p of projects; let isFirst = first">
+                            <!-- Left Sticky Label -->
+                            <div class="gantt-sticky-col project-title-cell">
+                                <a [routerLink]="['/checklists', p.id]" class="gantt-proj-title">{{ p.title }}</a>
+                            </div>
+
+                            <!-- Right Gantt Bar -->
+                            <div class="gantt-cells-container">
+                                <div class="gantt-bar-wrapper">
+                                    <!-- Production lifecycle Bar segmented in phases -->
+                                    <div class="gantt-lifecycle-bar" 
+                                         *ngIf="showRunwayBar(p)"
+                                         [style.left.%]="getProjectBarLeft(p)"
+                                         [style.width.%]="getProjectBarWidth(p)">
+                                        <!-- Colored phase segments -->
+                                        <div class="phase-segment pw" title="Pre-Writing (Day -90 to -60)"></div>
+                                        <div class="phase-segment wr" title="Writing (Day -60 to -45)"></div>
+                                        <div class="phase-segment ed" title="Editing (Day -45 to -30)"></div>
+                                        <div class="phase-segment pr" title="Production (Day -30 to -15)"></div>
+                                        <div class="phase-segment mk" title="Marketing (Day -15 to 0)"></div>
+                                        <div class="phase-segment ln" title="Launch (Day 0 to +30)"></div>
+                                        <!-- Task completion progress overlay -->
+                                        <div class="gantt-lifecycle-progress"
+                                             [style.width.%]="p.completionPercentage"
+                                             [title]="p.completionPercentage + '% of tasks completed'"></div>
+                                    </div>
+
+                                    <!-- Hint when no timeline bar can be drawn -->
+                                    <span class="runway-empty-hint" *ngIf="!showRunwayBar(p) && needsLaunchDateSetup(p)">
+                                        <a [routerLink]="['/create-checklist']" [queryParams]="{ edit: p.id }">Set launch date</a> to show timeline
+                                    </span>
+
+                                    <!-- Milestone Markers (Flags) -->
+                                    <ng-container *ngFor="let m of getMilestoneTasks(p)">
+                                        <div class="gantt-milestone-marker" 
+                                             *ngIf="getMilestoneMarkerPosition(p, m.date) !== -1"
+                                             [style.left.%]="getMilestoneMarkerPosition(p, m.date)"
+                                             [class.overlap-highlight]="isOverlap(m.date)"
+                                             [class.tooltip-below]="isFirst">
+                                            
+                                            <!-- Flag Icon -->
+                                            <i class="fas fa-flag"></i>
+
+                                            <!-- Warning / Tooltip info -->
+                                            <div class="milestone-tooltip">
+                                                <strong>{{ m.text }}</strong>
+                                                <p>Due: {{ m.date }}</p>
+                                                <span class="warning-alert" *ngIf="isOverlap(m.date)">
+                                                    <i class="fas fa-exclamation-triangle"></i> Launch dates overlap detected between multiple projects!
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </ng-container>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="card-footer">
-                    <span class="date" *ngIf="list.created_at">{{ list.created_at | date:'mediumDate' }}</span>
-                    <button class="btn-secondary small" [routerLink]="['/checklists', list.id]">
-                        View Details
-                    </button>
+            <!-- SECTION 2: MY CHECKLISTS CARDS -->
+            <section class="my-checklists-section mb-4">
+                <div class="my-checklists-header-box mb-3">
+                    <h3><i class="fas fa-clipboard-list text-primary"></i> My Checklists</h3>
+                    <p class="section-desc">Your active publication checklists — click a card to open details.</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- List View -->
-        <div class="checklist-list-view" *ngIf="!isLoading && checklists.length > 0 && viewMode === 'list'">
-            <div class="checklist-list-card" *ngFor="let list of checklists">
-                <div class="list-card-main">
-                    <div class="list-card-left">
-                        <h3>
-                            <a [routerLink]="['/checklists', list.id]" class="checklist-title">
-                                {{ list.name || list.title || 'Untitled Checklist' }}
-                            </a>
-                        </h3>
-                        <span class="date" *ngIf="list.created_at">
-                            <i class="far fa-calendar-alt"></i> Created: {{ list.created_at | date:'mediumDate' }}
-                        </span>
+                <div class="projects-cards-grid">
+                <div class="card project-summary-card" *ngFor="let p of projects" [routerLink]="['/checklists', p.id]">
+                    <div class="card-top">
+                        <!-- Book Thumbnail -->
+                        <div class="book-thumbnail">
+                            <span class="thumbnail-title">{{ p.title.substring(0,2).toUpperCase() }}</span>
+                        </div>
+                        
+                        <div class="project-details">
+                            <div class="badges-row">
+                                <span class="badge genre">{{ p.genre }}</span>
+                                <span class="badge pen-name" *ngIf="p.penName">{{ p.penName }}</span>
+                            </div>
+                            <h4 class="title">{{ p.title }}</h4>
+                        </div>
                     </div>
+
+                    <div class="card-mid mt-2">
+                        <div class="countdown-row">
+                            <span class="days-indicator" [class.overdue]="p.daysUntilLaunch < 0">
+                                {{ p.daysUntilLaunch >= 0 ? p.daysUntilLaunch + ' Days to Launch' : 'Launched' }}
+                            </span>
+                            <span class="progress-pct">{{ p.completionPercentage }}% Complete</span>
+                        </div>
+                        <div class="completion-bar">
+                            <div class="completion-fill" [style.width.%]="p.completionPercentage"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer mt-2">
+                        <div class="milestone-status">
+                            <span class="lbl">Next Milestone</span>
+                            <span class="val">{{ p.nextMilestone }}</span>
+                        </div>
+                        <div class="alert-status">
+                            <span class="badge overdue" *ngIf="p.hasOverdue"><i class="fas fa-exclamation-triangle"></i> Task Overdue</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: BOTTOM WORKSPACE PANELS -->
+            <div class="dashboard-panels-grid">
+                <!-- Overdue Alert Center -->
+                <section class="card overdue-center">
+                    <h3 class="panel-title"><i class="fas fa-bell text-danger"></i> Overdue Alert Center</h3>
                     
-                    <div class="list-card-center">
-                        <div class="status-container">
-                            <div class="task-status-label">Task Status</div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar" [style.width.%]="getCompletionPercentage(list)"></div>
+                    <div class="alerts-feed mt-2" *ngIf="overdueTasks.length > 0">
+                        <div class="alert-item-card clickable-card" *ngFor="let alt of overdueTasks" [routerLink]="['/checklists', alt.projectId]">
+                            <div class="alert-left">
+                                <span class="proj-name">{{ alt.projectTitle }}</span>
+                                <span class="task-desc">{{ alt.taskText }}</span>
                             </div>
-                            <div class="progress-text-row">
-                                <span class="checklists-label" (click)="toggleAllItems(list)" title="Toggle all tasks completion">
-                                    <i [ngClass]="getCompletionPercentage(list) === 100 ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                                    Checklists
-                                </span>
-                                <span class="completed-ratio">
-                                    {{ getCompletedCount(list) }} / {{ list.items?.length || 0 }} completed
-                                </span>
+                            <div class="alert-right-wrapper">
+                                <div class="alert-right">
+                                    <span class="due-date">{{ alt.dueDate }}</span>
+                                    <span class="overdue-count">{{ alt.daysOverdue }}d overdue</span>
+                                </div>
+                                <button class="btn-complete-dashboard" (click)="completeTask(alt.projectId, alt.taskId, $event)" title="Mark Completed">
+                                    <i class="fas fa-check"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="list-card-right">
-                        <div class="card-actions">
-                            <a [routerLink]="['/create-checklist']" [queryParams]="{edit: list.id}" class="btn-icon edit"
-                                title="Edit Checklist">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <button class="btn-icon delete" (click)="deleteChecklist(list.id); $event.stopPropagation()"
-                                title="Delete Checklist">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            <button class="btn-icon archive" (click)="archiveChecklist(list.id); $event.stopPropagation()"
-                                title="Archive Checklist">
-                                <i class="fas fa-archive"></i>
-                            </button>
-                            <button class="btn-secondary small view-details-btn" [routerLink]="['/checklists', list.id]">
-                                View Details
-                            </button>
+                    <div class="empty-panel-state mt-3" *ngIf="overdueTasks.length === 0">
+                        <p class="success-message"><i class="fas fa-circle-check"></i> Great job! No overdue tasks in this pipeline.</p>
+                    </div>
+                </section>
+
+                <!-- Follow-Up Milestones due -->
+                <section class="card followups-center">
+                    <h3 class="panel-title"><i class="fas fa-clock text-warning"></i> Follow-Up Milestones Due</h3>
+                    
+                    <div class="followups-feed mt-2" *ngIf="followUps.length > 0">
+                        <div class="followup-item-card clickable-card" *ngFor="let fu of followUps" 
+                             [class.dormant]="fu.status === 'dormant'" 
+                             [class.completed]="fu.status === 'completed'"
+                             [routerLink]="['/checklists', fu.projectId]">
+                            <div class="item-left">
+                                <span class="proj-name">{{ fu.projectTitle }}</span>
+                                <span class="milestone-name">Day {{ fu.dueDays }} Launch Review</span>
+                            </div>
+                            <div class="item-right-wrapper">
+                                <div class="item-right">
+                                    <span class="due-date">{{ fu.dueDate }}</span>
+                                    <span class="status-badge" [class.dormant]="fu.status === 'dormant'" [class.active]="fu.status === 'active'" [class.completed]="fu.status === 'completed'">
+                                        {{ fu.status | uppercase }}
+                                    </span>
+                                </div>
+                                <button class="btn-complete-dashboard" *ngIf="fu.status !== 'completed' && fu.taskId" (click)="completeTask(fu.projectId, fu.taskId, $event)" title="Mark Completed">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Items list for list view -->
-                <div class="items-preview list-layout" *ngIf="list.items && list.items.length > 0">
-                    <div class="item" *ngFor="let item of list.items" (click)="toggleItem(list.id, item)"
-                        style="cursor: pointer;">
-                        <i [ngClass]="item.is_done ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                        <span [class.done]="item.is_done">{{ item.text }}</span>
+                    <div class="empty-panel-state mt-3" *ngIf="followUps.length === 0">
+                        <p><i class="fas fa-info-circle"></i> No follow-up review milestones scheduled currently.</p>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="pagination-controls" *ngIf="totalPages > 1 && !isLoading">
-            <div class="page-size">
-                <label>Show:</label>
-                <select (change)="onPageSizeChange($event)">
-                    <option [value]="10" [selected]="itemsPerPage === 10">10</option>
-                    <option [value]="20" [selected]="itemsPerPage === 20">20</option>
-                    <option [value]="50" [selected]="itemsPerPage === 50">50</option>
-                </select>
-            </div>
-            <div class="page-nav">
-                <button (click)="prevPage()" [disabled]="currentPage === 1">Previous</button>
-                <span>Page {{ currentPage }} of {{ totalPages }}</span>
-                <button (click)="nextPage()" [disabled]="currentPage === totalPages">Next</button>
+                </section>
             </div>
         </div>
     </div>
+</div>

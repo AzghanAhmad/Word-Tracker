@@ -5,12 +5,19 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 
 interface Task {
-    id?: number;
-    plan_id: number;
+    id: number;
     text: string;
     date: string | null;
-    order_index: number;
     is_completed: boolean;
+    // Premium metadata
+    status: 'unchecked' | 'in-progress' | 'completed' | 'skipped';
+    estimate: number; // in minutes
+    defaultEstimate: number;
+    isMilestone: boolean;
+    milestoneName: string;
+    notes: string;
+    phase: string;
+    offsetDays: number;
 }
 
 @Component({
@@ -24,31 +31,82 @@ export class ChecklistPageComponent implements OnInit {
     planId: number = 0;
     plan: any = {};
     tasks: Task[] = [];
-    newTaskText: string = '';
+    Math = Math;
+    
+    // Project metadata
+    genre: string = 'Fiction';
+    penName: string = '';
+    targetLaunchDate: string = '';
+    daysUntilLaunch: number = 0;
 
-    // UI State
-    activeTab: 'schedule' | 'progress' | 'stats' = 'schedule';
-    viewMode: 'daily' | 'weekly' | 'calendar' = 'weekly';
-    taskViewMode: 'boxes' | 'list' | 'simple' = 'boxes';
-    currentWeekStart: Date = new Date();
-    selectedDate: Date = new Date();
-    currentMonth: Date = new Date();
+    // UI state
+    expandedPhases: { [key: string]: boolean } = {};
+    activeMenuTaskId: number | null = null;
+    showAddModal = false;
+    private _errorMessage: string | null = null;
+    private errorTimeoutId: any = null;
 
-    // Options
-    activities = ['Writing', 'Editing', 'Proofreading', 'Revising', 'Researching', 'Outlining'];
-    contentTypes = ['Novel', 'Short Story', 'Thesis', 'Blog', 'Essay', 'Script', 'Non-Fiction'];
-    strategies = [
-        { id: 'steadily', label: 'Steadily' },
-        { id: 'rising', label: 'Rising to the challenge' },
-        { id: 'biting', label: 'Biting the bullet' },
-        { id: 'mountain', label: 'Mountain hike' },
-        { id: 'valley', label: 'Valley' },
-        { id: 'oscillating', label: 'Oscillating' },
-        { id: 'random', label: 'Randomly' }
+    get errorMessage(): string | null {
+        return this._errorMessage;
+    }
+
+    set errorMessage(val: string | null) {
+        this._errorMessage = val;
+        if (this.errorTimeoutId) {
+            clearTimeout(this.errorTimeoutId);
+            this.errorTimeoutId = null;
+        }
+        if (val) {
+            this.errorTimeoutId = setTimeout(() => {
+                this._errorMessage = null;
+            }, 3500);
+        }
+    }
+
+    clearErrorMessage() {
+        this.errorMessage = null;
+    }
+    
+    // Override estimate modal
+    showEstimateModal = false;
+    modalTask: Task | null = null;
+    customEstimateMinutes = 30;
+    customOffsetDays = 0;
+
+    // Inline Custom Item Builder State
+    newCustomTaskText: string = '';
+    newCustomTaskCategory: string = 'Pre-Writing & Research';
+    newCustomTaskEstimateHours: number = 2;
+    newCustomTaskOffset: number = -10;
+
+    // Add task modal filter/navigation
+    searchQuery: string = '';
+    activeCategory: string = 'Pre-Writing & Research';
+    categories = [
+        'Pre-Writing & Research',
+        'Writing & Drafting',
+        'Editing & Manuscript Preparation',
+        'Cover, Assets & Production',
+        'Publishing Setup & Metadata',
+        'ARC & Launch Team Plan',
+        'Pre-Launch Marketing',
+        'Launch Day & Launch Week',
+        'Post-Launch',
+        'Follow-Up Milestones'
     ];
 
-    weekDays: Date[] = [];
-    monthDays: Date[] = [];
+    // Library for adding new items
+    libraryTasks = [
+        { text: 'Outline & Plotting', estimate: 240, isMilestone: false, phase: 'Pre-Writing & Research' },
+        { text: 'Character Bios & Setting Profiles', estimate: 120, isMilestone: false, phase: 'Pre-Writing & Research' },
+        { text: 'Market & Genre Research', estimate: 120, isMilestone: false, phase: 'Pre-Writing & Research' },
+        { text: 'First Draft Completed', estimate: 3120, isMilestone: true, milestoneName: 'First Draft Complete', phase: 'Writing & Drafting' },
+        { text: 'Self-Revision & Cleanup Pass', estimate: 480, isMilestone: false, phase: 'Writing & Drafting' },
+        { text: 'Developmental Edit Review', estimate: 720, isMilestone: false, phase: 'Editing & Manuscript Preparation' },
+        { text: 'Final Proofreading Pass Complete', estimate: 240, isMilestone: true, milestoneName: 'Proofreading Complete', phase: 'Editing & Manuscript Preparation' },
+        { text: 'Cover Design Reveal & Promos', estimate: 120, isMilestone: true, milestoneName: 'Cover Reveal', phase: 'Cover, Assets & Production' },
+        { text: 'Formatting eBook & Print versions', estimate: 120, isMilestone: false, phase: 'Cover, Assets & Production' }
+    ];
 
     constructor(
         private route: ActivatedRoute,
@@ -62,21 +120,97 @@ export class ChecklistPageComponent implements OnInit {
             this.planId = +params['id'];
             if (this.planId) {
                 this.fetchPlanDetails();
-                this.fetchTasks();
             }
         });
-        this.currentMonth = new Date(this.selectedDate);
-        this.generateWeekView();
-        this.generateMonthView();
+
+        // Initialize collapsed phases
+        this.categories.forEach(cat => {
+            this.expandedPhases[cat] = true;
+        });
     }
 
     fetchPlanDetails() {
         this.apiService.getChecklist(this.planId).subscribe({
             next: (response) => {
-                if (response.success && response.data) {
-                    this.plan = response.data;
-                    if (this.plan.start_date) this.plan.start_date = this.plan.start_date.split('T')[0];
-                    if (this.plan.end_date) this.plan.end_date = this.plan.end_date.split('T')[0];
+                try {
+                    if (response.success && response.data) {
+                        this.plan = response.data;
+                        
+                        // Fetch local metadata
+                        const savedMetaStr = localStorage.getItem(`authorflow_meta_${this.planId}`);
+                        let meta: any = null;
+                        if (savedMetaStr) {
+                            try {
+                                meta = JSON.parse(savedMetaStr);
+                                this.genre = meta.genre || 'Fiction';
+                                this.penName = meta.penName || '';
+                                this.targetLaunchDate = meta.targetLaunchDate || '';
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }
+
+                        // Map tasks with high-fidelity attributes
+                        const backendItems = response.data.items || [];
+                        this.tasks = backendItems.map((item: any) => {
+                            if (!item) return null;
+                            const localTaskKey = `task_attr_${this.planId}_${item.id}`;
+                            const savedAttrStr = localStorage.getItem(localTaskKey);
+                            let localAttr: any = {};
+                            if (savedAttrStr) {
+                                try { localAttr = JSON.parse(savedAttrStr); } catch (e) {}
+                            }
+
+                            // Try to find default library info to populate phase, estimate, milestones
+                            const text = item.text || item.content || '';
+                            let libMatch = meta?.taskDetails?.find((d: any) => d.text === text);
+                            if (!libMatch) {
+                                // Find in current libraryTasks
+                                libMatch = this.libraryTasks.find(t => t.text === text);
+                            }
+                            const status = localAttr.status || (item.checked ? 'completed' : 'unchecked');
+                            const estimate = localAttr.estimate || libMatch?.estimate || libMatch?.defaultEstimate || 60;
+                            const defaultEstimate = libMatch?.defaultEstimate || libMatch?.estimate || 60;
+                            const isMilestone = libMatch ? !!libMatch.isMilestone : text.toLowerCase().includes('complete') || text.toLowerCase().includes('launch');
+                            const milestoneName = libMatch?.milestoneName || (isMilestone ? text : '');
+                            const phase = libMatch?.phase || this.inferPhaseFromText(text);
+                            const offsetDays = localAttr.offsetDays !== undefined ? localAttr.offsetDays : (libMatch?.offsetDays !== undefined ? libMatch.offsetDays : this.inferOffsetDays(text));
+
+                            let formattedDate: string | null = null;
+                            if (item.date) {
+                                if (typeof item.date === 'string') {
+                                    formattedDate = item.date.split('T')[0];
+                                } else {
+                                    try {
+                                        const d = new Date(item.date);
+                                        if (!isNaN(d.getTime())) {
+                                            formattedDate = d.toISOString().split('T')[0];
+                                        }
+                                    } catch (e) {}
+                                }
+                            }
+
+                            return {
+                                id: item.id,
+                                text: text,
+                                date: formattedDate,
+                                is_completed: status === 'completed',
+                                status: status,
+                                estimate: estimate,
+                                defaultEstimate: defaultEstimate,
+                                isMilestone: isMilestone,
+                                milestoneName: milestoneName,
+                                notes: localAttr.notes || '',
+                                phase: phase,
+                                offsetDays: offsetDays
+                            };
+                        }).filter((t: any) => t !== null);
+
+                        this.calculateLaunchCountdown();
+                    }
+                } catch (e) {
+                    console.error('Error parsing checklist details:', e);
+                } finally {
                     this.cdr.detectChanges();
                 }
             },
@@ -84,342 +218,402 @@ export class ChecklistPageComponent implements OnInit {
         });
     }
 
-    fetchTasks() {
-        this.apiService.getChecklist(this.planId).subscribe({
-            next: (response) => {
-                if (response.success && response.data) {
-                    const checklist = response.data;
-                    this.tasks = checklist.items ? checklist.items.map((i: any) => ({
-                        id: i.id,
-                        plan_id: this.planId,
-                        text: i.text || i.content || '',
-                        date: i.date ? i.date.split('T')[0] : null,
-                        order_index: i.sort_order || 0,
-                        is_completed: i.is_completed || i.is_done || i.checked || false
-                    })) : [];
-                    this.sortTasks();
-                    this.cdr.detectChanges();
-                }
-            },
-            error: (err) => console.error('Error fetching checklist tasks:', err)
-        });
+    inferPhaseFromText(text: string): string {
+        const t = text.toLowerCase();
+        if (t.includes('outline') || t.includes('plot') || t.includes('research')) return 'Pre-Writing & Research';
+        if (t.includes('draft') || t.includes('write')) return 'Writing & Drafting';
+        if (t.includes('edit') || t.includes('proof')) return 'Editing & Manuscript Preparation';
+        if (t.includes('cover') || t.includes('format')) return 'Cover, Assets & Production';
+        if (t.includes('kdp') || t.includes('upload') || t.includes('metadata')) return 'Publishing Setup & Metadata';
+        if (t.includes('arc') || t.includes('review')) return 'ARC & Launch Team Plan';
+        if (t.includes('teaser') || t.includes('social') || t.includes('promo')) return 'Pre-Launch Marketing';
+        if (t.includes('launch') || t.includes('release')) return 'Launch Day & Launch Week';
+        if (t.includes('post') || t.includes('thank')) return 'Post-Launch';
+        if (t.includes('30-day') || t.includes('90-day') || t.includes('180-day')) return 'Follow-Up Milestones';
+        return 'Pre-Writing & Research';
     }
 
-    sortTasks() {
-        this.tasks.sort((a, b) => a.order_index - b.order_index);
-    }
-
-    saveAllTasks() {
-        const payload = {
-            name: this.plan.name || this.plan.title || 'My Checklist',
-            plan_id: this.plan.plan_id ? parseInt(this.plan.plan_id.toString(), 10) : null,
-            activity_type: this.plan.activity_type || null,
-            content_type: this.plan.content_type || null,
-            start_date: this.formatDateToString(this.plan.start_date),
-            end_date: this.formatDateToString(this.plan.end_date),
-            algorithm_type: this.plan.algorithm_type || null,
-            items: this.tasks.map(t => ({
-                id: t.id || null,
-                text: t.text,
-                checked: t.is_completed,
-                date: this.formatDateToString(t.date)
-            }))
-        };
-        this.apiService.updateChecklist(this.planId, payload).subscribe({
-            next: (response) => {
-                if (response.success) {
-                    this.fetchPlanDetails();
-                    this.fetchTasks();
-                }
-            },
-            error: (err) => console.error('Error saving checklist tasks:', err)
-        });
-    }
-
-    addTask() {
-        if (!this.newTaskText.trim()) return;
-
-        const newTask: Task = {
-            plan_id: this.planId,
-            text: this.newTaskText,
-            date: null,
-            order_index: this.tasks.length,
-            is_completed: false
-        };
-
-        this.tasks.push(newTask);
-        this.newTaskText = '';
-        this.saveAllTasks();
-    }
-
-    deleteTask(task: Task) {
-        const index = this.tasks.indexOf(task);
-        if (index > -1) {
-            this.tasks.splice(index, 1);
-            this.saveAllTasks();
+    calculateLaunchCountdown() {
+        if (!this.targetLaunchDate) {
+            this.daysUntilLaunch = 0;
+            return;
         }
-    }
-
-    updateTask(task: Task) {
-        if (task.id) {
-            this.apiService.updateChecklistItem(task.id, task.is_completed, task.date, task.text).subscribe({
-                next: (response) => {
-                    if (response.success) {
-                        this.fetchTasks();
-                    } else {
-                        console.error('Failed to update task');
-                    }
-                },
-                error: (err) => console.error('Error updating task:', err)
-            });
-        } else {
-            this.saveAllTasks();
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const launch = new Date(this.targetLaunchDate);
+        if (isNaN(launch.getTime())) {
+            this.daysUntilLaunch = 0;
+            return;
         }
+        launch.setHours(0,0,0,0);
+        const diff = launch.getTime() - today.getTime();
+        this.daysUntilLaunch = Math.ceil(diff / (1000 * 3600 * 24));
     }
 
-    toggleTaskCompletion(task: Task) {
-        task.is_completed = !task.is_completed;
-        this.updateTask(task);
-    }
-
-    getCompletedCount(): number {
-        return this.tasks.filter(t => t.is_completed).length;
-    }
-
-    getCompletedTasks(): Task[] {
-        return this.tasks.filter(t => t.is_completed);
+    // Effort summaries
+    getTotalEstimatedHours(): number {
+        const totalMin = this.tasks.reduce((sum, t) => sum + (t.status !== 'skipped' ? t.estimate : 0), 0);
+        return Math.round((totalMin / 60) * 10) / 10;
     }
 
     getCompletionPercentage(): number {
-        if (this.tasks.length === 0) return 0;
-        return Math.round((this.getCompletedCount() / this.tasks.length) * 100);
+        const activeTasks = this.tasks.filter(t => t.status !== 'skipped');
+        if (activeTasks.length === 0) return 0;
+        const completed = activeTasks.filter(t => t.status === 'completed').length;
+        return Math.round((completed / activeTasks.length) * 100);
     }
 
-    savePlan() {
+    getHoursByPhase(phase: string): number {
+        const phaseTasks = this.tasks.filter(t => t.phase === phase && t.status !== 'skipped');
+        const min = phaseTasks.reduce((sum, t) => sum + t.estimate, 0);
+        return Math.round((min / 60) * 10) / 10;
+    }
+
+    getHoursPerWeek(): number {
+        const totalHours = this.getTotalEstimatedHours();
+        // Calculate weeks between start of first task and target launch date
+        const startDates = this.tasks.map(t => t.date).filter(d => !!d).map(d => new Date(d!).getTime());
+        const minStart = startDates.length > 0 ? Math.min(...startDates) : new Date().getTime();
+        const launch = this.targetLaunchDate ? new Date(this.targetLaunchDate).getTime() : new Date().getTime();
+        
+        const diffWeeks = Math.max(1, (launch - minStart) / (7 * 24 * 3600 * 1000));
+        return Math.round((totalHours / diffWeeks) * 10) / 10;
+    }
+
+    getPhaseCompletionPercentage(phase: string): number {
+        const phaseTasks = this.tasks.filter(t => t.phase === phase && t.status !== 'skipped');
+        if (phaseTasks.length === 0) return 0;
+        const completed = phaseTasks.filter(t => t.status === 'completed').length;
+        return Math.round((completed / phaseTasks.length) * 100);
+    }
+
+    getPhaseCompletedCount(phase: string): number {
+        return this.tasks.filter(t => t.phase === phase && t.status === 'completed').length;
+    }
+
+    getPhaseRemainingCount(phase: string): number {
+        return this.tasks.filter(t => t.phase === phase && t.status !== 'completed' && t.status !== 'skipped').length;
+    }
+
+    getPhaseTasks(phase: string): Task[] {
+        return this.tasks.filter(t => t.phase === phase);
+    }
+
+    togglePhase(phase: string) {
+        this.expandedPhases[phase] = !this.expandedPhases[phase];
+    }
+
+    isOverdue(task: Task): boolean {
+        if (task.status === 'completed' || task.status === 'skipped' || !task.date) return false;
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const due = new Date(task.date);
+        due.setHours(0,0,0,0);
+        return due.getTime() < today.getTime();
+    }
+
+    changeTaskStatus(task: Task, newStatus: 'unchecked' | 'in-progress' | 'completed' | 'skipped') {
+        task.status = newStatus;
+        task.is_completed = newStatus === 'completed';
+        
+        // Sync local changes and update backend
+        this.saveTaskLocalAttributes(task);
+        this.apiService.updateChecklistItem(task.id, task.is_completed, task.date, task.text).subscribe({
+            next: () => this.cdr.detectChanges()
+        });
+        this.activeMenuTaskId = null;
+    }
+
+    toggleTaskCompletion(task: Task) {
+        if (task.status === 'unchecked') {
+            this.changeTaskStatus(task, 'in-progress');
+            setTimeout(() => {
+                if (task.status === 'in-progress') {
+                    this.changeTaskStatus(task, 'completed');
+                }
+            }, 1000);
+        } else if (task.status === 'in-progress') {
+            this.changeTaskStatus(task, 'completed');
+        } else if (task.status === 'completed') {
+            this.changeTaskStatus(task, 'unchecked');
+        } else if (task.status === 'skipped') {
+            this.changeTaskStatus(task, 'unchecked');
+        }
+    }
+
+    updateTaskDetails(task: Task) {
+        this.saveTaskLocalAttributes(task);
+        this.apiService.updateChecklistItem(task.id, task.is_completed, task.date, task.text).subscribe({
+            next: () => this.cdr.detectChanges()
+        });
+    }
+
+    saveTaskLocalAttributes(task: Task) {
+        const localKey = `task_attr_${this.planId}_${task.id}`;
+        const data = {
+            status: task.status,
+            estimate: task.estimate,
+            notes: task.notes,
+            offsetDays: task.offsetDays
+        };
+        localStorage.setItem(localKey, JSON.stringify(data));
+    }
+
+    openEstimateModal(task: Task, event: Event) {
+        event.stopPropagation();
+        this.modalTask = task;
+        this.customEstimateMinutes = task.estimate;
+        this.customOffsetDays = task.offsetDays !== undefined ? task.offsetDays : 0;
+        this.showEstimateModal = true;
+    }
+
+    saveCustomEstimate() {
+        if (this.modalTask) {
+            this.modalTask.estimate = this.customEstimateMinutes;
+            this.modalTask.offsetDays = this.customOffsetDays;
+
+            // Recalculate date if targetLaunchDate is available
+            if (this.targetLaunchDate && this.modalTask.offsetDays !== undefined) {
+                this.modalTask.date = this.calculateLaunchOffsetDate(this.targetLaunchDate, this.modalTask.offsetDays);
+            }
+
+            this.saveTaskLocalAttributes(this.modalTask);
+            this.updateTaskDetails(this.modalTask);
+        }
+        this.showEstimateModal = false;
+        this.modalTask = null;
+        this.cdr.detectChanges();
+    }
+
+    archiveChecklist() {
+        if (confirm('Are you sure you want to archive this checklist?')) {
+            this.apiService.archiveChecklist(this.planId, true).subscribe({
+                next: (res) => {
+                    if (res.success) {
+                        this.router.navigate(['/my-checklists']);
+                    } else {
+                        this.errorMessage = res.message || 'Failed to archive checklist.';
+                    }
+                },
+                error: (err) => {
+                    console.error(err);
+                    this.errorMessage = 'Server error occurred while archiving the checklist.';
+                }
+            });
+        }
+    }
+
+    deleteChecklist() {
+        if (confirm('Are you sure you want to permanently delete this checklist? This action cannot be undone.')) {
+            this.apiService.deleteChecklist(this.planId).subscribe({
+                next: (res) => {
+                    if (res.success) {
+                        localStorage.removeItem(`authorflow_meta_${this.planId}`);
+                        this.router.navigate(['/my-checklists']);
+                    } else {
+                        this.errorMessage = res.message || 'Failed to delete checklist.';
+                    }
+                },
+                error: (err) => {
+                    console.error(err);
+                    this.errorMessage = 'Server error occurred while deleting the checklist.';
+                }
+            });
+        }
+    }
+
+    archiveTask(task: Task) {
+        if (confirm('Are you sure you want to archive/remove this task?')) {
+            this.tasks = this.tasks.filter(t => t.id !== task.id);
+            // Delete locally
+            localStorage.removeItem(`task_attr_${this.planId}_${task.id}`);
+            // Update backend by pushing current tasks list (standard update)
+            const payload = {
+                name: this.plan.name || this.plan.title,
+                items: this.tasks.map(t => ({
+                    id: t.id,
+                    text: t.text,
+                    checked: t.is_completed,
+                    date: t.date
+                }))
+            };
+            this.apiService.updateChecklist(this.planId, payload).subscribe({
+                next: () => this.cdr.detectChanges()
+            });
+        }
+        this.activeMenuTaskId = null;
+    }
+
+    toggleActionMenu(taskId: number, event: Event) {
+        event.stopPropagation();
+        if (this.activeMenuTaskId === taskId) {
+            this.activeMenuTaskId = null;
+        } else {
+            this.activeMenuTaskId = taskId;
+        }
+    }
+
+    // Follow up Milestones Engine UI
+    getMilestoneEngineState(day: number): 'dormant' | 'active' | 'completed' {
+        // Calculate days since launch
+        if (!this.targetLaunchDate) return 'dormant';
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const launch = new Date(this.targetLaunchDate);
+        if (isNaN(launch.getTime())) return 'dormant';
+        launch.setHours(0,0,0,0);
+        const diffDays = Math.floor((today.getTime() - launch.getTime()) / (1000 * 3600 * 24));
+
+        // Check if matching task is completed
+        const textToMatch = `Day ${day}`.toLowerCase();
+        const fmTask = this.tasks.find(t => t.phase === 'Follow-Up Milestones' && t.text && t.text.toLowerCase().includes(`${day}-day`));
+        if (fmTask?.status === 'completed') return 'completed';
+
+        if (diffDays >= day) {
+            return 'active';
+        }
+        return 'dormant';
+    }
+
+    activateMilestone(day: number) {
+        const fmTask = this.tasks.find(t => t.phase === 'Follow-Up Milestones' && t.text && t.text.toLowerCase().includes(`${day}-day`));
+        if (fmTask && fmTask.status === 'unchecked') {
+            this.changeTaskStatus(fmTask, 'in-progress');
+        }
+    }
+
+    // Add Item Dialog
+    openAddModal() {
+        this.showAddModal = true;
+    }
+
+    getFilteredLibraryTasks(): any[] {
+        return this.libraryTasks.filter(lt => {
+            if (lt.phase !== this.activeCategory) return false;
+            
+            // Exclude already existing tasks in project
+            if (this.tasks.some(t => t.text.toLowerCase() === lt.text.toLowerCase())) return false;
+            
+            if (this.searchQuery) {
+                return lt.text.toLowerCase().includes(this.searchQuery.toLowerCase());
+            }
+            return true;
+        });
+    }
+    addLibraryItem(libTask: any) {
+        // Optimistically create new item ID
+        const tempId = Math.floor(Math.random() * 100000);
+        const newTask: Task = {
+            id: tempId,
+            text: libTask.text,
+            date: this.plan.end_date || null,
+            is_completed: false,
+            status: 'unchecked',
+            estimate: libTask.estimate,
+            defaultEstimate: libTask.estimate,
+            isMilestone: !!libTask.isMilestone,
+            milestoneName: libTask.milestoneName || '',
+            notes: '',
+            phase: libTask.phase,
+            offsetDays: libTask.offsetDays !== undefined ? libTask.offsetDays : this.inferOffsetDays(libTask.text)
+        };
+
+        this.tasks.push(newTask);
+        this.saveTaskLocalAttributes(newTask);
+
+        // Update backend
         const payload = {
-            name: this.plan.name || this.plan.title || 'My Checklist',
-            plan_id: this.plan.plan_id ? parseInt(this.plan.plan_id.toString(), 10) : null,
-            activity_type: this.plan.activity_type || null,
-            content_type: this.plan.content_type || null,
-            start_date: this.formatDateToString(this.plan.start_date),
-            end_date: this.formatDateToString(this.plan.end_date),
-            algorithm_type: this.plan.algorithm_type || null,
+            name: this.plan.name || this.plan.title,
             items: this.tasks.map(t => ({
-                id: t.id || null,
+                id: t.id < 100000 ? t.id : null, // send null for new items
                 text: t.text,
                 checked: t.is_completed,
-                date: this.formatDateToString(t.date)
+                date: t.date
             }))
         };
 
         this.apiService.updateChecklist(this.planId, payload).subscribe({
-            next: (response) => {
-                if (response.success) {
-                    alert('Checklist and schedule saved successfully!');
-                    this.router.navigate(['/my-checklists']);
-                } else {
-                    alert('Failed to save checklist: ' + response.message);
-                }
-            },
-            error: (err) => {
-                console.error('Error saving checklist:', err);
-                alert('An error occurred while saving the checklist.');
+            next: (res) => {
+                this.fetchPlanDetails(); // Reload to get real backend IDs
+            }
+        });
+
+        this.showAddModal = false;
+    }
+
+    addCustomChecklistItem() {
+        if (!this.newCustomTaskText.trim()) {
+            this.errorMessage = 'Please enter a task name.';
+            return;
+        }
+
+        const estimateMinutes = Math.round(this.newCustomTaskEstimateHours * 60);
+        const targetDate = this.targetLaunchDate 
+            ? this.calculateLaunchOffsetDate(this.targetLaunchDate, this.newCustomTaskOffset) 
+            : null;
+
+        const tempId = Math.floor(Math.random() * 100000);
+        const newTask: Task = {
+            id: tempId,
+            text: this.newCustomTaskText.trim(),
+            date: targetDate,
+            is_completed: false,
+            status: 'unchecked',
+            estimate: estimateMinutes,
+            defaultEstimate: estimateMinutes,
+            isMilestone: this.newCustomTaskText.toLowerCase().includes('complete') || this.newCustomTaskText.toLowerCase().includes('launch'),
+            milestoneName: '',
+            notes: '',
+            phase: this.newCustomTaskCategory,
+            offsetDays: this.newCustomTaskOffset
+        };
+
+        this.tasks.push(newTask);
+        this.saveTaskLocalAttributes(newTask);
+
+        // Update backend
+        const payload = {
+            name: this.plan.name || this.plan.title,
+            items: this.tasks.map(t => ({
+                id: t.id < 100000 ? t.id : null,
+                text: t.text,
+                checked: t.is_completed,
+                date: t.date
+            }))
+        };
+
+        this.apiService.updateChecklist(this.planId, payload).subscribe({
+            next: (res) => {
+                this.newCustomTaskText = ''; // Clear text input
+                this.fetchPlanDetails(); // Reload to get real backend IDs
             }
         });
     }
 
-    // Week View Logic
-    generateWeekView() {
-        this.weekDays = [];
-        const start = new Date(this.currentWeekStart);
-        // Adjust to Monday
-        const day = start.getDay();
-        const diff = start.getDate() - day + (day == 0 ? -6 : 1); // adjust when day is sunday
-        start.setDate(diff);
-
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(start);
-            d.setDate(start.getDate() + i);
-            this.weekDays.push(d);
-        }
+    calculateLaunchOffsetDate(launchDateStr: string, offsetDays: number): string {
+        if (!launchDateStr) return '';
+        const date = new Date(launchDateStr);
+        date.setDate(date.getDate() + offsetDays);
+        return date.toISOString().split('T')[0];
     }
 
-    generateMonthView() {
-        this.monthDays = [];
-        const start = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
-        const day = start.getDay();
-        // Adjust start to the previous Sunday
-        start.setDate(start.getDate() - day);
-
-        // We want to generate 6 weeks (42 days) to cover the calendar grid completely
-        for (let i = 0; i < 42; i++) {
-            const d = new Date(start);
-            d.setDate(start.getDate() + i);
-            this.monthDays.push(d);
-        }
+    inferOffsetDays(text: string): number {
+        const t = text.toLowerCase();
+        if (t.includes('30-day')) return 30;
+        if (t.includes('90-day')) return 90;
+        if (t.includes('180-day')) return 180;
+        if (t.includes('launch') || t.includes('release')) return 0;
+        if (t.includes('first draft')) return -60;
+        if (t.includes('proofreading')) return -25;
+        if (t.includes('cover')) return -30;
+        if (t.includes('upload')) return -7;
+        return -10; // default offset
     }
 
-    prevWeek() {
-        if (this.viewMode === 'weekly') {
-            this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
-            this.generateWeekView();
-        } else if (this.viewMode === 'calendar') {
-            this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-            this.generateMonthView();
-        } else {
-            this.selectedDate.setDate(this.selectedDate.getDate() - 1);
-            this.currentWeekStart = new Date(this.selectedDate);
-            this.generateWeekView();
-        }
-    }
-
-    nextWeek() {
-        if (this.viewMode === 'weekly') {
-            this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
-            this.generateWeekView();
-        } else if (this.viewMode === 'calendar') {
-            this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-            this.generateMonthView();
-        } else {
-            this.selectedDate.setDate(this.selectedDate.getDate() + 1);
-            this.currentWeekStart = new Date(this.selectedDate);
-            this.generateWeekView();
-        }
-    }
-
-    today() {
-        this.currentWeekStart = new Date();
-        this.selectedDate = new Date();
-        this.currentMonth = new Date();
-        this.generateWeekView();
-        this.generateMonthView();
-    }
-
-    getTasksForDate(date: Date): Task[] {
-        const dateStr = this.formatDateLocal(date);
-        return this.tasks.filter(t => t.date === dateStr);
-    }
-
-    isToday(date: Date): boolean {
-        const today = new Date();
-        return date.getDate() === today.getDate() &&
-               date.getMonth() === today.getMonth() &&
-               date.getFullYear() === today.getFullYear();
-    }
-
-    isSameDate(d1: Date, d2: Date): boolean {
-        return d1.getDate() === d2.getDate() &&
-               d1.getMonth() === d2.getMonth() &&
-               d1.getFullYear() === d2.getFullYear();
-    }
-
-    selectDate(date: Date) {
-        this.selectedDate = new Date(date);
-    }
-
-    getWeekRangeString(): string {
-        if (this.weekDays.length === 0) return '';
-        const first = this.weekDays[0];
-        const last = this.weekDays[this.weekDays.length - 1];
-        
-        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-        const firstStr = first.toLocaleDateString('en-US', options);
-        const lastStr = last.toLocaleDateString('en-US', { ...options, year: 'numeric' });
-        
-        return `${firstStr} – ${lastStr}`;
-    }
-
-    getMonthYearString(): string {
-        const options: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric' };
-        return this.currentMonth.toLocaleDateString('en-US', options);
-    }
-
-    // Helper function to format date in local timezone (YYYY-MM-DD)
-    private formatDateLocal(date: Date): string {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    // Drag and Drop (Simple implementation)
-    draggedTask: Task | null = null;
-
-    onDragStart(event: DragEvent, task: Task) {
-        this.draggedTask = task;
-        event.dataTransfer?.setData('text/plain', JSON.stringify(task));
-        event.dataTransfer!.effectAllowed = 'move';
-    }
-
-    onDragOver(event: DragEvent) {
-        event.preventDefault();
-        event.dataTransfer!.dropEffect = 'move';
-    }
-
-    onDrop(event: DragEvent, targetTask: Task) {
-        event.preventDefault();
-        if (this.draggedTask && this.draggedTask !== targetTask) {
-            const oldIndex = this.tasks.indexOf(this.draggedTask);
-            const newIndex = this.tasks.indexOf(targetTask);
-
-            // Move in array
-            this.tasks.splice(oldIndex, 1);
-            this.tasks.splice(newIndex, 0, this.draggedTask);
-
-            // Update order indices
-            this.tasks.forEach((t, index) => t.order_index = index);
-
-            // Save new order
-            this.saveAllTasks();
-
-            this.draggedTask = null;
-        }
-    }
-
-    private parseDate(dateValue: any): Date | null {
-        if (!dateValue) return null;
-
-        // Handle JSON string containing MySqlDateTime object
-        if (typeof dateValue === 'string' && dateValue.startsWith('{')) {
-            try {
-                const parsed = JSON.parse(dateValue);
-                if (parsed.Year && parsed.Month && parsed.Day) {
-                    return new Date(parsed.Year, parsed.Month - 1, parsed.Day);
-                }
-            } catch (e) {
-                // If JSON parse fails, continue to other formats
-            }
-        }
-
-        // Handle string dates (YYYY-MM-DD format from backend)
-        if (typeof dateValue === 'string') {
-            const dateStr = dateValue.split('T')[0]; // Remove time if present
-            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                return new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
-            }
-            // Try standard Date parsing
-            const parsed = new Date(dateValue);
-            return isNaN(parsed.getTime()) ? null : parsed;
-        }
-
-        // Handle MySqlDateTime-like objects (already parsed)
-        if (dateValue && typeof dateValue === 'object') {
-            if (dateValue.Year && dateValue.Month && dateValue.Day) {
-                return new Date(dateValue.Year, dateValue.Month - 1, dateValue.Day);
-            }
-        }
-
-        // Try standard Date parsing as fallback
-        const parsed = new Date(dateValue);
-        return isNaN(parsed.getTime()) ? null : parsed;
-    }
-
-    private formatDateToString(dateValue: any): string | null {
-        const parsed = this.parseDate(dateValue);
-        if (!parsed) return null;
-        const year = parsed.getFullYear();
-        const month = String(parsed.getMonth() + 1).padStart(2, '0');
-        const day = String(parsed.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+    getTaskEstimateLabel(task: Task): string {
+        const est = task.estimate;
+        if (est < 60) return `${est} min`;
+        const hrs = est / 60;
+        return `${hrs % 1 === 0 ? hrs : hrs.toFixed(1)} ${hrs === 1 ? 'hr' : 'hrs'}`;
     }
 }

@@ -1,339 +1,366 @@
-<div class="details-container">
-    <!-- Breadcrumb -->
-    <div class="breadcrumb">
-        <a routerLink="/my-checklists"><i class="fas fa-arrow-left"></i> Checklists</a>
-        <span>/</span>
-        <span class="current">{{ plan.name || plan.title || 'Untitled Checklist' }}</span>
+<div class="active-checklist-container fade-in">
+    <!-- Custom Error Alert Banner matching SS -->
+    <div class="custom-error-alert fade-in" *ngIf="errorMessage">
+        <div class="alert-left-content">
+            <span class="alert-icon-error">✕</span>
+            <span class="alert-message-text">{{ errorMessage }}</span>
+        </div>
+        <button class="alert-close-action" (click)="clearErrorMessage()">✕</button>
     </div>
 
-    <!-- Header Section -->
-    <div class="details-header">
-        <div class="header-info">
-            <div class="header-status-row">
-                <div class="status-badge status-active">Active</div>
+    <!-- Back Button Above Box -->
+    <div class="back-navigation mb-3">
+        <a routerLink="/my-checklists" class="back-link">
+            <i class="fas fa-chevron-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Header -->
+    <header class="active-header card mb-3">
+        <div class="header-main">
+            <div class="project-info">
+                <div class="badges-row">
+                    <span class="badge genre">{{ genre }}</span>
+                    <span class="badge pen-name" *ngIf="penName"><i class="fas fa-user-pen"></i> {{ penName }}</span>
+                    <span class="badge launch-countdown" [class.overdue]="daysUntilLaunch < 0">
+                        <i class="far fa-hourglass-half"></i> 
+                        {{ daysUntilLaunch >= 0 ? daysUntilLaunch + ' Days Until Launch' : 'Launched ' + Math.abs(daysUntilLaunch) + ' Days Ago' }}
+                    </span>
+                </div>
+                <h1 class="project-title">{{ plan.name || plan.title || 'My Planning Checklist' }}</h1>
             </div>
-            <h1>{{ plan.name || plan.title || 'Untitled Checklist' }}</h1>
-            <div class="meta-row">
-                <span><i class="fas fa-list-check"></i> {{ tasks.length }} Tasks</span>
-                <span><i class="fas fa-check-circle"></i> {{ getCompletedCount() }} / {{ tasks.length }} Completed</span>
+
+            <!-- Header Controls & Ring -->
+            <div class="header-right">
+                <div class="progress-ring-container">
+                    <svg width="70" height="70" viewBox="0 0 70 70">
+                        <circle cx="35" cy="35" r="30" fill="none" stroke="#f1f5f9" stroke-width="6"></circle>
+                        <circle cx="35" cy="35" r="30" fill="none" stroke="#005DDB" stroke-width="6"
+                                [attr.stroke-dasharray]="(getCompletionPercentage() * 1.88) + ', 188'"></circle>
+                    </svg>
+                    <div class="ring-text">{{ getCompletionPercentage() }}%</div>
+                </div>
+
+                <div class="header-actions">
+                    <button class="btn btn-secondary" (click)="archiveChecklist()" title="Archive Checklist">
+                        <i class="fas fa-archive"></i> Archive
+                    </button>
+                    <button class="btn btn-danger" (click)="deleteChecklist()" title="Delete Checklist">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="header-actions">
-            <button class="btn-primary btn" (click)="savePlan()">
-                <i class="fas fa-save"></i> Save Checklist
-            </button>
-        </div>
-    </div>
+    </header>
 
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
-        <div class="tab-item" [class.active]="activeTab === 'schedule'" (click)="activeTab = 'schedule'">
-            <i class="fas fa-calendar-alt"></i> Schedule & Editor
-        </div>
-        <div class="tab-item" [class.active]="activeTab === 'progress'" (click)="activeTab = 'progress'">
-            <i class="fas fa-chart-line"></i> Progress Tracker
-        </div>
-        <div class="tab-item" [class.active]="activeTab === 'stats'" (click)="activeTab = 'stats'">
-            <i class="fas fa-chart-pie"></i> Stats
-        </div>
-    </div>
-
-    <!-- Tab Content -->
-    <div class="tab-content" [ngSwitch]="activeTab">
-        <!-- Tab 1: SCHEDULE & EDITOR -->
-        <div class="plan-tab" *ngSwitchCase="'schedule'">
-            <div class="checklist-layout">
-                <!-- Left Section: Plan Settings Config -->
-                <aside class="sidebar-config">
-                    <div class="sidebar-card">
-                        <div class="card-header">
-                            <h3>Checklist Configuration</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label>Name</label>
-                                <input type="text" [(ngModel)]="plan.name" placeholder="Checklist Name" class="form-input">
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group half">
-                                    <label>Activity</label>
-                                    <select [(ngModel)]="plan.activity_type" class="form-select">
-                                        <option *ngFor="let act of activities" [value]="act">{{ act }}</option>
-                                    </select>
-                                </div>
-                                <div class="form-group half">
-                                    <label>Content</label>
-                                    <select [(ngModel)]="plan.content_type" class="form-select">
-                                        <option *ngFor="let type of contentTypes" [value]="type">{{ type }}</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Start Date</label>
-                                <input type="date" [(ngModel)]="plan.start_date" class="form-input">
-                            </div>
-                            <div class="form-group">
-                                <label>Target Finish Date</label>
-                                <input type="date" [(ngModel)]="plan.end_date" class="form-input">
-                            </div>
-                            <div class="form-group">
-                                <label>Strategy</label>
-                                <select [(ngModel)]="plan.algorithm_type" class="form-select">
-                                    <option *ngFor="let strat of strategies" [value]="strat.id">{{ strat.label }}</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </aside>
-
-                <!-- Center Section: Task List Editor -->
-                <div class="task-list-column card">
-                    <div class="task-list-header">
-                        <h2>What do you need to do?</h2>
-                        <div class="view-mode-buttons">
-                            <button [class.active]="taskViewMode === 'boxes'" (click)="taskViewMode = 'boxes'"><i class="fas fa-th-large"></i> Boxes</button>
-                            <button [class.active]="taskViewMode === 'list' || taskViewMode === 'simple'" (click)="taskViewMode = 'list'"><i class="fas fa-list"></i> List</button>
-                        </div>
+    <!-- Main Workspace Layout -->
+    <div class="workspace-grid">
+         <!-- Center/Left: Collapsible Phase Accordions -->
+        <main class="checklist-feed">
+            <!-- Inline Add Checklist Item Card -->
+            <div class="card inline-add-card mb-4">
+                <div class="card-header-clean mb-3">
+                    <h3><i class="fas fa-plus-circle text-primary"></i> Add Custom Checklist Item</h3>
+                    <p class="section-desc">Create and inject a custom task directly into your production timeline.</p>
+                </div>
+                <div class="inline-add-form">
+                    <div class="form-group flex-2">
+                        <label class="form-label" for="newCustomTaskText">Task Name</label>
+                        <input type="text" id="newCustomTaskText" [(ngModel)]="newCustomTaskText" class="form-input" placeholder="e.g. Run newsletter swap campaign">
                     </div>
                     
-                    <!-- Tasks List (Boxes view mode) -->
-                    <div class="tasks-container" *ngIf="taskViewMode === 'boxes'">
-                        <div class="task-box-card" *ngFor="let task of tasks" [class.completed]="task.is_completed" draggable="true"
-                            (dragstart)="onDragStart($event, task)" (dragover)="onDragOver($event)"
-                            (drop)="onDrop($event, task)">
-                            <div class="task-box-header">
-                                <input type="checkbox" [(ngModel)]="task.is_completed" (change)="updateTask(task)" class="task-checkbox">
-                                <input type="text" [(ngModel)]="task.text" (blur)="updateTask(task)" class="task-box-input">
-                                <button class="delete-box-btn" (click)="deleteTask(task)"><i class="fas fa-times"></i></button>
-                            </div>
-                            <div class="task-box-meta">
-                                <span class="meta-label" *ngIf="task.is_completed">
-                                    <i class="fas fa-check-circle"></i> Completed on {{ task.date || (selectedDate | date:'yyyy-MM-dd') }}
-                                </span>
-                                <span class="meta-label pending" *ngIf="!task.is_completed">
-                                    <i class="far fa-calendar-alt"></i> To do on 
-                                    <input type="date" [(ngModel)]="task.date" [min]="plan.start_date" [max]="plan.end_date" (change)="updateTask(task)" class="inline-date-input">
-                                </span>
-                            </div>
+                    <div class="form-group flex-1">
+                        <label class="form-label" for="newCustomTaskCategory">Phase</label>
+                        <select id="newCustomTaskCategory" [(ngModel)]="newCustomTaskCategory" class="form-select">
+                            <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group flex-half">
+                        <label class="form-label" for="newCustomTaskEstimate">Effort (hrs)</label>
+                        <input type="number" id="newCustomTaskEstimate" [(ngModel)]="newCustomTaskEstimateHours" class="form-input" min="0.5" step="0.5">
+                    </div>
+
+                    <div class="form-group flex-half">
+                        <label class="form-label" for="newCustomTaskOffset">Offset (Day)</label>
+                        <input type="number" id="newCustomTaskOffset" [(ngModel)]="newCustomTaskOffset" class="form-input" placeholder="e.g. -15">
+                    </div>
+
+                    <button class="btn btn-primary add-submit-btn" (click)="addCustomChecklistItem()">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+            </div>
+
+            <!-- Add Item CTA -->
+            <div class="feed-header mb-3">
+                <h2>Production Pipeline</h2>
+                <button class="btn btn-primary" (click)="openAddModal()"><i class="fas fa-plus"></i> Add Checklist Item</button>
+            </div>
+
+            <!-- Categories Accordions -->
+            <div class="phases-list">
+                <div class="phase-accordion card mb-2" *ngFor="let cat of categories">
+                    <div class="accordion-header" (click)="togglePhase(cat)">
+                        <div class="header-left">
+                            <i class="fas" [class.fa-chevron-down]="expandedPhases[cat]" [class.fa-chevron-right]="!expandedPhases[cat]"></i>
+                            <span class="phase-title">{{ cat }}</span>
                         </div>
-                        <div class="no-tasks-placeholder" *ngIf="tasks.length === 0">
-                            <i class="far fa-clipboard"></i>
-                            <p>No tasks added yet. Create one below!</p>
+                        <div class="header-right">
+                            <span class="ratio">{{ getPhaseCompletedCount(cat) }} / {{ getPhaseCompletedCount(cat) + getPhaseRemainingCount(cat) }} Done</span>
+                            <div class="phase-progress-bar-container">
+                                <div class="phase-progress-bar" [style.width.%]="getPhaseCompletionPercentage(cat)"></div>
+                            </div>
+                            <span class="percentage">{{ getPhaseCompletionPercentage(cat) }}%</span>
                         </div>
                     </div>
 
-                    <!-- Tasks List (Compact List view mode - merged with Simple list) -->
-                    <div class="tasks-container list-view" *ngIf="taskViewMode === 'list' || taskViewMode === 'simple'">
-                        <div class="task-list-row" *ngFor="let task of tasks" [class.completed]="task.is_completed">
-                            <div class="task-list-left">
-                                <input type="checkbox" [(ngModel)]="task.is_completed" (change)="updateTask(task)" class="task-checkbox">
-                                <div class="task-text-container">
-                                    <input type="text" [(ngModel)]="task.text" (blur)="updateTask(task)" class="task-list-input" placeholder="Task description">
-                                    <div class="task-date-subtext">
-                                        <i class="far fa-calendar-alt"></i> Date: 
-                                        <input type="date" [(ngModel)]="task.date" [min]="plan.start_date" [max]="plan.end_date" (change)="updateTask(task)" class="inline-date-input">
+                    <!-- Task Cards inside Phase -->
+                    <div class="accordion-content" *ngIf="expandedPhases[cat]">
+                        <div class="tasks-feed">
+                            <div class="task-card" *ngFor="let task of getPhaseTasks(cat)" 
+                                 [class.completed]="task.status === 'completed'"
+                                 [class.in-progress]="task.status === 'in-progress'"
+                                 [class.skipped]="task.status === 'skipped'"
+                                 [class.overdue-card]="isOverdue(task)"
+                                 [class.menu-open]="activeMenuTaskId === task.id">
+                                <div class="task-selector">
+                                    <!-- Unchecked -->
+                                    <button class="custom-checkbox" *ngIf="task.status === 'unchecked'" (click)="toggleTaskCompletion(task)" title="Set In Progress">
+                                    </button>
+                                    <!-- In Progress -->
+                                    <button class="custom-checkbox in-progress" *ngIf="task.status === 'in-progress'" (click)="toggleTaskCompletion(task)" title="Complete Task">
+                                        <i class="fas fa-circle-notch fa-spin"></i>
+                                    </button>
+                                    <!-- Completed -->
+                                    <button class="custom-checkbox checked" *ngIf="task.status === 'completed'" (click)="toggleTaskCompletion(task)" title="Uncheck Task">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <!-- Skipped -->
+                                    <button class="custom-checkbox skipped" *ngIf="task.status === 'skipped'" (click)="toggleTaskCompletion(task)" title="Restore Task">
+                                        <i class="fas fa-fast-forward"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Title, Meta & Notes -->
+                                <div class="task-body">
+                                    <div class="title-row">
+                                        <span class="task-title-text">{{ task.text }}</span>
+                                        
+                                        <!-- Badges -->
+                                        <div class="task-badges">
+                                            <span class="badge overdue" *ngIf="isOverdue(task)"><i class="fas fa-exclamation-triangle"></i> Overdue</span>
+                                            <span class="badge estimate" (click)="openEstimateModal(task, $event)" title="Change estimate"><i class="far fa-clock"></i> {{ getTaskEstimateLabel(task) }}</span>
+                                            <span class="badge offset-badge" *ngIf="task.offsetDays !== undefined" (click)="openEstimateModal(task, $event)" title="Change offset days"><i class="far fa-calendar-alt"></i> Day {{ task.offsetDays }}</span>
+                                            <span class="badge milestone" *ngIf="task.isMilestone" title="This milestone will connect to Calendar/Scheduler in Phase Two."><i class="fas fa-flag"></i> Milestone</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Due Date and Notes -->
+                                    <div class="task-editable-meta">
+                                        <div class="meta-field">
+                                            <label><i class="far fa-calendar-alt"></i> Due:</label>
+                                            <input type="date" [(ngModel)]="task.date" (change)="updateTaskDetails(task)" class="inline-date-input">
+                                        </div>
+                                        <div class="meta-field text-input">
+                                            <input type="text" [(ngModel)]="task.notes" (blur)="updateTaskDetails(task)" placeholder="Add private checklist notes..." class="inline-notes-input">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Menu (Skip/Delete) -->
+                                <div class="task-menu-container">
+                                    <button class="menu-trigger" (click)="toggleActionMenu(task.id, $event)">&bull;&bull;&bull;</button>
+                                    <div class="task-dropdown-menu" *ngIf="activeMenuTaskId === task.id">
+                                        <button (click)="changeTaskStatus(task, 'skipped')" *ngIf="task.status !== 'skipped'"><i class="fas fa-fast-forward"></i> Skip Task</button>
+                                        <button (click)="changeTaskStatus(task, 'unchecked')" *ngIf="task.status === 'skipped'"><i class="fas fa-undo"></i> Restore Task</button>
+                                        <button (click)="archiveTask(task)" class="delete-action"><i class="fas fa-trash-alt"></i> Delete</button>
                                     </div>
                                 </div>
                             </div>
-                            <button class="delete-list-btn" (click)="deleteTask(task)" title="Delete task"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                        <div class="no-tasks-placeholder" *ngIf="tasks.length === 0">
-                            <i class="far fa-clipboard"></i>
-                            <p>No tasks added yet. Create one below!</p>
-                        </div>
-                    </div>
 
-                    <div class="add-task-row">
-                        <input type="text" placeholder="+ Add a new task" [(ngModel)]="newTaskText"
-                            (keyup.enter)="addTask()" class="form-input">
-                        <button (click)="addTask()" class="btn-primary btn">Add</button>
-                    </div>
-                </div>
-
-                <!-- Right Column: Scheduled Tasks View -->
-                <div class="schedule-view-column card">
-                    <div class="schedule-header">
-                        <div class="header-title-section">
-                            <h3>Scheduled Tasks</h3>
-                            <span class="date-range-label" *ngIf="viewMode !== 'calendar'">{{ getWeekRangeString() }}</span>
-                            <span class="date-range-label" *ngIf="viewMode === 'calendar'">{{ getMonthYearString() }}</span>
-                        </div>
-                        <div class="nav-controls">
-                            <button (click)="prevWeek()"><i class="fas fa-chevron-left"></i></button>
-                            <button (click)="today()">Today</button>
-                            <button (click)="nextWeek()"><i class="fas fa-chevron-right"></i></button>
-                        </div>
-                        <div class="view-toggles">
-                            <button [class.active]="viewMode === 'daily'" (click)="viewMode = 'daily'">Daily</button>
-                            <button [class.active]="viewMode === 'weekly'" (click)="viewMode = 'weekly'">Weekly</button>
-                            <button [class.active]="viewMode === 'calendar'" (click)="viewMode = 'calendar'">Calendar</button>
-                        </div>
-                    </div>
-
-                    <!-- Weekly View -->
-                    <div class="week-grid" *ngIf="viewMode === 'weekly'">
-                        <div class="day-column" *ngFor="let day of weekDays" [class.selected]="isSameDate(day, selectedDate)" (click)="selectDate(day)">
-                            <div class="day-header" [class.today]="isToday(day)">
-                                <span class="day-name">{{ day | date:'EEE' }}</span>
-                                <span class="day-date">{{ day | date:'d' }}</span>
-                            </div>
-                            <div class="day-tasks">
-                                <div class="mini-task" *ngFor="let t of getTasksForDate(day)" [class.completed]="t.is_completed" (click)="toggleTaskCompletion(t); $event.stopPropagation()">
-                                    <i [ngClass]="t.is_completed ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                                    <span class="task-text">{{ t.text }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Daily View -->
-                    <div class="daily-tasks-view" *ngIf="viewMode === 'daily'">
-                        <div class="day-header-banner" [class.today]="isToday(selectedDate)">
-                           <h4>{{ selectedDate | date:'EEEE' }}</h4>
-                           <span class="full-date">{{ selectedDate | date:'longDate' }}</span>
-                        </div>
-                        <div class="daily-tasks-list">
-                            <div class="no-tasks-placeholder" *ngIf="getTasksForDate(selectedDate).length === 0">
-                                <i class="far fa-calendar-check"></i>
-                                <p>No tasks scheduled for this day.</p>
-                            </div>
-                            <div class="daily-task-item" *ngFor="let t of getTasksForDate(selectedDate)" [class.completed]="t.is_completed" (click)="toggleTaskCompletion(t)">
-                                <i [ngClass]="t.is_completed ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                                <span class="task-title">{{ t.text }}</span>
-                                <span class="status-badge" *ngIf="t.is_completed">Done</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Calendar View -->
-                    <div class="calendar-grid-view" *ngIf="viewMode === 'calendar'">
-                        <div class="calendar-days-header">
-                            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-                        </div>
-                        <div class="calendar-days-grid">
-                            <div class="calendar-day-cell" *ngFor="let day of monthDays" 
-                                 [class.today]="isToday(day)" 
-                                 [class.selected]="isSameDate(day, selectedDate)"
-                                 [class.different-month]="day.getMonth() !== currentMonth.getMonth()"
-                                 (click)="selectDate(day)">
-                                <span class="cell-day-num">{{ day | date:'d' }}</span>
-                                <div class="task-dots-container">
-                                    <span class="task-dot" *ngFor="let t of getTasksForDate(day) | slice:0:3" [class.completed]="t.is_completed"></span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Tasks list for the selected day in calendar view -->
-                        <div class="calendar-day-tasks-section">
-                            <div class="calendar-day-tasks-header">
-                                <h4>Tasks for {{ selectedDate | date:'fullDate' }}</h4>
-                            </div>
-                            <div class="calendar-tasks-list">
-                                <div class="no-tasks-placeholder" *ngIf="getTasksForDate(selectedDate).length === 0">
-                                    <p>No tasks scheduled for this day.</p>
-                                </div>
-                                <div class="calendar-task-item" *ngFor="let t of getTasksForDate(selectedDate)" [class.completed]="t.is_completed" (click)="toggleTaskCompletion(t); $event.stopPropagation()">
-                                    <i [ngClass]="t.is_completed ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                                    <span class="task-title">{{ t.text }}</span>
-                                </div>
+                            <div class="empty-phase-feed" *ngIf="getPhaseTasks(cat).length === 0">
+                                <p>No tasks configured in this phase.</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Tab 2: PROGRESS TRACKER -->
-        <div class="plan-tab" *ngSwitchCase="'progress'">
-            <div class="progress-tab-layout">
-                <div class="progress-card card">
-                    <div class="card-header">
-                        <h2>Progress Tracker</h2>
-                        <p>Check off tasks below to record your progress</p>
-                    </div>
-                    <div class="progress-tracker-list">
-                        <div class="progress-task-row" *ngFor="let task of tasks" [class.completed]="task.is_completed" (click)="toggleTaskCompletion(task)">
-                            <i [ngClass]="task.is_completed ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
-                            <div class="task-details">
-                                <span class="task-text">{{ task.text }}</span>
-                                <span class="task-date" *ngIf="task.date">Scheduled for {{ task.date | date:'mediumDate' }}</span>
-                            </div>
-                            <span class="status-badge" *ngIf="task.is_completed">Completed</span>
-                        </div>
-                        <div class="no-tasks-placeholder" *ngIf="tasks.length === 0">
-                            <p>No tasks in this checklist yet.</p>
-                        </div>
-                    </div>
-                </div>
+            <!-- Follow-Up Milestone Engine Panel -->
+            <div class="card follow-up-engine-card mt-3">
+                <h3 class="section-title"><i class="fas fa-gauge-high text-primary"></i> Follow-Up Milestone Engine</h3>
+                <p class="section-desc">Automated checklists triggered relative to your book's release timeline.</p>
                 
-                <div class="history-card card">
-                    <div class="card-header">
-                        <h3>Recent Completed Activity</h3>
-                    </div>
-                    <div class="history-list">
-                        <div class="history-item" *ngFor="let task of getCompletedTasks()">
-                            <i class="fa-solid fa-circle-check"></i>
-                            <div class="history-info">
-                                <span class="history-text">{{ task.text }}</span>
-                                <span class="history-time" *ngIf="task.date">Scheduled for {{ task.date | date:'mediumDate' }}</span>
-                                <span class="history-time" *ngIf="!task.date">No scheduled date</span>
-                            </div>
+                <div class="engine-milestones-grid mt-2">
+                    <div class="engine-milestone-card" *ngFor="let day of [30, 90, 180]" [class.dormant]="getMilestoneEngineState(day) === 'dormant'" [class.active]="getMilestoneEngineState(day) === 'active'" [class.completed]="getMilestoneEngineState(day) === 'completed'">
+                        <div class="engine-header">
+                            <span class="day-indicator">Day {{ day }}</span>
+                            <span class="status-indicator">
+                                <i class="fas fa-lock" *ngIf="getMilestoneEngineState(day) === 'dormant'"></i>
+                                <i class="fas fa-circle-play text-primary animate-pulse" *ngIf="getMilestoneEngineState(day) === 'active'"></i>
+                                <i class="fas fa-check-circle text-success" *ngIf="getMilestoneEngineState(day) === 'completed'"></i>
+                            </span>
                         </div>
-                        <div class="no-tasks-placeholder" *ngIf="getCompletedCount() === 0">
-                            <p>No completed tasks yet. Mark tasks as done to build your momentum!</p>
+                        <h4 class="engine-title">{{ day }}-Day Marketing Review</h4>
+                        <p class="engine-desc" *ngIf="getMilestoneEngineState(day) === 'dormant'">Unlocks {{ day }} days post-launch.</p>
+                        <p class="engine-desc" *ngIf="getMilestoneEngineState(day) !== 'dormant'">Checklist active for pipeline execution.</p>
+                        
+                        <button class="btn btn-primary btn-xs mt-2" 
+                                [disabled]="getMilestoneEngineState(day) !== 'active'" 
+                                (click)="activateMilestone(day)">
+                            {{ getMilestoneEngineState(day) === 'completed' ? 'Completed' : 'Activate Checklist' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Side: Effort Summary & Phase 2 Placeholders -->
+        <aside class="sidebar-panel">
+            <!-- Effort Summary Panel -->
+            <div class="sidebar-card sidebar-high-fidelity mb-3 effort-summary-panel">
+                <div class="card-header">
+                    <h3>Effort Summary</h3>
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Real-time calculations of timeline effort.</p>
+
+                    <div class="effort-stat-row">
+                        <span class="lbl">Total Estimated Effort</span>
+                        <span class="val">{{ getTotalEstimatedHours() }} Hours</span>
+                    </div>
+                    <div class="effort-stat-row">
+                        <span class="lbl">Completion Percentage</span>
+                        <span class="val">{{ getCompletionPercentage() }}%</span>
+                    </div>
+                    <div class="effort-stat-row">
+                        <span class="lbl">Avg. Effort Per Week</span>
+                        <span class="val">{{ getHoursPerWeek() }} Hours/wk</span>
+                    </div>
+
+                    <!-- Warnings (weekly effort exceeds 20 hrs) -->
+                    <div class="warning-card mt-2" *ngIf="getHoursPerWeek() > 20">
+                        <div class="warning-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="warning-body">
+                            <strong>High Workload Warning</strong>
+                            <p>Heads up — this timeline requires approximately {{ getHoursPerWeek() }} hrs/week. Consider adjusting your launch date or reducing scope.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hours by Phase chart-like bars -->
+                    <div class="hours-by-phase mt-3">
+                        <h4>Hours By Phase</h4>
+                        <div class="phase-hours-row" *ngFor="let phase of ['Pre-Writing & Research', 'Writing & Drafting', 'Editing & Manuscript Preparation']">
+                            <div class="phase-info">
+                                <span class="p-name">{{ phase }}</span>
+                                <span class="p-val">{{ getHoursByPhase(phase) }} hrs</span>
+                            </div>
+                            <div class="phase-bar-bg">
+                                <div class="phase-bar" [style.width.%]="(getHoursByPhase(phase) / (getTotalEstimatedHours() || 1)) * 100"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Tab 3: STATS -->
-        <div class="plan-tab" *ngSwitchCase="'stats'">
-            <div class="stats-tab-layout">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-icon-box goal">
-                            <i class="fas fa-list-check"></i>
-                        </div>
-                        <div class="metric-content">
-                            <span class="label">Total Tasks</span>
-                            <span class="value">{{ tasks.length }}</span>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon-box completed">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="metric-content">
-                            <span class="label">Completed Tasks</span>
-                            <div class="value-row">
-                                <span class="value">{{ getCompletedCount() }}</span>
-                                <span class="percentage-badge">{{ getCompletionPercentage() }}%</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-icon-box time">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
-                        <div class="metric-content">
-                            <span class="label">Pending Tasks</span>
-                            <span class="value">{{ tasks.length - getCompletedCount() }}</span>
-                        </div>
+            <!-- Phase Two Placeholder Actions -->
+            <div class="sidebar-card sidebar-high-fidelity placeholders-card">
+                <div class="card-header">
+                    <h3>Launch Hub Integrations</h3>
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Enterprise system integrations activating in Phase Two.</p>
+
+                    <div class="placeholder-actions-list mt-2">
+                        <button class="btn btn-secondary btn-block disabled-placeholder" title="This feature will activate when Phase Two launches.">
+                            <span class="btn-text">INSTALL FLOW</span>
+                            <span class="badge placeholder-badge">Available in Phase Two</span>
+                        </button>
+                        <button class="btn btn-secondary btn-block disabled-placeholder" title="This feature will activate when Phase Two launches.">
+                            <span class="btn-text">OPEN VAULT</span>
+                            <span class="badge placeholder-badge">Available in Phase Two</span>
+                        </button>
+                        <button class="btn btn-secondary btn-block disabled-placeholder" title="This feature will activate when Phase Two launches.">
+                            <span class="btn-text">BUILD LINK</span>
+                            <span class="badge placeholder-badge">Available in Phase Two</span>
+                        </button>
+                        <button class="btn btn-secondary btn-block disabled-placeholder" title="This feature will activate when Phase Two launches.">
+                            <span class="btn-text">VIEW REPORT</span>
+                            <span class="badge placeholder-badge">Available in Phase Two</span>
+                        </button>
+                        <button class="btn btn-secondary btn-block disabled-placeholder" title="This feature will activate when Phase Two launches.">
+                            <span class="btn-text">OPEN CALENDAR</span>
+                            <span class="badge placeholder-badge">Available in Phase Two</span>
+                        </button>
                     </div>
                 </div>
+            </div>
+        </aside>
+    </div>
+    <!-- Estimate Override Modal -->
+    <div class="modal-backdrop" *ngIf="showEstimateModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Override Task Settings</h3>
+                <button class="close-btn" (click)="showEstimateModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Configure task duration and target launch offset for <strong>{{ modalTask?.text }}</strong>.</p>
+                <div class="form-group mt-2">
+                    <label class="form-label">Duration (minutes)</label>
+                    <input type="number" [(ngModel)]="customEstimateMinutes" class="form-input" min="5">
+                </div>
+                <div class="form-group mt-3">
+                    <label class="form-label">Launch Date Offset (days)</label>
+                    <input type="number" [(ngModel)]="customOffsetDays" class="form-input">
+                    <p class="section-desc mt-1" style="font-size: 11px; margin-bottom: 0;">Use negative values for tasks before launch, positive values for tasks after launch.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" (click)="showEstimateModal = false">Cancel</button>
+                <button class="btn btn-primary" (click)="saveCustomEstimate()">Save Settings</button>
+            </div>
+        </div>
+    </div>
 
-                <div class="stats-visuals">
-                    <div class="donut-card card">
-                        <div class="donut-container">
-                            <svg width="120" height="120" viewBox="0 0 120 120">
-                                <circle cx="60" cy="60" r="50" fill="none" stroke="#f1f5f9" stroke-width="12"></circle>
-                                <circle cx="60" cy="60" r="50" fill="none" stroke="#1C2E4A" stroke-width="12"
-                                    [attr.stroke-dasharray]="(getCompletionPercentage() * 3.14) + ', 314'"></circle>
-                            </svg>
-                            <div class="donut-text">{{ getCompletionPercentage() }}%</div>
+    <!-- Add Item Builder Modal -->
+    <div class="modal-backdrop" *ngIf="showAddModal">
+        <div class="modal-card modal-large">
+            <div class="modal-header">
+                <h3>Add Pipeline Checklist Item</h3>
+                <button class="close-btn" (click)="showAddModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Navigation Categories inside Add Modal -->
+                <div class="modal-tab-nav mb-2">
+                    <button *ngFor="let cat of categories" 
+                            class="modal-nav-tab" 
+                            [class.active]="activeCategory === cat"
+                            (click)="activeCategory = cat">
+                        {{ cat }}
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="search-box mb-2">
+                    <input type="text" [(ngModel)]="searchQuery" class="form-input" placeholder="Search unadded tasks in library...">
+                </div>
+
+                <!-- Unadded Library list -->
+                <div class="unadded-tasks-list">
+                    <div class="lib-task-item" *ngFor="let lt of getFilteredLibraryTasks()" (click)="addLibraryItem(lt)">
+                        <div class="item-left">
+                            <span class="lib-task-text">{{ lt.text }}</span>
+                            <span class="badge estimate" style="margin-left: 8px;">{{ lt.estimate }}m</span>
                         </div>
-                        <h4>Checklist Progress</h4>
-                        <p>Completion percentage of all checklist tasks</p>
+                        <button class="btn btn-primary btn-xs"><i class="fas fa-plus"></i> Add</button>
+                    </div>
+
+                    <div class="empty-lib-feed" *ngIf="getFilteredLibraryTasks().length === 0">
+                        <p>No unadded items found matching category/search.</p>
                     </div>
                 </div>
             </div>

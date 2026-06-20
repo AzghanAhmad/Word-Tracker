@@ -32,6 +32,7 @@ import { PlanDetailsComponent } from './components/plan-details/plan-details.com
 import { OrganizationComponent } from './components/organization/organization.component';
 import { StatsComponent } from './components/stats/stats.component';
 import { ArchiveComponent } from './components/archive/archive';
+import { FocusTimerComponent } from './components/focus-timer/focus-timer.component';
 
 import { HomeUserComponent } from './components/home-user/home-user';
 
@@ -71,6 +72,7 @@ export const routes: Routes = [
     { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
 
     { path: 'stats', component: StatsComponent, canActivate: [authGuard] },
+    { path: 'focus-timer', component: FocusTimerComponent, canActivate: [authGuard] },
     { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
     { path: '**', redirectTo: '' }
 ];

@@ -1,108 +1,225 @@
-<div class="create-checklist-container">
-    <div class="header">
-        <h1>{{ isEditMode ? 'Edit Checklist' : 'Create a Checklist' }}</h1>
-        <p class="subtitle">{{ isEditMode ? 'Update your checklist tasks' : 'Build a task list to keep your writing
-            project organized' }}</p>
+<div class="builder-container fade-in">
+    <!-- Custom Error Alert Banner matching SS -->
+    <div class="custom-error-alert fade-in" *ngIf="errorMessage">
+        <div class="alert-left-content">
+            <span class="alert-icon-error">✕</span>
+            <span class="alert-message-text">{{ errorMessage }}</span>
+        </div>
+        <button class="alert-close-action" (click)="clearErrorMessage()">✕</button>
     </div>
 
-    <!-- Loading State -->
-    <div class="loading-state" *ngIf="isLoadingData && isEditMode">
-        <i class="fas fa-spinner fa-spin"></i> Loading checklist...
-    </div>
+    <!-- Header -->
+    <a routerLink="/my-checklists" class="back-link mb-3"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
 
-    <div class="checklist-form" *ngIf="!isLoadingData || !isEditMode">
-        <!-- Checklist Name -->
-        <div class="form-group">
-            <label for="checklistName">Checklist Name</label>
-            <input type="text" id="checklistName" [(ngModel)]="checklistName" class="form-input"
-                placeholder="e.g., NaNoWriMo Tasks, Research Checklist" required [disabled]="isLoadingData">
+    <header class="welcome-banner mb-4">
+        <div class="welcome-text">
+            <h1>{{ isEditMode ? 'Modify Planning Checklist' : 'AuthorFLOW Project Creator' }}</h1>
+            <p class="subtitle">Set up your book details and configure production milestones</p>
         </div>
+        <button class="btn-banner-action" (click)="buildChecklist()" [disabled]="isLoading">
+            {{ isEditMode ? 'Update Checklist' : 'Create Checklist' }}
+        </button>
+    </header>
 
-        <!-- Checklist Configuration -->
-        <div class="config-section">
-            <h3>Checklist Configuration</h3>
-            
-            <div class="form-row">
-                <div class="form-group half">
-                    <label for="activityType">Activity</label>
-                    <select id="activityType" [(ngModel)]="activityType" class="form-select" [disabled]="isLoadingData">
-                        <option *ngFor="let act of activities" [value]="act">{{ act }}</option>
-                    </select>
+    <div class="builder-layout">
+        <!-- Left: Project Info & Bundles -->
+        <aside class="sidebar-panel">
+            <!-- Project Settings Card -->
+            <div class="sidebar-card sidebar-high-fidelity mb-3">
+                <div class="card-header">
+                    <h3>Project Settings</h3>
+                    <i class="fas fa-book-open"></i>
                 </div>
-                <div class="form-group half">
-                    <label for="contentType">Content Type</label>
-                    <select id="contentType" [(ngModel)]="contentType" class="form-select" [disabled]="isLoadingData">
-                        <option *ngFor="let type of contentTypes" [value]="type">{{ type }}</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group half">
-                    <label for="startDate">Start Date</label>
-                    <input type="date" id="startDate" [(ngModel)]="startDate" class="form-input" [disabled]="isLoadingData">
-                </div>
-                <div class="form-group half">
-                    <label for="endDate">Target Finish Date</label>
-                    <input type="date" id="endDate" [(ngModel)]="endDate" class="form-input" [disabled]="isLoadingData">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="algorithmType">Strategy</label>
-                <select id="algorithmType" [(ngModel)]="algorithmType" class="form-select" [disabled]="isLoadingData">
-                    <option *ngFor="let strat of strategies" [value]="strat.id">{{ strat.label }}</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Checklist Items -->
-        <div class="items-section">
-            <h3>Tasks</h3>
-            <div class="items-list">
-                <div class="item-row" *ngFor="let item of items; let i = index">
-                    <div class="item-checkbox" (click)="toggleItemStatus(item)">
-                        <i class="check-icon"
-                            [ngClass]="item.checked ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label" for="bookTitle">Book Title</label>
+                        <input type="text" id="bookTitle" [(ngModel)]="bookTitle" class="form-input" placeholder="e.g. Whispers of the Void" required>
                     </div>
-                    <div class="item-text">
-                        <input type="text" [(ngModel)]="item.text" class="item-input"
-                            placeholder="Enter task description" [disabled]="isLoadingData">
-                        <div class="item-date-picker">
-                            <label><i class="far fa-calendar-alt"></i> Date:</label>
-                            <input type="date" [(ngModel)]="item.date" [min]="startDate" [max]="endDate" class="item-date-input" [disabled]="isLoadingData">
+
+                    <div class="form-group">
+                        <label class="form-label" for="genre">Genre / Category</label>
+                        <select id="genre" [(ngModel)]="genre" class="form-select">
+                            <option value="Fiction">Fiction</option>
+                            <option value="Nonfiction">Nonfiction</option>
+                            <option value="Sci-Fi / Fantasy">Sci-Fi / Fantasy</option>
+                            <option value="Thriller / Mystery">Thriller / Mystery</option>
+                            <option value="Romance">Romance</option>
+                            <option value="Biography / Memoir">Biography / Memoir</option>
+                            <option value="Self-Help">Self-Help</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="penName">Pen Name</label>
+                        <input type="text" id="penName" [(ngModel)]="penName" class="form-input" placeholder="e.g. J.R. Writer">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="targetLaunchDate">Target Launch Date</label>
+                        <input type="date" id="targetLaunchDate" [(ngModel)]="targetLaunchDate" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-Checklist Bundles Card -->
+            <div class="sidebar-card sidebar-high-fidelity">
+                <div class="card-header">
+                    <h3>Sub-Checklist Bundles</h3>
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Install pre-packaged campaigns directly into your launch pipeline.</p>
+                    
+                    <div class="bundles-list mt-2">
+                        <div class="bundle-item-card" *ngFor="let bundle of bundles" [class.installed]="isBundleInstalled(bundle.id)">
+                            <div class="bundle-main">
+                                <div class="bundle-info">
+                                    <h4 class="bundle-title">{{ bundle.name }}</h4>
+                                    <p class="bundle-desc">{{ bundle.description }}</p>
+                                </div>
+                                <div class="bundle-actions">
+                                    <button class="btn btn-secondary btn-xs" (click)="toggleBundlePreview(bundle.id, $event)">
+                                        {{ previewBundleId === bundle.id ? 'Hide' : 'Preview' }}
+                                    </button>
+                                    <button class="btn btn-primary btn-xs" 
+                                            (click)="installBundle(bundle, $event)">
+                                        Install
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Bundle Task Preview Details -->
+                            <div class="bundle-preview-details" *ngIf="previewBundleId === bundle.id">
+                                <div class="preview-task-row" *ngFor="let bt of bundle.tasks">
+                                    <span class="task-dot"></span>
+                                    <span class="preview-task-text">{{ bt.text }}</span>
+                                    <span class="preview-task-est">{{ bt.estimate }}m</span>
+                                </div>
+                                <p class="phase2-warning-text"><i class="fas fa-info-circle"></i> Email flow integration available in Phase Two.</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="item-actions">
-                        <button type="button" class="btn-icon" (click)="moveUp(i)" [disabled]="i === 0 || isLoadingData"
-                            title="Move up">
-                            ↑
-                        </button>
-                        <button type="button" class="btn-icon" (click)="moveDown(i)"
-                            [disabled]="i === items.length - 1 || isLoadingData" title="Move down">
-                            ↓
-                        </button>
-                        <button type="button" class="btn-icon btn-delete" (click)="removeItem(i)"
-                            [disabled]="items.length === 1 || isLoadingData" title="Delete">
-                            ×
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right: Master Library & Filters -->
+        <main class="builder-main">
+            <!-- Filter Bar and Search -->
+            <div class="card control-card mb-3">
+                <div class="control-grid">
+                    <!-- Search -->
+                    <div class="search-box">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" [(ngModel)]="searchQuery" class="form-input search-input" placeholder="Search categories, tasks, or bundles...">
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="filter-chips">
+                        <span class="filter-label">Target Filters:</span>
+                        <button *ngFor="let opt of filterOptions" 
+                                class="chip" 
+                                [class.active]="activeFilters[opt.key]" 
+                                (click)="toggleFilter(opt.key)">
+                            {{ opt.label }}
                         </button>
                     </div>
                 </div>
             </div>
 
-            <button type="button" class="btn-add-item" (click)="addItem()" [disabled]="isLoadingData">
-                + Add Task
-            </button>
-        </div>
+            <!-- Master Categories Accordion -->
+            <div class="categories-accordion">
+                <div class="accordion-item card mb-2" *ngFor="let cat of categories">
+                    <!-- Accordion Header -->
+                    <div class="accordion-header" (click)="toggleCategory(cat)">
+                        <div class="header-left">
+                            <i class="fas" [class.fa-chevron-down]="expandedCategories[cat]" [class.fa-chevron-right]="!expandedCategories[cat]"></i>
+                            <h3 class="category-title">{{ cat }}</h3>
+                        </div>
+                        <div class="header-right">
+                            <span class="progress-badge">{{ getCategoryProgress(cat) }}</span>
+                            <button class="btn btn-secondary btn-xs" (click)="toggleSelectAllCategory(cat); $event.stopPropagation()">
+                                {{ isCategoryFullySelected(cat) ? 'Deselect All' : 'Select All' }}
+                            </button>
+                        </div>
+                    </div>
 
-        <!-- Actions -->
-        <div class="form-actions">
-            <button type="button" class="btn-secondary" routerLink="/my-checklists"
-                [disabled]="isLoadingData">Cancel</button>
-            <button type="button" class="btn-primary" (click)="saveChecklist()" [disabled]="isLoading || isLoadingData">
-                <span *ngIf="isLoading"><i class="fas fa-spinner fa-spin"></i> Saving...</span>
-                <span *ngIf="!isLoading">{{ isEditMode ? 'Update Checklist' : 'Save Checklist' }}</span>
-            </button>
+                    <!-- Accordion Content -->
+                    <div class="accordion-content" *ngIf="expandedCategories[cat]">
+                        <div class="tasks-table">
+                            <div class="task-row" *ngFor="let task of getFilteredTasks(cat)" [class.selected]="selectedLibraryTasks[task.id]">
+                                <div class="task-check" (click)="selectedLibraryTasks[task.id] = !selectedLibraryTasks[task.id]">
+                                    <span class="custom-checkbox" [class.checked]="selectedLibraryTasks[task.id]">
+                                        <i class="fas fa-check" *ngIf="selectedLibraryTasks[task.id]"></i>
+                                    </span>
+                                </div>
+
+                                <!-- Task details -->
+                                <div class="task-info">
+                                    <span class="task-text">{{ task.text }}</span>
+                                    <div class="task-meta-row">
+                                        <!-- Estimate badge -->
+                                        <span class="badge estimate-badge" (click)="openOverrideModal(task, $event)" title="Click to override estimate">
+                                            <i class="far fa-clock"></i> {{ getTaskEstimateLabel(task) }}
+                                        </span>
+
+                                        <!-- Milestone marker -->
+                                        <span class="badge milestone-badge" *ngIf="task.isMilestone" title="This milestone will connect to Calendar/Scheduler in Phase Two.">
+                                            <i class="fas fa-flag text-danger"></i> Milestone: {{ task.milestoneName }}
+                                        </span>
+
+                                        <!-- Due date indicator offset -->
+                                        <span class="badge offset-badge" (click)="openOverrideModal(task, $event)" title="Click to override offset days">
+                                            <i class="far fa-calendar-alt"></i> Day {{ task.offsetDays }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Empty state for category -->
+                            <div class="empty-category-tasks" *ngIf="getFilteredTasks(cat).length === 0">
+                                <p><i class="fas fa-filter"></i> No library items match search or active filters.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Estimate Override Modal -->
+    <div class="modal-backdrop" *ngIf="showEstimateModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Override Estimated Effort</h3>
+                <button class="close-btn" (click)="showEstimateModal = false">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Adjust the standard task duration for <strong>{{ modalTask?.text }}</strong>.</p>
+                
+                <div class="form-group mt-2">
+                    <label class="form-label">Duration (in minutes)</label>
+                    <input type="number" [(ngModel)]="customEstimateMinutes" class="form-input" min="5" max="10000">
+                </div>
+
+                <div class="form-group mt-3">
+                    <label class="form-label">Launch Date Offset (in days)</label>
+                    <input type="number" [(ngModel)]="customOffsetDays" class="form-input" placeholder="e.g. -30">
+                    <p class="section-desc mt-1" style="font-size: 11px; margin-bottom: 0;">Use negative values for tasks before launch, positive values for tasks after launch.</p>
+                </div>
+
+                <div class="estimates-quick-select mt-3">
+                    <button class="btn btn-secondary btn-xs" (click)="customEstimateMinutes = 15">15 min</button>
+                    <button class="btn btn-secondary btn-xs" (click)="customEstimateMinutes = 30">30 min</button>
+                    <button class="btn btn-secondary btn-xs" (click)="customEstimateMinutes = 60">1 hr</button>
+                    <button class="btn btn-secondary btn-xs" (click)="customEstimateMinutes = 120">2 hrs</button>
+                    <button class="btn btn-secondary btn-xs" (click)="customEstimateMinutes = 240">4 hrs</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" (click)="showEstimateModal = false">Cancel</button>
+                <button class="btn btn-primary" (click)="saveCustomEstimate()">Save Override</button>
+            </div>
         </div>
     </div>
 </div>

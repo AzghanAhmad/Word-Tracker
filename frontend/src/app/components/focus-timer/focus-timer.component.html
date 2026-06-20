@@ -1,0 +1,125 @@
+<div class="focus-timer-page">
+    <div class="header">
+        <h1><i class="fas fa-hourglass-half"></i> Focus Timer</h1>
+        <p>Stay in the zone with Pomodoro-style writing sessions.</p>
+    </div>
+
+    <div class="main-grid">
+        <!-- Timer card -->
+        <div class="timer-card">
+            <div class="mode-badge" [class.break]="timerState === 'break_running' || (timerState === 'completed' && modeLabel.includes('Break'))">
+                {{ modeLabel }}
+            </div>
+
+            <div class="time-display">{{ timeDisplay }}</div>
+
+            <div class="progress-hint" *ngIf="timerState === 'idle'">
+                Session {{ completedSessions + 1 }} · Long break every {{ settings.sessionsBeforeLongBreak }} sessions
+            </div>
+
+            <div class="completed-message" *ngIf="timerState === 'completed'">
+                <p *ngIf="modeLabel === 'Focus Session'">Great work! Take a well-earned break.</p>
+                <p *ngIf="modeLabel !== 'Focus Session'">Break's over — ready to write?</p>
+            </div>
+
+            <div class="controls">
+                <ng-container *ngIf="timerState === 'idle'">
+                    <button type="button" class="btn-primary" (click)="startFocus()">
+                        <i class="fas fa-play"></i> Start Focus Session
+                    </button>
+                    <button type="button" class="btn-secondary" (click)="openSettings()">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                </ng-container>
+
+                <ng-container *ngIf="timerState === 'running' || timerState === 'break_running'">
+                    <button type="button" class="btn-secondary" (click)="pause()">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button type="button" class="btn-danger" (click)="stop()">
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                </ng-container>
+
+                <ng-container *ngIf="timerState === 'paused'">
+                    <button type="button" class="btn-primary" (click)="resume()">
+                        <i class="fas fa-play"></i> Resume
+                    </button>
+                    <button type="button" class="btn-danger" (click)="stop()">
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                </ng-container>
+
+                <ng-container *ngIf="timerState === 'completed'">
+                    <button type="button" class="btn-primary" *ngIf="modeLabel === 'Focus Session'" (click)="startSuggestedBreak(); dismiss()">
+                        <i class="fas fa-coffee"></i> Start Break
+                    </button>
+                    <button type="button" class="btn-primary" *ngIf="modeLabel !== 'Focus Session'" (click)="startFocus(); dismiss()">
+                        <i class="fas fa-pen"></i> Start Focus Session
+                    </button>
+                    <button type="button" class="btn-secondary" (click)="dismiss()">Dismiss</button>
+                </ng-container>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-card">
+            <h3><i class="fas fa-chart-line"></i> Your Focus Stats</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.totalSessionsCompleted }}</span>
+                    <span class="stat-label">Sessions completed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.totalFocusMinutes | number }}</span>
+                    <span class="stat-label">Total focus minutes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.todayFocusMinutes | number }}</span>
+                    <span class="stat-label">Today</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">{{ stats.weeklyFocusMinutes | number }}</span>
+                    <span class="stat-label">This week</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div class="settings-overlay" *ngIf="showSettings" (click)="cancelSettings()">
+        <div class="settings-panel" (click)="$event.stopPropagation()">
+            <h3>Timer Settings</h3>
+            <div class="form-group">
+                <label>Focus time (minutes)</label>
+                <input type="number" min="1" max="120" [(ngModel)]="editSettings.focusMinutes">
+            </div>
+            <div class="form-group">
+                <label>Short break (minutes)</label>
+                <input type="number" min="1" max="60" [(ngModel)]="editSettings.shortBreakMinutes">
+            </div>
+            <div class="form-group">
+                <label>Long break (minutes)</label>
+                <input type="number" min="1" max="90" [(ngModel)]="editSettings.longBreakMinutes">
+            </div>
+            <div class="form-group">
+                <label>Sessions before long break</label>
+                <input type="number" min="2" max="10" [(ngModel)]="editSettings.sessionsBeforeLongBreak">
+            </div>
+            <div class="form-group checkbox">
+                <label>
+                    <input type="checkbox" [(ngModel)]="editSettings.soundEnabled"> Play sound on completion
+                </label>
+            </div>
+            <div class="form-group checkbox">
+                <label>
+                    <input type="checkbox" [(ngModel)]="editSettings.notificationsEnabled"> Browser notifications
+                </label>
+            </div>
+            <div class="settings-actions">
+                <button type="button" class="btn-secondary" (click)="cancelSettings()">Cancel</button>
+                <button type="button" class="btn-primary" (click)="saveSettings()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
